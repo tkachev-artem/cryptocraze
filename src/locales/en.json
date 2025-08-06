@@ -1,0 +1,78 @@
+{
+  "landing": {
+    "title": "Master Crypto Trading Risk-Free",
+    "subtitle": "Learn cryptocurrency trading with virtual money and real market data. Build your skills, earn achievements, and become a confident trader.",
+    "getStarted": "Start Trading Now",
+    "features": {
+      "realData": {
+        "title": "Real Market Data",
+        "description": "Practice with live cryptocurrency prices from major exchanges"
+      },
+      "virtualMoney": {
+        "title": "Virtual Money",
+        "description": "Start with $10,000 virtual currency to practice without risk"
+      },
+      "learning": {
+        "title": "AI Mentor",
+        "description": "Get guidance from Panda, your personal trading mentor"
+      },
+      "gamification": {
+        "title": "Achievements",
+        "description": "Unlock rewards and track your progress as you improve"
+      }
+    }
+  },
+  "home": {
+    "welcome": "Welcome back!",
+    "portfolio": "Portfolio Value",
+    "todayPnl": "Today's P&L",
+    "totalTrades": "Total Trades"
+  },
+  "trading": {
+    "title": "Trading",
+    "buy": "Buy",
+    "sell": "Sell",
+    "amount": "Amount",
+    "leverage": "Leverage",
+    "stopLoss": "Stop Loss",
+    "takeProfit": "Take Profit",
+    "selectPair": "Select Trading Pair",
+    "currentPrice": "Current Price",
+    "direction": "Direction",
+    "long": "Long",
+    "short": "Short",
+    "openTrade": "Open Trade",
+    "closeTrade": "Close Trade",
+    "tradeOpened": "Trade opened successfully",
+    "tradeClosed": "Trade closed successfully",
+    "invalidAmount": "Invalid amount",
+    "insufficientBalance": "Insufficient balance",
+    "watchAd": "Watch Ad for +5%",
+    "adBonus": "Ad bonus applied!",
+    "tradeDetails": "Trade Details",
+    "riskWarning": "Trading involves risk. Only trade with money you can afford to lose."
+  },
+  "chart": {
+    "candlestick": "Candlestick",
+    "line": "Line"
+  },
+  "dashboard": {
+    "freeBalance": "Free Balance",
+    "openTrades": "Open Trades",
+    "noTrades": "No open trades",
+    "startTrading": "Start trading to see your positions here"
+  },
+  "nav": {
+    "home": "Home"
+  },
+  "auth": {
+    "unauthorized": "Unauthorized",
+    "loginRequired": "Please log in to continue",
+    "sessionExpired": "Your session has expired"
+  },
+  "common": {
+    "loading": "Loading...",
+    "success": "Success",
+    "error": "Error"
+  }
+}

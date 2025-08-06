@@ -1,0 +1,11 @@
+export { Home } from './Home/Home';
+export { default as Settings } from './Home/Settings';
+export { default as Language } from './Home/Language';
+export { Tutorial } from './Tutorial';
+export { Profile } from './Profile/Profile';
+export { default as EditProfile } from './Profile/EditProfile';
+export { NotFound } from './NotFound';
+export { Landing } from './Landing';
+export { Welcome } from './Welcome';
+export { default as Trade } from './Trade/Trade';
+export { default as ListCrypto } from './Trade/ListCrypto';

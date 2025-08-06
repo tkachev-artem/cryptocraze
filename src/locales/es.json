@@ -1,0 +1,249 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "save": "Guardar",
+    "close": "Cerrar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "finish": "Terminar",
+    "continue": "Continuar",
+    "retry": "Reintentar",
+    "refresh": "Actualizar",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "sort": "Ordenar",
+    "logout": "Cerrar sesión"
+  },
+  "auth": {
+    "login": "Iniciar sesión",
+    "loginWithProvider": "Iniciar sesión con {{provider}}",
+    "welcome": "Bienvenido",
+    "unauthorized": "No autorizado",
+    "sessionExpired": "Sesión expirada. Por favor, inicia sesión de nuevo.",
+    "loginRequired": "Por favor, inicia sesión para continuar"
+  },
+  "landing": {
+    "title": "Simulador de Trading de Criptomonedas",
+    "subtitle": "Aprende trading de criptomonedas sin riesgo de dinero real",
+    "description": "Domina el trading de criptomonedas con nuestro simulador integral. Practica con datos de mercado reales, aprende del mentor virtual Panda, y gana logros mientras desarrollas tus habilidades de trading.",
+    "features": {
+      "title": "¿Por qué elegir nuestro simulador?",
+      "realData": {
+        "title": "Datos de mercado reales",
+        "description": "Opera con precios y condiciones de mercado de criptomonedas en tiempo real"
+      },
+      "virtualMoney": {
+        "title": "Dinero virtual",
+        "description": "Practica con $10,000 de saldo inicial - sin riesgo de dinero real"
+      },
+      "learning": {
+        "title": "Aprendizaje interactivo",
+        "description": "Aprende de Panda, nuestro mentor virtual, con tutoriales paso a paso"
+      },
+      "gamification": {
+        "title": "Experiencia gamificada",
+        "description": "Gana logros, recompensas diarias y desbloquea características especiales"
+      }
+    },
+    "cta": "Comenzar a operar ahora",
+    "getStarted": "Empezar"
+  },
+  "nav": {
+    "home": "Inicio",
+    "trading": "Trading",
+    "dashboard": "Panel",
+    "profile": "Perfil",
+    "achievements": "Logros",
+    "rewards": "Recompensas",
+    "tutorial": "Tutorial"
+  },
+  "trading": {
+    "title": "Terminal de Trading",
+    "selectPair": "Seleccionar par de trading",
+    "currentPrice": "Precio actual",
+    "amount": "Cantidad",
+    "direction": "Dirección",
+    "long": "Largo (Comprar)",
+    "short": "Corto (Vender)",
+    "leverage": "Apalancamiento",
+    "takeProfit": "Tomar ganancias",
+    "stopLoss": "Stop Loss",
+    "openTrade": "Abrir operación",
+    "closeTrade": "Cerrar operación",
+    "updateTrade": "Actualizar operación",
+    "tradeOpened": "Operación abierta exitosamente",
+    "tradeClosed": "Operación cerrada exitosamente",
+    "tradeUpdated": "Operación actualizada exitosamente",
+    "insufficientBalance": "Saldo insuficiente",
+    "invalidAmount": "Cantidad inválida",
+    "invalidPrice": "Precio inválido",
+    "watchAd": "Ver anuncio (+5% bonus)",
+    "adBonus": "¡Bonus de anuncio aplicado!",
+    "confirmTrade": "Confirmar operación",
+    "tradeDetails": "Detalles de la operación",
+    "estimatedFee": "Comisión estimada",
+    "potentialProfit": "Ganancia potencial",
+    "potentialLoss": "Pérdida potencial",
+    "riskWarning": "El trading implica riesgo. Nunca operes más de lo que puedes permitirte perder."
+  },
+  "chart": {
+    "candlestick": "Velas japonesas",
+    "line": "Línea",
+    "intervals": {
+      "1m": "1 Minuto",
+      "5m": "5 Minutos",
+      "15m": "15 Minutos",
+      "1h": "1 Hora",
+      "4h": "4 Horas",
+      "1d": "1 Día"
+    }
+  },
+  "dashboard": {
+    "title": "Panel de control",
+    "balance": "Saldo",
+    "totalBalance": "Saldo total",
+    "freeBalance": "Saldo disponible",
+    "totalPnL": "P&L total",
+    "todayPnL": "P&L de hoy",
+    "openTrades": "Operaciones abiertas",
+    "totalTrades": "Operaciones totales",
+    "winRate": "Tasa de ganancia",
+    "averageProfit": "Ganancia promedio",
+    "maxProfit": "Ganancia máxima",
+    "maxLoss": "Pérdida máxima",
+    "recentTrades": "Operaciones recientes",
+    "topPerformance": "Mejor rendimiento",
+    "worstPerformance": "Peor rendimiento",
+    "noTrades": "Aún no hay operaciones",
+    "startTrading": "Inicia tu primera operación",
+    "profit": "Ganancia",
+    "loss": "Pérdida"
+  },
+  "profile": {
+    "title": "Perfil",
+    "personalInfo": "Información personal",
+    "tradingStats": "Estadísticas de trading",
+    "settings": "Configuración",
+    "language": "Idioma",
+    "notifications": "Notificaciones",
+    "privacy": "Privacidad",
+    "deleteAccount": "Eliminar cuenta",
+    "level": "Nivel",
+    "experience": "Experiencia",
+    "memberSince": "Miembro desde",
+    "proMode": "Modo Pro",
+    "adsDisabled": "Anuncios deshabilitados",
+    "expires": "Expira"
+  },
+  "achievements": {
+    "title": "Logros",
+    "completed": "Completado",
+    "progress": "Progreso",
+    "reward": "Recompensa",
+    "claimReward": "Reclamar recompensa",
+    "categories": {
+      "trading": "Trading",
+      "learning": "Aprendizaje",
+      "gamification": "Gamificación"
+    },
+    "first_trade": "Primera operación",
+    "profitable_trade": "Primera operación rentable",
+    "complete_tutorial": "Maestro del tutorial",
+    "daily_login_streak": "Visitante diario",
+    "trades_count": "Trader activo",
+    "total_volume": "Trader de alto volumen",
+    "win_streak": "Racha ganadora",
+    "high_leverage_trade": "Tomador de riesgos",
+    "big_profit": "Gran ganador",
+    "watch_ads": "Supporter de anuncios"
+  },
+  "rewards": {
+    "title": "Recompensas diarias",
+    "dailyBonus": "Bonus diario",
+    "streak": "Día {{day}}",
+    "claim": "Reclamar",
+    "claimed": "Reclamado",
+    "comeBaclTomorrow": "¡Vuelve mañana!",
+    "streakBroken": "Racha rota. ¡Comienza de nuevo mañana!",
+    "roulette": "Ruleta de la suerte",
+    "lootBox": "Caja del tesoro",
+    "spin": "Girar",
+    "open": "Abrir",
+    "congratulations": "¡Felicitaciones!",
+    "youWon": "Ganaste:",
+    "currency": "Moneda virtual",
+    "proMode": "Modo Pro",
+    "noAds": "Sin anuncios",
+    "duration": "por {{duration}} días"
+  },
+  "lootbox": {
+    "roulette": "Ruleta",
+    "treasureBox": "Caja del tesoro",
+    "spin": "Girar ahora",
+    "openBox": "Abrir caja",
+    "prizes": "Premios posibles",
+    "spinning": "Girando...",
+    "opening": "Abriendo...",
+    "prize": "Premio",
+    "noTickets": "No hay tickets disponibles",
+    "watchAdForTicket": "Ver anuncio para ticket gratis"
+  },
+  "tutorial": {
+    "title": "Tutorial de Trading",
+    "welcome": "¡Bienvenido al Simulador de Trading de Criptomonedas!",
+    "skipTutorial": "Saltar tutorial",
+    "pandaIntro": "¡Hola! Soy Panda, tu mentor virtual de trading. Te guiaré a través de los conceptos básicos del trading de criptomonedas.",
+    "step1": {
+      "title": "Entendiendo la interfaz",
+      "content": "Comencemos con la interfaz principal de trading. Aquí puedes ver tu saldo, seleccionar pares de trading y ver gráficos de precios."
+    },
+    "step2": {
+      "title": "Leyendo gráficos de precios",
+      "content": "Los gráficos muestran movimientos de precios a lo largo del tiempo. Las velas verdes significan que los precios subieron, las velas rojas significan que bajaron."
+    },
+    "step3": {
+      "title": "Abriendo tu primera operación",
+      "content": "Elige una cantidad para operar, selecciona Largo (comprar) si crees que los precios subirán, o Corto (vender) si crees que bajarán."
+    },
+    "step4": {
+      "title": "Gestión de riesgos",
+      "content": "Siempre establece niveles de Take Profit y Stop Loss para gestionar tu riesgo. Nunca arriesgues más de lo que puedes permitirte perder."
+    },
+    "step5": {
+      "title": "Características de gamificación",
+      "content": "Gana logros, reclama recompensas diarias y desbloquea características especiales mientras progresas en tu viaje de trading."
+    },
+    "complete": "¡Tutorial completado!",
+    "congratulations": "¡Felicitaciones! Estás listo para comenzar a operar. ¡Buena suerte!"
+  },
+  "panda": {
+    "hello": "¡Hola! Soy Panda 🐼",
+    "tip": "Consejo de trading",
+    "encouragement": "¡Buen trabajo!",
+    "warning": "¡Ten cuidado!",
+    "tips": {
+      "diversify": "No pongas todos los huevos en una canasta. ¡Diversifica tus operaciones!",
+      "patience": "La paciencia es clave en el trading. No te apresures en las decisiones.",
+      "research": "Siempre investiga antes de hacer una operación. ¡El conocimiento es poder!",
+      "riskManagement": "Una buena gestión de riesgos es más importante que grandes ganancias.",
+      "emotions": "No dejes que las emociones controlen tus decisiones de trading.",
+      "smallStart": "Comienza pequeño y aumenta gradualmente el tamaño de tus posiciones.",
+      "stopLoss": "Siempre usa stop losses para proteger tu capital.",
+      "trends": "La tendencia es tu amiga. Opera con la tendencia, no en contra."
+    }
+  },
+  "errors": {
+    "networkError": "Error de red. Por favor verifica tu conexión.",
+    "serverError": "Error del servidor. Por favor intenta de nuevo más tarde.",
+    "invalidInput": "Entrada inválida. Por favor verifica tus datos.",
+    "unauthorized": "Acceso no autorizado. Por favor inicia sesión de nuevo.",
+    "notFound": "Recurso no encontrado.",
+    "tooManyRequests": "Demasiadas solicitudes. Por favor reduce la velocidad.",
+    "unexpectedError": "Ocurrió un error inesperado."
+  }
+}

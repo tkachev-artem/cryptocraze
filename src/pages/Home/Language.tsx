@@ -2,7 +2,10 @@ import type { FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../app/hooks';
 import { selectUser } from '../../app/userSlice';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { DEFAULT_LANGUAGE } from '../../lib/cookieUtils';
+import { useTranslation } from '../../lib/i18n';
+import { getPreferredLanguage, setPreferredLanguage } from '../../lib/languageUtils';
 
 type Language = {
   id: string;
@@ -21,9 +24,18 @@ const languages: Language[] = [
 const Language: FC = () => {
   const navigate = useNavigate();
   const user = useAppSelector(selectUser);
-  const [selectedLanguage, setSelectedLanguage] = useState<string>(
-    user?.preferredLanguage ?? 'ru'
-  );
+  const [selectedLanguage, setSelectedLanguage] = useState<string>(DEFAULT_LANGUAGE);
+  const { t, changeLanguage } = useTranslation();
+
+  // Загружаем язык при инициализации (cookie/meta/html/localStorage/navigator)
+  useEffect(() => {
+    const savedLanguage = getPreferredLanguage();
+    if (savedLanguage) {
+      setSelectedLanguage(savedLanguage);
+    } else if (user?.preferredLanguage) {
+      setSelectedLanguage(user.preferredLanguage);
+    }
+  }, [user]);
 
   const handleBackClick = () => {
     void navigate('/home/settings');
@@ -31,8 +43,8 @@ const Language: FC = () => {
 
   const handleLanguageSelect = (languageId: string) => {
     setSelectedLanguage(languageId);
-    // Здесь можно добавить логику сохранения выбранного языка
-    console.log('Выбран язык:', languageId);
+    setPreferredLanguage(languageId);
+    try { changeLanguage(languageId as 'ru' | 'en' | 'es' | 'fr' | 'pt'); } catch { /* noop */ }
   };
 
   return (
@@ -45,7 +57,7 @@ const Language: FC = () => {
             <button 
               className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100"
               onClick={handleBackClick}
-              aria-label="Назад"
+              aria-label={t('common.back')}
               tabIndex={0}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -55,29 +67,27 @@ const Language: FC = () => {
             >
               <img src="/top-menu/back.svg" alt="Back" className="w-6 h-6" />
             </button>
-            <h1 className="text-xl font-bold text-black">Назад</h1>
+            <h1 className="text-xl font-bold text-black">{t('language.title')}</h1>
           </div>
         </div>
       </div>
 
       {/* Image Section */}
       <div className="px-4 py-4">
-        <div className="h-[200px] flex items-center justify-center relative overflow-hidden">
+          <div className="h-[200px] flex items-center justify-center relative overflow-hidden">
           <img 
             src="/settings/language-panda.svg" 
             alt="Language Panda" 
-            className="w-[120px] h-[170px] object-contain"
+              className="w-[120px] h-[170px] object-contain select-none"
           />
         </div>
       </div>
 
       {/* Text Section */}
       <div className="px-4 py-4 text-center space-y-4">
-        <h2 className="text-2xl font-bold text-black">
-          Выберите язык
-        </h2>
+        <h2 className="text-2xl font-bold text-black">{t('language.title')}</h2>
         <p className="text-sm text-black opacity-50 leading-relaxed max-w-xs mx-auto">
-          Вы всегда можете изменить языковую версию приложения в разделе настройки
+          {t('language.description')}
         </p>
       </div>
 
@@ -90,7 +100,7 @@ const Language: FC = () => {
             onClick={() => {
               handleLanguageSelect(language.id);
             }}
-            aria-label={`Выбрать язык ${language.name}`}
+            aria-label={`${t('nav.back')} ${language.name}`}
             tabIndex={0}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -99,11 +109,11 @@ const Language: FC = () => {
             }}
           >
             <span className="text-black font-medium text-base">
-              {language.name}
+              {t(`language.languages.${language.id}`)}
             </span>
             
             {/* Radio Button */}
-            <div className="relative">
+            <div className="relative select-none">
               <div 
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                   selectedLanguage === language.id 

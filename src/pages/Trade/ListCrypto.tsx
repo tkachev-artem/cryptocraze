@@ -1,19 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useCoinGeckoIcon } from '../../hooks/useCoinGeckoIcon';
 import { useNavigate } from 'react-router-dom';
-
-type BinanceStats = {
-  symbol: string;
-  priceChange: number;
-  priceChangePercent: number;
-  lastPrice: number;
-  highPrice: number;
-  lowPrice: number;
-  openPrice: number;
-  volume: number;
-  quoteVolume: number;
-  count: number;
-};
+import LoadingScreen from '../../components/LoadingScreen';
+import { useTranslation } from '@/lib/i18n';
+import useLivePrices from '@/hooks/useLivePrices';
 
 type CryptoData = {
   id: string;
@@ -30,50 +20,59 @@ type CryptoGroup = {
   cryptos: CryptoData[];
 };
 
+// Функция для умного форматирования цены
+const formatPrice = (price: number): string => {
+  if (price >= 1) {
+    return price.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  } else if (price >= 0.01) {
+    return price.toLocaleString('ru-RU', { minimumFractionDigits: 4, maximumFractionDigits: 6 });
+  } else {
+    return price.toLocaleString('ru-RU', { minimumFractionDigits: 6, maximumFractionDigits: 8 });
+  }
+};
+
 // Компонент для отображения криптовалюты с иконкой
-const CryptoItem: React.FC<{ crypto: CryptoData; index: number; total: number }> = ({ crypto, index, total }) => {
+const CryptoItem: React.FC<{ crypto: CryptoData; index: number; total: number; onSelect: (symbol: string) => void }> = ({ crypto, index, total, onSelect }) => {
   const { iconUrl, loading } = useCoinGeckoIcon(crypto.id);
   
   return (
     <div
-      onClick={() => {
-        console.log('Selected crypto:', crypto);
-      }}
-      className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors ${
+      onClick={() => { onSelect(crypto.symbol); }}
+      className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 cursor-pointer hover:bg-gray-50 transition-colors ${
         index < total - 1 ? 'border-b border-gray-200' : ''
       }`}
     >
       {/* Left side: Icon and Name */}
       <div className="flex items-center justify-between flex-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Crypto Icon */}
           <div 
-            className="w-7 h-7 rounded-full flex items-center justify-center"
+            className="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center"
             style={{ backgroundColor: crypto.color }}
           >
             {loading ? (
-              <div className="w-7 h-7 bg-gray-300 rounded-full animate-pulse"></div>
+              <div className="w-6 h-6 sm:w-7 sm:h-7 bg-gray-300 rounded-full animate-pulse"></div>
             ) : iconUrl ? (
-              <img src={iconUrl} alt={crypto.name} className="w-7 h-7 rounded-full" />
+              <img src={iconUrl} alt={crypto.name} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full" onError={(e) => { e.currentTarget.src = crypto.icon; }} />
             ) : (
-              <img src={crypto.icon} alt={crypto.name} className="w-7 h-7" />
+              <img src={crypto.icon} alt={crypto.name} className="w-6 h-6 sm:w-7 sm:h-7" />
             )}
           </div>
           
           {/* Crypto Name */}
-          <span className="text-base font-bold text-black">{crypto.name}</span>
+          <span className="text-sm sm:text-base font-bold text-black">{crypto.name}</span>
         </div>
         
         {/* Price */}
-        <span className="text-xs font-bold text-black opacity-50">
-          {crypto.price.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+        <span className="text-xs sm:text-sm font-bold text-black opacity-50">
+          {formatPrice(crypto.price)}
         </span>
       </div>
       
       {/* Right side: Change Percentage */}
-      <div className="w-9 h-3 flex items-center justify-center">
+      <div className="w-8 sm:w-9 h-3 flex items-center justify-center">
         <span 
-          className="text-[10px] font-semibold"
+          className="text-[9px] sm:text-[10px] font-semibold"
           style={{ color: crypto.change24h >= 0 ? '#2EBD85' : '#F6465D' }}
         >
           {crypto.change24h >= 0 ? '+' : ''}{crypto.change24h.toFixed(2)}%
@@ -89,34 +88,24 @@ const ListCrypto: React.FC = () => {
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'gain' | 'loss'>('all');
   const [cryptoData, setCryptoData] = useState<CryptoData[]>([]);
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
 
-  // Функция для получения статистики криптовалюты
-  const fetchCryptoStats = async (symbol: string): Promise<BinanceStats | null> => {
-    try {
-      const response = await fetch(`http://localhost:8000/api/binance/stats/${symbol}`);
-      if (!response.ok) {
-        console.error(`Ошибка получения данных для ${symbol}:`, response.status);
-        return null;
-      }
-      return await response.json() as BinanceStats;
-    } catch (error) {
-      console.error(`Ошибка запроса для ${symbol}:`, error);
-      return null;
+  const symbols = useMemo(() => ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'DOGEUSDT'], []);
+  const { prices } = useLivePrices(symbols);
+  
+  // Check if live data is available, fallback to realistic prices
+  useEffect(() => {
+    // For production, remove debug logs
+    if (import.meta.env.DEV) {
+      console.log('Live prices received:', prices);
+      console.log('Available symbols:', Object.keys(prices));
     }
-  };
+  }, [prices]);
 
   // Функция для получения всех данных криптовалют
-  const fetchAllCryptoData = async () => {
+  const fetchAllCryptoData = useCallback(() => {
     setLoading(true);
-    
-    // Список символов для API запросов
-    const symbols = [
-      'ALGOUSDT', 'AVAXUSDT', 'BNBUSDT', 'BTCUSDT', 'BCHUSDT', 'ADAUSDT', 'COMPUSDT',
-      'DASHUSDT', 'DOGEUSDT', 'EGLDUSDT', 'ETHUSDT', 'ETCUSDT', 'FTTUSDT', 'KLAYUSDT',
-      'MKRUSDT', 'NEOUSDT', 'DOTUSDT', 'XRPUSDT', 'SOLUSDT', 'XLMUSDT', 'THETAUSDT',
-      'GRTUSDT', 'UNIUSDT', 'ZECUSDT'
-    ];
 
     // Маппинг символов Binance на coinId для CoinGecko
     const symbolToCoinId: Record<string, string> = {
@@ -128,100 +117,61 @@ const ListCrypto: React.FC = () => {
       'XRPUSDT': 'ripple',
       'DOTUSDT': 'polkadot',
       'DOGEUSDT': 'dogecoin',
-      'AVAXUSDT': 'avalanche-2',
-      'MATICUSDT': 'matic-network',
-      'LTCUSDT': 'litecoin',
-      'UNIUSDT': 'uniswap',
-      'LINKUSDT': 'chainlink',
-      'ATOMUSDT': 'cosmos',
-      'ETCUSDT': 'ethereum-classic',
-      'XLMUSDT': 'stellar',
-      'BCHUSDT': 'bitcoin-cash',
-      'FILUSDT': 'filecoin',
-      'VETUSDT': 'vechain',
-      'THETAUSDT': 'theta-token',
-      'TRXUSDT': 'tron',
-      'ALGOUSDT': 'algorand',
-      'NEOUSDT': 'neo',
-      'FTTUSDT': 'ftx-token',
-      'KLAYUSDT': 'klaytn',
-      'MKRUSDT': 'maker',
-      'COMPUSDT': 'compound-governance-token',
-      'DASHUSDT': 'dash',
-      'EGLDUSDT': 'elrond-erd-2',
-      'GRTUSDT': 'the-graph',
-      'ZECUSDT': 'zcash',
     };
 
     // Маппинг символов на названия и цвета
     const symbolToName: Record<string, string> = {
       'BTCUSDT': 'Bitcoin',
       'ETHUSDT': 'Ethereum',
-      'BNBUSDT': 'Binance Coin',
       'ADAUSDT': 'Cardano',
       'SOLUSDT': 'Solana',
       'XRPUSDT': 'Ripple',
       'DOTUSDT': 'Polkadot',
       'DOGEUSDT': 'Dogecoin',
-      'AVAXUSDT': 'Avalanche',
-      'MATICUSDT': 'Polygon',
-      'LTCUSDT': 'Litecoin',
-      'UNIUSDT': 'Uniswap',
-      'LINKUSDT': 'Chainlink',
-      'ATOMUSDT': 'Cosmos',
-      'ETCUSDT': 'Ethereum Classic',
-      'XLMUSDT': 'Stellar',
-      'BCHUSDT': 'Bitcoin Cash',
-      'FILUSDT': 'Filecoin',
-      'VETUSDT': 'VeChain',
-      'THETAUSDT': 'THETA',
-      'TRXUSDT': 'TRON',
-      'ALGOUSDT': 'Algorand',
-      'NEOUSDT': 'Neo',
-      'FTTUSDT': 'FTX Token',
-      'KLAYUSDT': 'Klaytn',
-      'MKRUSDT': 'Maker',
-      'COMPUSDT': 'Compound',
-      'DASHUSDT': 'Dash',
-      'EGLDUSDT': 'Elrond',
-      'GRTUSDT': 'The Graph',
-      'ZECUSDT': 'Zcash',
     };
-
-
-
-    const cryptoDataPromises = symbols.map(async (symbol) => {
-      const stats = await fetchCryptoStats(symbol);
+    const cryptoDataPromises = symbols.map((symbol) => {
+      const live = prices[symbol];
       const coinId = symbolToCoinId[symbol];
       const name = symbolToName[symbol];
       
-      if (stats) {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (live && Number.isFinite(live.price)) {
         return {
           id: coinId,
           name: name,
           symbol: symbol,
-          price: stats.lastPrice,
-          change24h: stats.priceChangePercent,
+          price: live.price,
+          change24h: live.priceChange24h || 0,
           icon: '/trade/bitcoin.svg',
           color: '#ffffff',
         };
       }
-      // Fallback данные если API недоступен
+      // Fallback данные если API недоступен - используем актуальные примерные цены
+      const fallbackPrices: Record<string, number> = {
+        'BTCUSDT': 65000 + Math.random() * 5000,
+        'ETHUSDT': 3200 + Math.random() * 300,
+        'SOLUSDT': 140 + Math.random() * 20,
+        'XRPUSDT': 0.55 + Math.random() * 0.1,
+        'DOGEUSDT': 0.21 + Math.random() * 0.02, // Dogecoin текущая цена около 0.21-0.23
+      };
+      
       return {
         id: coinId,
         name: name,
         symbol: symbol,
-        price: Math.random() * 1000,
+        price: fallbackPrices[symbol] || Math.random() * 100,
         change24h: (Math.random() - 0.5) * 10,
         icon: '/trade/bitcoin.svg',
         color: '#000000',
       };
     });
 
-    const results = await Promise.all(cryptoDataPromises);
-    setCryptoData(results);
+    const results = cryptoDataPromises;
+    // Оставляем только с корректным id и именем
+    const filtered = results.filter(r => r.id && r.name);
+    setCryptoData(filtered);
     setLoading(false);
-  };
+  }, [prices, symbols]);
 
 
 
@@ -246,7 +196,7 @@ const ListCrypto: React.FC = () => {
   };
 
   // Фильтрация по росту/падению
-  const filterCrypto = (cryptos: CryptoData[]) => {
+  const filterCrypto = useCallback((cryptos: CryptoData[]) => {
     switch (selectedFilter) {
       case 'gain':
         return cryptos.filter(crypto => crypto.change24h > 0);
@@ -255,116 +205,175 @@ const ListCrypto: React.FC = () => {
       default:
         return cryptos;
     }
-  };
+  }, [selectedFilter]);
 
   // Загрузка данных при монтировании компонента
   useEffect(() => {
-    void fetchAllCryptoData();
-  }, []);
+    fetchAllCryptoData();
+  }, [fetchAllCryptoData]);
+
+  // Обновление цен из сокета без спиннера
+  useEffect(() => {
+    const symbolToCoinId: Record<string, string> = {
+      'BTCUSDT': 'bitcoin',
+      'ETHUSDT': 'ethereum',
+      'BNBUSDT': 'binancecoin',
+      'ADAUSDT': 'cardano',
+      'SOLUSDT': 'solana',
+      'XRPUSDT': 'ripple',
+      'DOTUSDT': 'polkadot',
+      'DOGEUSDT': 'dogecoin',
+    };
+    const symbolToName: Record<string, string> = {
+      'BTCUSDT': 'Bitcoin',
+      'ETHUSDT': 'Ethereum',
+      'ADAUSDT': 'Cardano',
+      'SOLUSDT': 'Solana',
+      'XRPUSDT': 'Ripple',
+      'DOTUSDT': 'Polkadot',
+      'DOGEUSDT': 'Dogecoin',
+    };
+    const next = symbols.map((symbol) => {
+      const coinId = symbolToCoinId[symbol];
+      const name = symbolToName[symbol];
+      const live = prices[symbol];
+      
+      // Use realistic fallback prices
+      const fallbackPrices: Record<string, number> = {
+        'BTCUSDT': 65000,
+        'ETHUSDT': 3200,
+        'SOLUSDT': 140,
+        'XRPUSDT': 0.55,
+        'DOGEUSDT': 0.218, // Current market price
+      };
+      
+      return {
+        id: coinId,
+        name,
+        symbol,
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        price: (live && Number.isFinite(live.price)) ? live.price : (fallbackPrices[symbol] || 100),
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        change24h: (live && Number.isFinite(live.priceChange24h)) ? live.priceChange24h : 0,
+        icon: '/trade/bitcoin.svg',
+        color: '#ffffff',
+      } as CryptoData;
+    });
+    setCryptoData(next);
+  }, [prices, symbols]);
 
   // Обновление групп при изменении фильтра или данных
   useEffect(() => {
-    const filteredData = filterCrypto(cryptoData);
-    const grouped = groupCryptoByLetter(filteredData);
-    setCryptoGroups(grouped);
-  }, [selectedFilter, cryptoData]);
+    if (cryptoData.length > 0) {
+      const filteredData = filterCrypto(cryptoData);
+      const grouped = groupCryptoByLetter(filteredData);
+      setCryptoGroups(grouped);
+    }
+  }, [selectedFilter, cryptoData, filterCrypto]);
 
 
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <span className="text-gray-400 text-lg">Загрузка...</span>
-      </div>
-    );
-  }
+  const handleSelect = (symbol: string) => {
+    const params = new URLSearchParams(window.location.search);
+    const ret = params.get('return');
+    if (ret === 'pro') {
+      void navigate(`/trade/pro?pair=${encodeURIComponent(symbol)}`);
+    } else {
+      void navigate(`/trade?pair=${encodeURIComponent(symbol)}`);
+    }
+  };
 
   return (
-    <div className="bg-[#F1F7FF] min-h-screen">
-      {/* Navigation Bar */}
-      <div className="bg-white">
+    <>
+      <LoadingScreen isLoading={loading} />
+      <div className="bg-[#F1F7FF] min-h-screen pb-[env(safe-area-inset-bottom)]">
+        {/* Navigation Bar */}
+        <div className="sticky top-0 z-10 bg-white">
 
 
         {/* Top App Bar */}
-        <div className="flex items-center gap-1 px-2 pt-4 pb-2 ">
-          <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100"
-            onClick={() => {
-              void navigate('/trade');
-            }}
-          >
-            <img src="/top-menu/back.svg" alt="Back" className="w-6 h-6" />
-          </button>
-          <h1 className="text-xl font-bold text-black">Выбор торговой пары</h1>
+        <div className="flex items-center justify-between gap-1 px-2 sm:px-3 pt-3 sm:pt-4 pb-2">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <button className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full hover:bg-gray-100"
+              onClick={() => {
+                void navigate('/trade');
+              }}
+            >
+              <img src="/top-menu/back.svg" alt={t('common.back')} className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+            <h1 className="text-lg sm:text-xl font-bold text-black">{t('trading.selectPair')}</h1>
+          </div>
         </div>
       </div>
 
       {/* Filter Buttons */}
-      <div className="px-4 py-4 bg-white">
-        <div className="flex bg-gray-100 rounded-full gap-1">
+      <div className="px-3 sm:px-4 py-3 sm:py-4 bg-white">
+        <div className="flex bg-gray-100 rounded-full gap-0.5 sm:gap-1">
           <button
             onClick={() => {
               setSelectedFilter('all');
             }}
-            className={`flex-1 py-3.5 px-3 rounded-full text-sm font-bold transition-colors ${
+            className={`flex-1 py-2.5 sm:py-3.5 px-2 sm:px-3 rounded-full text-xs sm:text-sm font-bold transition-colors ${
               selectedFilter === 'all' 
                 ? 'bg-[#0C54EA] text-white' 
                 : 'text-black opacity-30'
             }`}
           >
-            Крипта
+            {t('trading.crypto') || 'Крипта'}
           </button>
           <button
             onClick={() => {
               setSelectedFilter('loss');
             }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3.5 px-3 rounded-full text-sm font-bold transition-colors ${
+            className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 py-2.5 sm:py-3.5 px-2 sm:px-3 rounded-full text-xs sm:text-sm font-bold transition-colors ${
               selectedFilter === 'loss' 
                 ? 'bg-[#0C54EA]' 
                 : 'text-black'
             }`}
           >
             <span className={selectedFilter === 'loss' ? 'text-white' : 'text-black opacity-30'}>
-              Падение
+              {t('trading.loss') || 'Падение'}
             </span>
-            <div className="w-4 h-4 bg-[#F6465D] rounded-2xl flex items-center justify-center">
-              <img src="/dashboard/up.svg" alt="Down" className="w-2.5 h-3.5 rotate-180" />
+            <div className="w-3 h-3 sm:w-4 sm:h-4 bg-[#F6465D] rounded-2xl flex items-center justify-center">
+              <img src="/dashboard/up.svg" alt="Down" className="w-2 h-2.5 sm:w-2.5 sm:h-3.5 rotate-180" />
             </div>
           </button>
           <button
             onClick={() => {
               setSelectedFilter('gain');
             }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3.5 px-3 rounded-full text-sm font-bold transition-colors ${
+            className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 py-2.5 sm:py-3.5 px-2 sm:px-3 rounded-full text-xs sm:text-sm font-bold transition-colors ${
               selectedFilter === 'gain' 
                 ? 'bg-[#0C54EA]' 
                 : 'text-black'
             }`}
           >
             <span className={selectedFilter === 'gain' ? 'text-white' : 'text-black opacity-30'}>
-              Рост
+              {t('trading.gain') || 'Рост'}
             </span>
-            <div className="w-4 h-4 bg-[#2EBD85] rounded-2xl flex items-center justify-center">
-              <img src="/dashboard/up.svg" alt="Up" className="w-2.5 h-3.5" />
+            <div className="w-3 h-3 sm:w-4 sm:h-4 bg-[#2EBD85] rounded-2xl flex items-center justify-center">
+              <img src="/dashboard/up.svg" alt="Up" className="w-2 h-2.5 sm:w-2.5 sm:h-3.5" />
             </div>
           </button>
         </div>
       </div>
 
       {/* Crypto List */}
-      <div className="px-4 pb-4 space-y-3 py-4">
+      <div className="px-3 sm:px-4 pb-3 sm:pb-4 space-y-2 sm:space-y-3 py-3 sm:py-4">
         {cryptoGroups.map((group) => (
-          <div key={group.letter} className="space-y-3">
+          <div key={group.letter} className="space-y-2 sm:space-y-3">
             {/* Letter Header */}
-            <h2 className="text-base font-bold text-black">{group.letter}</h2>
+            <h2 className="text-sm sm:text-base font-bold text-black">{group.letter}</h2>
             
             {/* Crypto Items */}
-            <div className="bg-white rounded-xl overflow-hidden">
+            <div className="bg-white rounded-lg sm:rounded-xl overflow-hidden">
               {group.cryptos.map((crypto, index) => (
                 <CryptoItem
                   key={crypto.id}
                   crypto={crypto}
                   index={index}
                   total={group.cryptos.length}
+                  onSelect={handleSelect}
                 />
               ))}
             </div>
@@ -372,6 +381,7 @@ const ListCrypto: React.FC = () => {
         ))}
       </div>
     </div>
+    </>
   );
 };
 

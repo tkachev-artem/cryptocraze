@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: crypto_analyzer_db
+    environment:
+      POSTGRES_DB: crypto_analyzer
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  app:
+    build: .
+    container_name: crypto_analyzer_app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 8000
+      DATABASE_URL: postgres://postgres:password@postgres:5432/crypto_analyzer
+      SESSION_SECRET: change-me
+      SESSION_COOKIE_NAME: connect.sid
+      SESSION_COOKIE_SAMESITE: lax
+      SESSION_COOKIE_SECURE: "false"
+      SERVER_URL: http://localhost:8000
+      FRONTEND_URL: http://localhost:5173
+      GOOGLE_CLIENT_ID: 92598794793-7ek3ksh54u8fcdud1lctr7t8f2klf3vi.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: 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
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

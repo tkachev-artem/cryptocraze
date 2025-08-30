@@ -1,0 +1,1 @@
+import{u as i}from"./index-3eMW2xY9.js";const s=()=>{const{user:s,isLoading:o}=i();return{isPremium:Boolean((null==s?void 0:s.isPremium)??!1),isLoading:o,checkPremiumStatus:async()=>{}}};export{s as u};

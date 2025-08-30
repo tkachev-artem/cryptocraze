@@ -1,11 +1,12 @@
 import { QueryClient } from '@tanstack/react-query';
+import { API_BASE_URL } from './api';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: (failureCount, error) => {
         // Don't retry on auth errors
-        if (error instanceof Error && /401/.test(error.message)) {
+        if (error instanceof Error && error.message.includes('401')) {
           return false;
         }
         return failureCount < 3;
@@ -16,25 +17,20 @@ export const queryClient = new QueryClient({
   },
 });
 
-export async function apiRequest(endpoint: string, options: RequestInit = {}) {
-  const baseUrl = 'http://localhost:8000';
-  const url = endpoint.startsWith('http') ? endpoint : `${baseUrl}${endpoint}`;
-  
-  const config: RequestInit = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    credentials: 'include', // Для работы с куками
-    ...options,
+export const apiFetch = async (path: string, init?: RequestInit) => {
+  const buildUrl = (p: string) => {
+    if (/^https?:\/\//.test(p)) return p;
+    if (p.startsWith('/api')) return `${API_BASE_URL}${p.slice(4)}`;
+    if (p.startsWith('/')) return `${API_BASE_URL}${p}`;
+    return `${API_BASE_URL}/${p}`;
   };
-
-  const response = await fetch(url, config);
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(`${response.status}: ${errorData.message || response.statusText}`);
+  const url = buildUrl(path);
+  const res = await fetch(url, init);
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Request failed ${String(res.status)}: ${text || res.statusText}`);
   }
+  return res.json() as unknown;
+};
 
-  return response.json();
-}
+export const apiRequest = apiFetch;

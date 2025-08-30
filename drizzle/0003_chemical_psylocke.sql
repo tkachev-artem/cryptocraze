@@ -1,0 +1,1 @@
+ALTER TABLE "users" RENAME COLUMN "energy_tasks_completed" TO "energy_tasks_bonus";

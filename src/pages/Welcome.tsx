@@ -3,12 +3,14 @@ import { Button } from '../components/ui/button';
 import { Modal } from '../components/ui/modal';
 import { Grid } from '../components/ui/grid';
 import { useUser } from '../hooks/useUser';
+import { API_BASE_URL } from '@/lib/api';
+import { useTranslation } from '@/lib/i18n';
 
 export function Welcome() {
   const { isAuthenticated, isLoading, user } = useUser();
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const { t } = useTranslation();
 
-  console.log('Welcome component - user:', user, 'isLoading:', isLoading, 'isAuthenticated:', isAuthenticated);
 
   // Проверяем ошибки авторизации в URL
   useEffect(() => {
@@ -24,33 +26,23 @@ export function Welcome() {
 
   // Перенаправляем авторизованных пользователей в личный кабинет
   useEffect(() => {
-    console.log('Welcome useEffect - checking redirect conditions:', { isLoading, isAuthenticated, user });
     if (!isLoading && isAuthenticated && user) {
-      console.log('Welcome useEffect - redirecting to /home');
       window.location.href = '/home';
     }
   }, [isAuthenticated, isLoading, user]);
 
   // Показываем загрузку пока проверяем авторизацию
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-xl">Загрузка...</div>
-      </div>
-    );
+    return null;
   }
 
-  // Если пользователь авторизован, показываем сообщение о перенаправлении
+  // Если пользователь авторизован, не показываем ничего (будет перенаправление)
   if (isAuthenticated && user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-xl">Перенаправление в личный кабинет...</div>
-      </div>
-    );
+    return null;
   }
 
   const redirectToLogin = () => {
-    window.location.href = 'http://localhost:8000/api/auth/google';
+    window.location.href = `${API_BASE_URL}/auth/google`;
   };
 
   return (
@@ -68,7 +60,7 @@ export function Welcome() {
               className="flex w-full h-12 items-center justify-center bg-[#0C54EA] px-4  text-white font-semibold hover:bg-[#0A47C7] transition-colors"
               onClick={redirectToLogin}
             >
-              Войти через Google
+              {t('welcome.login.google')}
             </Button> 
         </div>
 
@@ -85,7 +77,7 @@ export function Welcome() {
             }
           >
             <img src="/facebook.svg" alt="Facebook" className="w-6 h-6 mr-2 select-none pointer-events-none" />
-            Facebook
+            {t('welcome.login.facebook')}
           </Button>
 
           <Button 
@@ -98,7 +90,7 @@ export function Welcome() {
             }
           >
             <img src="/apple.svg" alt="Apple" className="w-6 h-6 mr-2 select-none pointer-events-none" />
-            Apple ID
+            {t('welcome.login.apple')}
           </Button>
 
           <Button 
@@ -111,16 +103,16 @@ export function Welcome() {
             }
           >
             <img src="/github.svg" alt="GitHub" className="w-6 h-6 mr-2 select-none pointer-events-none" />
-            GitHub
+            {t('welcome.login.github')}
           </Button>
         </div>
 
         {/* Terms */}
         <p className="w-full mt-8 text-sm text-black text-center">
-          Нажимая «Войти», вы соглашаетесь с нашими{' '}
-          <a href="#" className="text-gray-600 underline hover:text-gray-700">Условиями использования</a>
-          {' '}и{' '}
-          <a href="#" className="text-gray-600 underline hover:text-gray-700">Политикой конфиденциальности</a>
+          {t('welcome.terms.agree')} {' '}
+          <a href="#" className="text-gray-600 underline hover:text-gray-700">{t('welcome.terms.terms')}</a>
+          {' '}{t('welcome.terms.and')}{' '}
+          <a href="#" className="text-gray-600 underline hover:text-gray-700">{t('welcome.terms.privacy')}</a>
         </p>
       </Grid>
 
@@ -132,8 +124,8 @@ export function Welcome() {
       }}
     >
       <div>
-        <h2>Ошибка</h2>
-        <p>Произошла ошибка при авторизации. Пожалуйста, попробуйте еще раз.</p>
+        <h2>{t('welcome.authError.title')}</h2>
+        <p>{t('welcome.authError.message')}</p>
       </div>
     </Modal>
   </>

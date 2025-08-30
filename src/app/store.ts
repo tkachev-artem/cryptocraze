@@ -3,12 +3,18 @@ import { combineSlices, configureStore } from "@reduxjs/toolkit"
 import { setupListeners } from "@reduxjs/toolkit/query"
 import userReducer from './userSlice'
 import binanceReducer from './binanceSlice'
+import dealModalReducer from './dealModalSlice'
+import tutorialReducer from './tutorialSlice'
+import coinExchangeReducer from './coinExchangeSlice'
 
 // `combineSlices` automatically combines the reducers using
 // their `reducerPath`s, therefore we no longer need to call `combineReducers`.
 const rootReducer = combineSlices({
   user: userReducer,
   binance: binanceReducer,
+  dealModal: dealModalReducer,
+  tutorial: tutorialReducer,
+  coinExchange: coinExchangeReducer,
 }) //сюда добавляем редюсеры
 // Infer the `RootState` type from the root reducer
 export type RootState = ReturnType<typeof rootReducer>

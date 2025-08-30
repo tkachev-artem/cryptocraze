@@ -3,6 +3,8 @@
     "title": "Master Crypto Trading Risk-Free",
     "subtitle": "Learn cryptocurrency trading with virtual money and real market data. Build your skills, earn achievements, and become a confident trader.",
     "getStarted": "Start Trading Now",
+    "ctaTitle": "Ready to Start Your Trading Journey?",
+    "ctaSubtitle": "Join thousands of traders who have improved their skills with our risk-free simulator.",
     "features": {
       "realData": {
         "title": "Real Market Data",
@@ -26,7 +28,13 @@
     "welcome": "Welcome back!",
     "portfolio": "Portfolio Value",
     "todayPnl": "Today's P&L",
-    "totalTrades": "Total Trades"
+    "totalTrades": "Total Trades",
+    "free": "Free",
+    "trials": "Challenges"
+  },
+  "wallet": {
+    "total": "Total",
+    "free": "Free"
   },
   "trading": {
     "title": "Trading",
@@ -50,11 +58,20 @@
     "watchAd": "Watch Ad for +5%",
     "adBonus": "Ad bonus applied!",
     "tradeDetails": "Trade Details",
-    "riskWarning": "Trading involves risk. Only trade with money you can afford to lose."
+    "riskWarning": "Trading involves risk. Only trade with money you can afford to lose.",
+    "min24h": "24h Low",
+    "max24h": "24h High",
+    "tradesShort": "Trades",
+    "crypto": "Crypto",
+    "gain": "Gain",
+    "loss": "Loss"
   },
   "chart": {
     "candlestick": "Candlestick",
-    "line": "Line"
+    "line": "Line",
+    "bar": "Bar",
+    "proMode": "Pro Mode",
+    "live": "Live chart"
   },
   "dashboard": {
     "freeBalance": "Free Balance",
@@ -63,16 +80,724 @@
     "startTrading": "Start trading to see your positions here"
   },
   "nav": {
-    "home": "Home"
+    "back": "Back",
+    "home": "Home",
+    "topInvestors": "Top Investors"
+  },
+  "rewards": {
+    "title": "Rewards",
+    "level": "Level",
+    "accountMoney": "Account money",
+    "reward": "Reward",
+    "proDays": "+ Pro Mode for {{count}} days",
+    "daysShort": "d"
   },
   "auth": {
     "unauthorized": "Unauthorized",
     "loginRequired": "Please log in to continue",
     "sessionExpired": "Your session has expired"
   },
+  "errors": {
+    "404": {
+      "title": "Page Not Found",
+      "description": "The page you're looking for doesn't exist or has been moved.",
+      "goHome": "Go to Home"
+    },
+    "general": "Error",
+    "dataLoading": "Data loading error",
+    "binanceStats": "Error in fetchBinanceStats",
+    "userNotFound": "User not found",
+    "insufficientFunds": "Insufficient funds",
+    "symbolNotFound": "Symbol not found or not supported",
+    "invalidLeverage": "Invalid leverage value",
+    "invalidAmount": "Amount must be greater than 0",
+    "invalidTakeProfit": "Invalid Take Profit",
+    "invalidStopLoss": "Invalid Stop Loss",
+    "dealNotFound": "Deal not found",
+    "noAccess": "No access to deal",
+    "dealAlreadyClosed": "Deal already closed",
+    "priceNotFound": "Failed to get price"
+  },
+  "profile": {
+    "title": "Profile",
+    "editTitle": "Edit profile",
+    "successRate": "Success rate",
+    "maxTradeAmount": "Max trade amount",
+    "avgTradeAmount": "Average trade amount",
+    "maxProfit": "Max profit",
+    "maxLoss": "Max loss",
+    "name": "Name",
+    "namePlaceholder": "Your name",
+    "phone": "Phone number",
+    "phonePlaceholder": "Your phone number",
+    "email": "Email",
+    "emailPlaceholder": "Your email",
+    "updated": "Your data has been updated successfully",
+    "logout": "Log out",
+    "avatar": "Avatar",
+    "avatarDefault": "Default avatar",
+    "editBg": "Edit background",
+    "editIcon": "Edit",
+    "rewards": "Rewards",
+    "analytics": "Analytics"
+  },
+  "deal": {
+    "commission": "Commission",
+    "edit": "Edit",
+    "updated": "TP/SL updated",
+    "updateFail": "Failed to update deal",
+    "closeFail": "Failed to close deal",
+    "openedAt": "Opened",
+    "time": "Time",
+    "sumAndMultiplier": "Amount/Multiplier",
+    "closing": "Closing...",
+    "closeTrade": "Close trade"
+  },
   "common": {
     "loading": "Loading...",
     "success": "Success",
-    "error": "Error"
+    "error": "Error",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "cancel": "Cancel",
+    "save": "Save",
+    "close": "Close",
+    "back": "←",
+    "na": "N/A",
+    "noData": "No data",
+    "select": "Select",
+    "info": "Information",
+    "previous": "Previous",
+    "finish": "Finish",
+    "next": "Next",
+    "claim": "Collect",
+    "execute": "Execute",
+    "premium": "PREMIUM",
+    "coin": "Coin",
+    "coins": "Coins",
+    "retry": "Retry",
+    "viewAll": "View All"
+  },
+  "app": {
+    "phoneOnly": {
+      "title": "Phone Only",
+      "description": "Open the app on your smartphone. The platform is not available on desktops and tablets.",
+      "cta": "Open on phone"
+    },
+    "name": "Cryptocraze"
+  },
+  
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "notifications": "Notifications",
+    "share": "Share",
+    "deleteAccount": "Delete account",
+    "version": "App version",
+    "accountId": "Account ID",
+    "logout": {
+      "confirm": "Are you sure you want to log out?"
+    },
+    "premium": {
+      "goPremium": "Go Premium",
+      "pro": "PRO"
+    }
+  },
+  "premium": {
+    "activateErrorTitle": "Failed to activate PRO",
+    "tryLater": "Please try again later",
+    "activated": "PRO activated",
+    "enabled": "Premium mode enabled",
+    "unexpected": "Unexpected server response",
+    "network": "Check your connection and try again",
+    "noAds": "No ads",
+    "moreOrders": "Increased limit of open orders",
+    "moreMultipliers": "More multiplier options available",
+    "highlighted": "Your account is highlighted in the rating",
+    "monthly": "per month",
+    "yearly": "per year",
+    "chargeMonthly": "499.00 ₽ will be charged automatically every month until you cancel your subscription",
+    "chargeYearly": "5,199.00 ₽ will be charged automatically every year until you cancel your subscription"
+  },
+  "notifications": {
+    "emptyTitle": "No active notifications",
+    "emptySubtitle": "New notifications will appear here automatically",
+    "read": "Read",
+    "unread": "Unread",
+    "delete": "Delete notification",
+    "types": {
+      "daily_reward": "Daily Reward",
+      "trade_opened": "Trade Opened",
+      "trade_closed": "Trade Closed",
+      "achievement_unlocked": "Achievement Unlocked",
+      "auto_close_trade": "Auto Close Trade",
+      "personal_messages": "Personal Message",
+      "maintenance": "Maintenance",
+      "system_alert": "System Alert"
+    },
+    "messages": {
+      "daily_reward": "Your daily reward is ready!",
+      "trade_opened": "A new trade has been opened",
+      "trade_closed": "A trade has been closed",
+      "achievement_unlocked": "You've earned a new achievement!",
+      "auto_close_trade": "A trade was automatically closed",
+      "personal_messages": "You have a new personal message",
+      "maintenance": "Scheduled maintenance work",
+      "system_alert": "Important system notification"
+    }
+  },
+  "language": {
+    "title": "Choose language",
+    "description": "You can always change the app language in Settings",
+    "languages": {
+      "ru": "Русский",
+      "en": "English",
+      "es": "Español",
+      "fr": "Français",
+      "pt": "Português"
+    }
+  },
+  "tutorial": {
+    "title": "Tutorial",
+    "welcome": "Welcome!",
+    "pandaIntro": "Panda will help you learn the interface and trading.",
+    "step1": { "title": "Interface", "content": "Get familiar with the main sections." },
+    "step2": { "title": "Charts", "content": "Learn to read charts and find trends." },
+    "step3": { "title": "Trades", "content": "Open and close trades with TP/SL." },
+    "step4": { "title": "Risk", "content": "Manage risk and use leverage responsibly." },
+    "step5": { "title": "Gamification", "content": "Unlock achievements and engage with features." },
+    "skipTutorial": "Skip",
+    "congratulations": "Congratulations! Tutorial completed.",
+    "stepProgress": "Step {{current}} of {{total}}",
+    "percentComplete": "{{percent}}% Complete",
+    "stepsTitle": "Tutorial Steps",
+    "interactiveArea": "Interactive demo area"
+  },
+  "tradeTutorial": {
+    "start": "Start",
+    "skip": "Skip",
+    "close": "Close tutorial",
+    "startAria": "Start tutorial",
+    "skipAria": "Skip tutorial",
+    "closeAria": "Close tutorial",
+    "finish": "Finish",
+    "next": "Next",
+    "finishAria": "Finish tutorial",
+    "nextAria": "Next",
+    "stepImage": "Step illustration",
+    "steps": {
+      "1": { "title": "Start learning!", "description": "Time to master the basics: watch charts, open trades, and multiply profits." },
+      "2": { "title": "Balance", "description": "Your total balance and funds available for trading." },
+      "3": { "title": "Trading pair", "description": "Select the cryptocurrency pair you want to trade." },
+      "4": { "title": "Chart", "description": "The chart shows price changes over time with vertical (price) and horizontal (time) axes." },
+      "5": { "title": "Chart settings", "description": "Timeframe: choose from 1m to 1d. Type: candlestick, bars, or line." },
+      "6": { "title": "Create order", "description": "Set the trade amount and choose a multiplier." },
+      "7": { "title": "Take Profit and Stop Loss", "description": "Stop Loss limits losses; Take Profit locks in profit by auto-closing the trade." },
+      "8": { "title": "Edit deal", "description": "If you expect a reversal, adjust your deal parameters in one tap." },
+      "9": { "title": "Buy or Sell", "description": "After setting parameters, tap Buy or Sell to confirm." },
+      "10": { "title": "Trade opened", "description": "Tap Buy to see the confirmation — trade is opened." },
+      "11": { "title": "Close trade", "description": "You can close the trade and get your profit." },
+      "12": { "title": "Trade closed", "description": "Tap Close trade and check the result in the confirmation modal." }
+    }
+  },
+  "panda": {
+    "tip": "Tip",
+    "hello": "Hello!",
+    "encouragement": "Great job!",
+    "warning": "Warning!",
+    "tips": {
+      "diversify": "Diversify your portfolio to reduce risk.",
+      "patience": "Patience is key to successful trading.",
+      "research": "Research assets before entering trades.",
+      "riskManagement": "Always use risk management.",
+      "emotions": "Don't let emotions drive your decisions.",
+      "smallStart": "Start small and scale gradually.",
+      "stopLoss": "Set stop-loss orders to limit losses.",
+      "trends": "Follow the trend; avoid trading against the market."
+    }
+  },
+  "welcome": {
+    "login": {
+      "google": "Sign in with Google",
+      "facebook": "Facebook",
+      "apple": "Apple ID",
+      "github": "GitHub"
+    },
+    "terms": {
+      "agree": "By clicking 'Sign in', you agree to our",
+      "terms": "Terms of Use",
+      "privacy": "Privacy Policy",
+      "and": "and"
+    },
+    "authError": {
+      "title": "Error",
+      "message": "An authentication error occurred. Please try again."
+    }
+  },
+  "share": {
+    "message": "Try CryptoCraze — the best crypto trading simulator!",
+    "copyLink": "Copy link",
+    "more": "More",
+    "copied": "Link copied",
+    "copiedDesc": "The app link has been copied to your clipboard",
+    "copyError": "Failed to copy link",
+    "shareError": "Failed to share",
+    "whatsappAria": "Share on WhatsApp",
+    "telegramAria": "Share on Telegram",
+    "smsAria": "Share via SMS",
+    "emailAria": "Share via Email"
+  },
+  "rating": {
+    "last30d": "Rating for last 30 days",
+    "open30d": "Open 30-day rating",
+    "premium": "Premium",
+    "top": "Top"
+  },
+  "proMenu": {
+    "switch": "Switch",
+    "chart": "Chart",
+    "fx": "Indicators",
+    "marker": "Markers",
+    "share": "Share",
+    "exit": "Exit",
+    "aria": "Pro bottom menu"
+  },
+  "proExit": {
+    "title": "Are you sure you want to exit?",
+    "yes": "Yes",
+    "no": "No"
+  },
+
+  "proModal": {
+    "titles": {
+      "chart": "Chart settings",
+      "fx": "Indicators",
+      "marker": "Markers",
+      "share": "Share",
+      "switch": "Switch pair"
+    },
+    "stub": "Stub modal for {{title}}. Content will be added later.",
+    "marker": {
+      "add": "Add",
+      "remove": "Remove",
+      "tools": {
+        "horizontalLine": "Horizontal Line",
+        "verticalLine": "Vertical Line",
+        "line": "Line",
+        "text": "Text",
+        "area": "Area Selection",
+        "arrow": "Arrow"
+      }
+    }
+  },
+  "dealInfo": {
+    "closed": "Trade closed!",
+    "closedDesc": "The trade was closed successfully.",
+    "profit": "Profit",
+    "loss": "Loss",
+    "take": "Collect"
+  },
+  "dealAlert": {
+    "opened": "Trade opened!",
+    "openDate": "Open date:",
+    "openPrice": "Open price",
+    "amount": "Stake",
+    "volume": "Volume (${{tp}}, x{{mult}})",
+    "autoClose": "The trade will close automatically in 48 hours. You can extend it later."
+  },
+  "moreInfo": {
+    "multiplier": {
+      "title": "Multiplier",
+      "desc": "A coefficient that multiplies your initial investment amount. It increases both potential profits and losses."
+    },
+    "takeProfit": { "desc": "Set your desired profit. Once reached, the order will close automatically." },
+    "stopLoss": { "desc": "Set the maximum acceptable loss amount to limit risk." },
+    "commission": { "desc": "The commission is calculated from the trade volume and may differ. The final commission is calculated on the server when closing." },
+    "info": { "title": "Information", "desc": "Additional information about the feature." }
+  },
+  "deals": {
+    "active": "Active",
+    "closed": "Closed",
+    "activeCount": "Active",
+    "noOpenOrders": "You have no open orders yet",
+    "noClosedTrades": "You have no closed trades yet",
+    "openList": "Open deals list",
+    "title": "Deals"
+  }
+  ,
+  "validation": {
+    "nameRequired": "Name is required",
+    "nameMin": "Name must be at least 2 characters",
+    "nameMax": "Name must not exceed 50 characters",
+    "phoneRequired": "Phone number is required",
+    "phoneInvalid": "Enter a valid phone number",
+    "emailRequired": "Email is required",
+    "emailMax": "Email must not exceed 100 characters",
+    "emailInvalid": "Enter a valid email"
+  },
+  "live": {
+    "title": "Live Prices",
+    "subtitle": "Realtime quotes via Socket.io"
+  },
+  "priceTicker": {
+    "aria": "Live price ticker",
+    "updated": "Updated:",
+    "cardAria": "Price card {{symbol}}"
+  },
+  "liveBadge": {
+    "live": "LIVE",
+    "offline": "OFFLINE",
+    "ariaLiveActive": "Live connection active",
+    "ariaLiveOffline": "Live connection offline"
+  },
+  "proTutorial": {
+    "title": "Welcome to Pro Mode!",
+    "desc": "Complete the tutorial to learn how to use charts like a pro.",
+    "proceed": "Proceed",
+    "skip": "Skip",
+    "close": "Close",
+    "training": "Training",
+    "applyEMA": "Apply moving",
+    "movingAverages": "averages EMA",
+    "rsiIndicator": "relative strength RSI",
+    "smaAverages": "averages SMA",
+    "nextTask": "Next Task",
+    "completeTask": "Complete Task",
+    "startTrading": "Start Trading",
+    "applyIndicator": "Apply index",
+    "addLine": "Add Line",
+    "excellent": "Excellent!",
+    "timeToPractice": "Time to apply knowledge in practice!",
+    "tradeCompete": "Trade, compete and improve your skills."
+  },
+  "energy": {
+    "title": "Energy System",
+    "progress": "Progress",
+    "completed": "Completed",
+    "bonus": "Task Bonus",
+    "trades": "Trades",
+    "energy": "energy",
+    "reset": "Reset",
+    "error": "Energy system error",
+    "confirmReset": "Are you sure you want to reset energy progress?",
+    "completedMessage": "Task completed! Progress will be reset.",
+    "remainingMessage": "Energy remaining: {{remaining}}",
+    "example": {
+      "title": "Usage Example",
+      "demonstration": "API Demonstration",
+      "currentProgress": "Current progress:",
+      "status": "Status:",
+      "inProgress": "In Progress",
+      "taskComplete": "Complete Task (+30 energy)",
+      "smallTask": "Small Task (+10 energy)",
+      "endpoints": "Available API endpoints:",
+      "getProgress": "Get current progress",
+      "addEnergy": "Add energy", 
+      "resetProgress": "Reset progress",
+      "getUserStats": "Get user statistics",
+      "taskCompleted": "🎉 Task completed! Tasks completed: {{count}}"
+    }
+  },
+  "task": {
+    "dailyBonus": "Daily Bonus",
+    "videoBonus": "Video Bonus",
+    "videoBonus2": "Video Bonus 2",
+    "dealOfDay": "Deal of the Day",
+    "progressLabel": "Task progress",
+    "types": {
+      "daily_bonus": "Daily Bonus",
+      "video_bonus": "Video Bonus",
+      "video_bonus_2": "Video Bonus 2",
+      "deal_of_day": "Deal of the Day",
+      "energy_bonus_small": "Energy Charge",
+      "energy_bonus_medium": "Energy Boost",
+      "energy_bonus_large": "Energy Explosion",
+      "social_share": "Share with Friends",
+      "social_invite": "Invite a Friend",
+      "trade_bonus": "Trading Bonus",
+      "crypto_trade": "Crypto Trading",
+      "energy_meditation": "Energy Meditation",
+      "energy_training": "Energy Training",
+      "energy_reading": "Energy Reading",
+      "energy_analysis": "Energy Analysis",
+      "energy_community": "Energy Community",
+      "bitcoin_trade": "Bitcoin Trading",
+      "ethereum_trade": "Ethereum Trading",
+      "altcoin_trade": "Altcoin Trading",
+      "profitable_trade": "Profitable Trade",
+      "volume_trade": "Volume Trading"
+    },
+    "descriptions": {
+      "daily_bonus": "Get your daily reward for logging into the app",
+      "video_bonus": "Watch an ad and get a bonus",
+      "video_bonus_2": "Watch a second ad and get an additional bonus",
+      "deal_of_day": "Complete the special deal of the day",
+      "energy_bonus_small": "Complete a task and get energy",
+      "energy_bonus_medium": "Complete a difficult task and get lots of energy",
+      "energy_bonus_large": "Complete a very difficult task and get maximum energy",
+      "social_share": "Share the platform link on social media",
+      "social_invite": "Invite a friend and get a reward",
+      "trade_bonus": "Complete a trading task",
+      "crypto_trade": "Trade cryptocurrencies and earn rewards",
+      "energy_meditation": "Spend 5 minutes meditating to restore energy",
+      "energy_training": "Do 10 minutes of exercise to get energy",
+      "energy_reading": "Read articles about cryptocurrencies and get energy",
+      "energy_analysis": "Conduct technical analysis and get energy",
+      "energy_community": "Participate in community discussions and get energy",
+      "bitcoin_trade": "Open a Bitcoin trade and get coins",
+      "ethereum_trade": "Open an Ethereum trade and get coins",
+      "altcoin_trade": "Open a trade with any altcoin and get coins",
+      "profitable_trade": "Close a profitable trade and get energy",
+      "volume_trade": "Complete trades worth more than 1000 USDT and get coins"
+    }
+  },
+  "video": {
+    "sdk": {
+      "timeout": "IMA SDK loading timeout",
+      "loadError": "IMA SDK loading error",
+      "initError": "IMA initialization error"
+    },
+    "ad": {
+      "loadError": "Ad loading error"
+    },
+    "loading": "Loading IMA SDK...",
+    "testAd": "🎬 Test Advertisement",
+    "simulation": "Simulating viewing...",
+    "processing": "Processing reward...",
+    "claimReward": "Claim reward",
+    "claimButton": "Claim Reward"
+  },
+  "ad": {
+    "title": "Advertisement",
+    "loading": "Loading advertisement...",
+    "videoAd": "Video advertisement",
+    "claimReward": "Claim reward"
+  },
+  "box": {
+    "red": {
+      "title": "Open the red box"
+    },
+    "green": {
+      "title": "Open the green box"
+    },
+    "x": {
+      "title": "Open the X box"
+    },
+    "openError": "Box opening error",
+    "proPrize": "PRO mode for {{days}} days!",
+    "yourPrize": "Your prize",
+    "tapInstruction": "Tap the box to get your prize!"
+  },
+  "wheel": {
+    "yourWin": "Your winnings",
+    "tryLuck": "Try your luck!",
+    "spin": "Spin",
+    "spinning": "Spinning..."
+  },
+  "indicators": {
+    "ema": "Exponential Moving Average (EMA)",
+    "rsi": "Relative Strength Index (RSI)",
+    "sma": "Simple Moving Average (SMA)"
+  },
+  "drawing": {
+    "noObjects": "No objects"
+  },
+  "status": {
+    "checking": "Checking connection...",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "reconnect": "Reconnect",
+    "apiOffline": "API offline",
+    "socketOffline": "WebSocket offline"
+  },
+  "exchange": {
+    "title": "Exchange Coins",
+    "rate": "Exchange Rate",
+    "available": "Available Coins",
+    "currentBalance": "Current Balance",
+    "amount": "Coins to Exchange",
+    "exchange": "Exchange Coins",
+    "exchanging": "Exchanging...",
+    "disclaimer": "Exchange is instant and cannot be reversed"
+  },
+  "crypto": {
+    "names": {
+      "BTC": "Bitcoin",
+      "ETH": "Ethereum", 
+      "SOL": "Solana",
+      "XRP": "XRP",
+      "DOGE": "Dogecoin",
+      "default": "Crypto"
+    }
+  },
+  "textMarker": {
+    "title": "Add Text Marker",
+    "label": {
+      "text": "Text",
+      "fontSize": "Font Size",
+      "color": "Color",
+      "preview": "Preview",
+      "customColor": "Custom color"
+    },
+    "placeholder": "Enter your text here...",
+    "error": {
+      "emptyText": "Text cannot be empty",
+      "tooLong": "Text cannot exceed 100 characters"
+    },
+    "preview": {
+      "empty": "Preview will appear here..."
+    },
+    "save": "Add Text"
+  },
+  "markers": {
+    "title": "Drawing Tools",
+    "tools": {
+      "horizontalLine": "Horizontal Line",
+      "verticalLine": "Vertical Line",
+      "line": "Line",
+      "text": "Text",
+      "area": "Area Selection",
+      "arrow": "Arrow",
+      "none": "None"
+    },
+    "actions": {
+      "add": "Add",
+      "remove": "Remove",
+      "clear": "Clear All"
+    },
+    "modes": {
+      "draw": "Draw Mode",
+      "remove": "Remove Mode"
+    },
+    "tutorial": {
+      "drawArea": "Draw area selection on the chart",
+      "addArrow": "Add arrow"
+    }
+  },
+  "proTutorial": {
+    "title": "Welcome to Pro Mode!",
+    "desc": "Take the tutorial to learn how to use charts like a pro.",
+    "proceed": "Start",
+    "skip": "Skip",
+    "close": "Close",
+    "training": "Training",
+    "applyEMA": "Apply EMA",
+    "movingAverages": "Moving Averages",
+    "rsiIndicator": "RSI Indicator",
+    "smaAverages": "SMA Averages",
+    "nextTask": "Next Task",
+    "completeTask": "Complete Task",
+    "startTrading": "Start Trading",
+    "applyIndicator": "Apply Indicator",
+    "addLine": "Add Line",
+    "excellent": "Excellent!",
+    "timeToPractice": "Time to apply knowledge in practice!",
+    "tradeCompete": "Trade, compete and level up your skills."
+  },
+  "ui": {
+    "trials": {
+      "noTasks": "No active tasks",
+      "createNewTasks": "Click \"Refill Tasks\" to create new ones",
+      "clickToOpen": "Click to open!",
+      "rewardReceived": "Reward received!"
+    },
+    "ads": {
+      "title": "Advertisement",
+      "loading": "Loading advertisement...",
+      "processing": "Processing reward...",
+      "getReward": "Get Reward"
+    },
+    "chart": {
+      "lastUpdate": "Last update:",
+      "realTimeUpdates": "Real-time updates",
+      "chartPlaceholder": "Chart will be here (lightweight-charts disabled)",
+      "capturing": "Capturing chart...",
+      "noImage": "No chart image available",
+      "share": "Share",
+      "saveToDevice": "Save to Device"
+    },
+    "test": {
+      "proTutorial": "ProTutorial Test",
+      "openStep1": "Open step 1",
+      "openStep2": "Open step 2 (EMA)",
+      "openStep3": "Open step 3 (EMA)",
+      "openStep4": "Open step 4 (Next Task)",
+      "openStep5": "Open step 5 (fx highlight)",
+      "currentStep": "Current step: {{step}}",
+      "modalOpen": "Modal open: {{status}}",
+      "yes": "Yes",
+      "no": "No",
+      "indicators": "Indicators",
+      "connectionLineTest": "Direct blue line connection test",
+      "showHideLine": "{{action}} blue line",
+      "show": "Show",
+      "hide": "Hide",
+      "tutorialModal": "Tutorial modal",
+      "applyEMA": "Apply moving averages EMA",
+      "scrollDown": "Scroll down to see the effect"
+    }
+  },
+  "alt": {
+    "balance": "balance",
+    "coins": "coins",
+    "noTasks": "no tasks",
+    "back": "Back",
+    "premiumLogo": "Premium Logo",
+    "check": "Check",
+    "selected": "Selected",
+    "unselected": "Unselected",
+    "premium": "premium",
+    "whatsapp": "WhatsApp",
+    "telegram": "Telegram",
+    "email": "Email",
+    "copyLink": "Copy Link",
+    "more": "More",
+    "arrow": "Arrow",
+    "languagePanda": "Language Panda",
+    "logo": "Logo",
+    "facebook": "Facebook",
+    "apple": "Apple",
+    "github": "GitHub",
+    "phone": "phone",
+    "money": "money",
+    "rewards": "rewards",
+    "crown": "Crown",
+    "language": "Language",
+    "notifications": "Notifications",
+    "share": "Share",
+    "up": "up",
+    "down": "down",
+    "info": "Information",
+    "close": "close",
+    "cryptoCrazeLogo": "CryptoCraze Logo",
+    "marker": "Marker",
+    "bearCharacter": "Bear character",
+    "proTutorial": "Pro tutorial",
+    "pairs": "pairs",
+    "delete": "delete",
+    "plus": "+",
+    "trades": "trades",
+    "success": "success",
+    "maxAmount": "max amount",
+    "average": "average",
+    "profit": "profit",
+    "loss": "loss",
+    "openedBox": "Opened Box",
+    "edit": "edit",
+    "analytics": "analytics",
+    "awards": "awards",
+    "transactions": "transactions",
+    "energy": "energy",
+    "reload": "reload",
+    "bear": "bear",
+    "wheel": "wheel",
+    "center": "center",
+    "chartPreview": "Chart preview"
+  },
+  "placeholders": {
+    "symbol": "BTCUSDT",
+    "amount": "$0.00",
+    "number": "0"
   }
 }

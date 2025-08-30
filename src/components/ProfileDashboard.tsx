@@ -1,20 +1,41 @@
 import type React from 'react';
 import { useUser } from '../hooks/useUser';
+import { useTranslation } from '@/lib/i18n';
+import { formatMoneyShort } from '../lib/numberUtils';
 
 const ProfileDashboard: React.FC = () => {
-  const { user } = useUser();
+  const { user, isLoading } = useUser();
+  const { t } = useTranslation();
 
   // Используем реальные данные пользователя или значения по умолчанию
   const totalTrades = user?.tradesCount ?? 1;
-  const maxTradeAmount = user?.totalTradesVolume ? `$${user.totalTradesVolume}` : 'Н/Д';
-  const maxProfit = user?.maxProfit ? `$${user.maxProfit}` : 'Н/Д';
-  const successRate = user?.successfulTradesPercentage ? `${user.successfulTradesPercentage}%` : 'Н/Д';
-  const avgTradeAmount = user?.averageTradeAmount ? `$${user.averageTradeAmount}` : 'Н/Д';
-  const maxLoss = user?.maxLoss ? `$${user.maxLoss}` : 'Н/Д';
+  const na = t('common.na');
+  const maxTradeAmount = user?.totalTradesVolume ? formatMoneyShort(user.totalTradesVolume) : na;
+  const maxProfit = user?.maxProfit ? formatMoneyShort(user.maxProfit) : na;
+  const successRate = user?.successfulTradesPercentage ? `${user.successfulTradesPercentage}%` : na;
+  const avgTradeAmount = user?.averageTradeAmount ? formatMoneyShort(user.averageTradeAmount) : na;
+  const maxLoss = user?.maxLoss ? formatMoneyShort(-Math.abs(Number(user.maxLoss))) : na;
+  if (isLoading || !user) {
+    return (
+      <div className="px-4 pb-4">
+        <div className="bg-white border border-gray-200 rounded-xl p-3">
+          <div className="grid grid-cols-2 max-[360px]:grid-cols-1 gap-5 overflow-hidden animate-pulse">
+            <div className="flex items-center gap-2 min-w-0 h-10 bg-gray-100 rounded" />
+            <div className="flex items-center gap-2 justify-end min-w-0 h-10 bg-gray-100 rounded" />
+            <div className="flex items-center gap-2 min-w-0 h-10 bg-gray-100 rounded" />
+            <div className="flex items-center gap-2 justify-end min-w-0 h-10 bg-gray-100 rounded" />
+            <div className="flex items-center gap-2 min-w-0 h-10 bg-gray-100 rounded" />
+            <div className="flex items-center gap-2 justify-end min-w-0 h-10 bg-gray-100 rounded" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="px-4 pb-4">
       <div className="bg-white border border-gray-200 rounded-xl p-3">
-        <div className="grid grid-cols-2 gap-5 overflow-hidden">
+        <div className="grid grid-cols-2 max-[360px]:grid-cols-1 gap-5 overflow-hidden">
           {/* Total Trades */}
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-9 h-9 bg-[#0C54EA] rounded-[20px] flex items-center justify-center flex-shrink-0">
@@ -22,7 +43,7 @@ const ProfileDashboard: React.FC = () => {
             </div>
             <div className="flex flex-col gap-1 min-w-0 flex-1">
               <p className="text-base font-bold text-left sm:truncate truncate">{totalTrades}</p>
-              <p className="text-xs text-black opacity-50 text-left sm:truncate">Сделки</p>
+              <p className="text-xs text-black opacity-50 text-left sm:truncate">{t('home.totalTrades')}</p>
             </div>
           </div>
 
@@ -33,7 +54,7 @@ const ProfileDashboard: React.FC = () => {
             </div>
             <div className="flex flex-col gap-1 min-w-0 flex-1">
               <p className="text-base font-bold text-left sm:truncate truncate">{successRate}</p>
-              <p className="text-xs text-black opacity-50 text-left sm:truncate">Успешные</p>
+              <p className="text-xs text-black opacity-50 text-left sm:truncate">{t('profile.successRate') || 'Успешные'}</p>
             </div>
           </div>
 
@@ -44,7 +65,7 @@ const ProfileDashboard: React.FC = () => {
             </div>
             <div className="flex flex-col gap-1 min-w-0 flex-1">
               <p className="text-base font-bold text-left sm:truncate truncate">{maxTradeAmount}</p>
-              <p className="text-xs text-black opacity-50 text-left sm:truncate">Максимальная сумма сделки</p>
+              <p className="text-xs text-black opacity-50 text-left sm:truncate">{t('profile.maxTradeAmount') || 'Максимальная сумма сделки'}</p>
             </div>
           </div>
 
@@ -55,7 +76,7 @@ const ProfileDashboard: React.FC = () => {
             </div>
             <div className="flex flex-col gap-1 min-w-0 flex-1">
               <p className="text-base font-bold text-left sm:truncate truncate">{avgTradeAmount}</p>
-              <p className="text-xs text-black opacity-50 text-left sm:truncate">Средняя сумма сделки</p>
+              <p className="text-xs text-black opacity-50 text-left sm:truncate">{t('profile.avgTradeAmount') || 'Средняя сумма сделки'}</p>
             </div>
           </div>
 
@@ -66,7 +87,7 @@ const ProfileDashboard: React.FC = () => {
             </div>
             <div className="flex flex-col gap-1 min-w-0 flex-1">
               <p className="text-base font-bold text-left sm:truncate truncate">{maxProfit}</p>
-              <p className="text-xs text-black opacity-50 text-left sm:truncate">Максимальный профит</p>
+              <p className="text-xs text-black opacity-50 text-left sm:truncate">{t('profile.maxProfit') || 'Максимальный профит'}</p>
             </div>
           </div>
 
@@ -77,7 +98,7 @@ const ProfileDashboard: React.FC = () => {
             </div>
             <div className="flex flex-col gap-1 min-w-0 flex-1">
               <p className="text-base font-bold text-left sm:truncate truncate">{maxLoss}</p>
-              <p className="text-xs text-black opacity-50 text-left sm:truncate">Максимальный убыток</p>
+              <p className="text-xs text-black opacity-50 text-left sm:truncate">{t('profile.maxLoss') || 'Максимальный убыток'}</p>
             </div>
           </div>
         </div>

@@ -9,14 +9,16 @@ type ToasterToast = {
   description?: React.ReactNode
   action?: React.ReactElement
   variant?: "default" | "destructive"
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-const actionTypes = {
-  ADD_TOAST: "ADD_TOAST",
-  UPDATE_TOAST: "UPDATE_TOAST",
-  DISMISS_TOAST: "DISMISS_TOAST",
-  REMOVE_TOAST: "REMOVE_TOAST",
-} as const
+type ActionTypes = {
+  readonly ADD_TOAST: "ADD_TOAST";
+  readonly UPDATE_TOAST: "UPDATE_TOAST";
+  readonly DISMISS_TOAST: "DISMISS_TOAST";
+  readonly REMOVE_TOAST: "REMOVE_TOAST";
+}
 
 let count = 0
 
@@ -25,7 +27,9 @@ function genId() {
   return count.toString()
 }
 
-type ActionType = typeof actionTypes
+type ActionType = ActionTypes
+// Type export to avoid unused variable warning
+export type { ActionTypes }
 
 type Action =
   | {
@@ -45,7 +49,7 @@ type Action =
       toastId?: ToasterToast["id"]
     }
 
-interface State {
+type State = {
   toasts: ToasterToast[]
 }
 
@@ -120,7 +124,7 @@ export const reducer = (state: State, action: Action): State => {
   }
 }
 
-const listeners: Array<(state: State) => void> = []
+const listeners: ((state: State) => void)[] = []
 
 let memoryState: State = { toasts: [] }
 
@@ -137,11 +141,11 @@ function toast({ ...props }: Toast) {
   const id = genId()
 
   const update = (props: ToasterToast) =>
-    dispatch({
+    { dispatch({
       type: "UPDATE_TOAST",
       toast: { ...props, id },
-    })
-  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
+    }); }
+  const dismiss = () => { dispatch({ type: "DISMISS_TOAST", toastId: id }); }
 
   dispatch({
     type: "ADD_TOAST",
@@ -173,12 +177,12 @@ function useToast() {
         listeners.splice(index, 1)
       }
     }
-  }, [state])
+  }, [])
 
   return {
     ...state,
     toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+    dismiss: (toastId?: string) => { dispatch({ type: "DISMISS_TOAST", toastId }); },
   }
 }
 

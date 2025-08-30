@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
+import { getCachedBinanceStats } from '@/lib/resilientApi';
 
 export type BinanceStats = {
   symbol: string;
@@ -30,12 +31,27 @@ export const fetchBinanceStats = createAsyncThunk<BinanceStats, string, { reject
   'binance/fetchStats',
   async (symbol, { rejectWithValue }) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/binance/stats/${symbol}`);
-      if (!response.ok) throw new Error('Ошибка загрузки данных');
-      const data = await response.json();
-      return data as BinanceStats;
+      const resilientData = await getCachedBinanceStats(symbol);
+      
+      // Преобразуем данные из resilient API в локальный формат
+      const data: BinanceStats = {
+        symbol: resilientData.symbol,
+        priceChange: Number(resilientData.priceChange),
+        priceChangePercent: Number(resilientData.priceChangePercent),
+        lastPrice: Number(resilientData.lastPrice),
+        highPrice: Number(resilientData.highPrice),
+        lowPrice: Number(resilientData.lowPrice),
+        openPrice: Number(resilientData.openPrice),
+        volume: Number(resilientData.volume),
+        bidPrice: 0, // Эти поля нет в resilient API, устанавливаем default
+        askPrice: 0,
+        count: 0,
+      };
+      
+      return data;
     } catch (e) {
-      return rejectWithValue('Ошибка загрузки данных');
+      console.error('Ошибка в fetchBinanceStats:', e);
+      return rejectWithValue(e instanceof Error ? e.message : 'errors.dataLoading');
     }
   }
 );
@@ -57,7 +73,7 @@ const binanceSlice = createSlice({
       })
       .addCase(fetchBinanceStats.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload ?? 'Ошибка';
+        state.error = action.payload ?? 'errors.general';
       });
   }
 });

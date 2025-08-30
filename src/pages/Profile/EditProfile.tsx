@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,31 +11,33 @@ import BottomNavigation from '../../components/ui/BottomNavigation';
 import { Grid } from '@/components/ui/grid';
 import { Modal } from '@/components/ui/modal';
 import { z } from 'zod';
+import { API_BASE_URL } from '@/lib/api';
 
-// Zod схема для валидации формы
-const editProfileSchema = z.object({
+// Схема валидации формируется динамически, чтобы использовать переводы
+const makeEditProfileSchema = (t: (k: string) => string) => z.object({
   name: z
     .string()
-    .min(1, 'Имя обязательно для заполнения')
-    .min(2, 'Имя должно содержать минимум 2 символа')
-    .max(50, 'Имя не должно превышать 50 символов'),
+    .min(1, t('validation.nameRequired'))
+    .min(2, t('validation.nameMin'))
+    .max(50, t('validation.nameMax')),
   phone: z
     .string()
-    .min(1, 'Номер телефона обязателен для заполнения')
-    .regex(/^[+]?[1-9][\d]{0,15}$/, 'Введите корректный номер телефона'),
+    .min(1, t('validation.phoneRequired'))
+    .regex(/^[+]?[1-9][\d]{0,15}$/, t('validation.phoneInvalid')),
   email: z
     .string()
-    .min(1, 'Email обязателен для заполнения')
-    .max(100, 'Email не должен превышать 100 символов')
+    .min(1, t('validation.emailRequired'))
+    .max(100, t('validation.emailMax'))
     .refine((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), {
-      message: 'Введите корректный email',
+      message: t('validation.emailInvalid'),
     }),
 });
 
-type EditProfileFormData = z.infer<typeof editProfileSchema>;
+type EditProfileFormData = z.infer<ReturnType<typeof makeEditProfileSchema>>;
 
 const EditProfile: React.FC = () => {
   const { t } = useTranslation();
+  const editProfileSchema = useMemo(() => makeEditProfileSchema(t), [t]);
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { user, isLoading, isAuthenticated } = useUser();
@@ -91,7 +93,7 @@ const EditProfile: React.FC = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:8000/api/auth/user/update', {
+      const response = await fetch(`${API_BASE_URL}/auth/user/update`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -138,14 +140,14 @@ const EditProfile: React.FC = () => {
   if (!isAuthenticated || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-xl">Требуется авторизация</div>
+        <div className="text-xl">{t('auth.loginRequired')}</div>
       </div>
     );
   }
 
   return (
     <Grid className='py-2'>
-      <div className="min-h-screen bg-[#F1F7FF] pb-[70px]">
+      <div className="min-h-screen bg-[#F1F7FF] pb-[calc(70px+env(safe-area-inset-bottom))]">
         {/* Top App Bar */}
         <div className="bg-white px-2 py-2">
           <div className='flex flex-row justify-between gap-2 items-center px-2'>
@@ -154,7 +156,7 @@ const EditProfile: React.FC = () => {
               className="flex items-center gap-2 cursor-pointer"
             >
               <img src="/top-menu/back.svg" alt="back" className="w-6 h-6" />
-              <span className="text-xl font-semibold">Редактировать профиль</span>
+              <span className="text-xl font-semibold">{t('profile.editTitle') || 'Редактировать профиль'}</span>
             </div>
             <div></div>
           </div>
@@ -169,7 +171,7 @@ const EditProfile: React.FC = () => {
                 {user.profileImageUrl ? (
                   <img 
                     src={user.profileImageUrl} 
-                    alt="Profile" 
+                    alt={t('profile.avatar') || 'Profile'} 
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
@@ -181,7 +183,7 @@ const EditProfile: React.FC = () => {
                 ) : null}
                 <img 
                   src="/panda.png" 
-                  alt="Default Avatar" 
+                  alt={t('profile.avatarDefault') || 'Default Avatar'} 
                   className={`w-[72px] h-[74px] ${user.profileImageUrl ? 'hidden' : ''}`}
                 />
               </div>
@@ -192,10 +194,10 @@ const EditProfile: React.FC = () => {
                 className="absolute bottom-0 right-0 flex items-center justify-center hover:opacity-100 transition-opacity flex-shrink-0"
               >
                 <div className="relative">
-                  <img src="/ellipse.svg" alt="edit background" className="w-[110px] h-[54px]" />
+                  <img src="/ellipse.svg" alt={t('profile.editBg') || 'Edit background'} className="w-[110px] h-[54px]" />
                   <img 
                     src="/top-menu/edit-light.svg" 
-                    alt="edit" 
+                    alt={t('profile.editIcon') || 'Edit'} 
                     className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-5 h-5" 
                   />
                 </div>
@@ -215,9 +217,7 @@ const EditProfile: React.FC = () => {
             <div className="text-left flex flex-col gap-3 pt-4">
             {/* Name Field */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-black opacity-50 mb-2">
-                Имя
-              </label>
+              <label htmlFor="name" className="block text-sm font-medium text-black opacity-50 mb-2">{t('profile.name') || 'Имя'}</label>
               <input
                 type="text"
                 id="name"
@@ -225,7 +225,7 @@ const EditProfile: React.FC = () => {
                 className={`w-full px-4 py-2.5 bg-white border border-gray-200 rounded-[40px] focus:outline-none focus:ring-2 focus:ring-[#0C54EA] ${
                   errors.name ? 'border-red-500' : ''
                 }`}
-                placeholder="Ваше имя"
+                placeholder={t('profile.namePlaceholder') || 'Ваше имя'}
               />
               {errors.name && (
                 <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>
@@ -234,9 +234,7 @@ const EditProfile: React.FC = () => {
 
             {/* Phone Field */}
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-black opacity-50 mb-2">
-                Номер телефона
-              </label>
+              <label htmlFor="phone" className="block text-sm font-medium text-black opacity-50 mb-2">{t('profile.phone') || 'Номер телефона'}</label>
               <input
                 type="tel"
                 id="phone"
@@ -244,7 +242,7 @@ const EditProfile: React.FC = () => {
                 className={`w-full px-4 py-2.5 bg-white border border-gray-200 rounded-[40px] focus:outline-none focus:ring-2 focus:ring-[#0C54EA] ${
                   errors.phone ? 'border-red-500' : ''
                 }`}
-                placeholder="Ваш номер телефона"
+                placeholder={t('profile.phonePlaceholder') || 'Ваш номер телефона'}
               />
               {errors.phone && (
                 <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>
@@ -253,9 +251,7 @@ const EditProfile: React.FC = () => {
 
             {/* Email Field */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-black opacity-50 mb-2">
-                Почта
-              </label>
+              <label htmlFor="email" className="block text-sm font-medium text-black opacity-50 mb-2">{t('profile.email') || 'Почта'}</label>
               <input
                 type="email"
                 id="email"
@@ -263,7 +259,7 @@ const EditProfile: React.FC = () => {
                 className={`w-full px-4 py-2.5 bg-white border border-gray-200 rounded-[40px] focus:outline-none focus:ring-2 focus:ring-[#0C54EA] ${
                   errors.email ? 'border-red-500' : ''
                 }`}
-                placeholder="Ваш email"
+                placeholder={t('profile.emailPlaceholder') || 'Ваш email'}
               />
               {errors.email && (
                 <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
@@ -281,7 +277,7 @@ const EditProfile: React.FC = () => {
                     : 'bg-[#0C54EA] text-white opacity-30 cursor-not-allowed'
                 }`}
               >
-                {isSubmitting ? 'Сохранение...' : 'Сохранить'}
+                {isSubmitting ? t('common.loading') : t('common.save')}
               </button>
             </div>
             </div>
@@ -299,12 +295,9 @@ const EditProfile: React.FC = () => {
       >
         <div className="text-center">
           {/* Success Icon */}
-          <img src="/accept.png" alt="success" className="w-46 h-46 mx-auto mb-4" />
+          <img src="/accept.png" alt={t('common.success')} className="w-46 h-46 mx-auto mb-4" />
           
-          {/* Title */}
-          <h3 className="text-2xl font-bold text-black mb-10">
-            Ваши данные успешно обновлены
-          </h3>
+          <h3 className="text-2xl font-bold text-black mb-10">{t('profile.updated') || 'Ваши данные успешно обновлены'}</h3>
           
           {/* Button */}
           <button
@@ -314,7 +307,7 @@ const EditProfile: React.FC = () => {
             }}
             className="w-full bg-[#0C54EA] text-white font-bold py-3 px-4 rounded-[100px] hover:bg-[#0A4BD9] transition-colors"
           >
-            Закрыть
+            {t('common.close')}
           </button>
         </div>
       </Modal>

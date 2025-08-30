@@ -17,7 +17,10 @@
     "search": "Pesquisar",
     "filter": "Filtrar",
     "sort": "Ordenar",
-    "logout": "Sair"
+    "logout": "Sair",
+    "claim": "Reivindicar",
+    "yes": "Sim",
+    "no": "Não"
   },
   "auth": {
     "login": "Entrar",
@@ -30,6 +33,8 @@
   "landing": {
     "title": "Simulador de Trading de Criptomoedas",
     "subtitle": "Aprenda trading de criptomoedas sem risco de dinheiro real",
+    "ctaTitle": "Pronto para começar sua jornada de trading?",
+    "ctaSubtitle": "Junte-se a milhares de traders que melhoraram suas habilidades com nosso simulador sem risco.",
     "description": "Domine o trading de criptomoedas com nosso simulador abrangente. Pratique com dados de mercado reais, aprenda com o mentor virtual Panda, e ganhe conquistas enquanto desenvolve suas habilidades de trading.",
     "features": {
       "title": "Por que escolher nosso simulador?",
@@ -54,13 +59,38 @@
     "getStarted": "Começar"
   },
   "nav": {
+    "back": "Voltar",
     "home": "Início",
+    "topInvestors": "Top Investidores",
     "trading": "Trading",
     "dashboard": "Painel",
     "profile": "Perfil",
     "achievements": "Conquistas",
     "rewards": "Recompensas",
     "tutorial": "Tutorial"
+  },
+  "home": {
+    "welcome": "Bem-vindo de volta!",
+    "portfolio": "Valor do portfólio",
+    "todayPnl": "P&L de hoje",
+    "totalTrades": "Total de trades",
+    "free": "Disponível",
+    "trials": "Desafios"
+  },
+  "live": {
+    "title": "Preços ao vivo",
+    "subtitle": "Cotações em tempo real via Socket.io"
+  },
+  "priceTicker": {
+    "aria": "Ticker de preços ao vivo",
+    "updated": "Atualizado:",
+    "cardAria": "Cartão de preço {{symbol}}"
+  },
+  "liveBadge": {
+    "live": "AO VIVO",
+    "offline": "OFFLINE",
+    "ariaLiveActive": "Conexão ao vivo ativa",
+    "ariaLiveOffline": "Conexão ao vivo offline"
   },
   "trading": {
     "title": "Terminal de Trading",
@@ -164,9 +194,13 @@
   },
   "rewards": {
     "title": "Recompensas diárias",
+    "level": "Nível",
+    "accountMoney": "Dinheiro da conta",
+    "reward": "Recompensa",
+    "proDays": "+ Modo Pro por {{count}} dias",
+    "daysShort": "dias",
     "dailyBonus": "Bônus diário",
     "streak": "Dia {{day}}",
-    "claim": "Reivindicar",
     "claimed": "Reivindicado",
     "comeBaclTomorrow": "Volte amanhã!",
     "streakBroken": "Sequência quebrada. Comece de novo amanhã!",
@@ -219,7 +253,8 @@
       "content": "Ganhe conquistas, reivindique recompensas diárias e desbloqueie recursos especiais conforme você progride em sua jornada de trading."
     },
     "complete": "Tutorial concluído!",
-    "congratulations": "Parabéns! Você está pronto para começar a negociar. Boa sorte!"
+    "congratulations": "Parabéns! Você está pronto para começar a negociar. Boa sorte!",
+    "interactiveArea": "Área de demonstração interativa"
   },
   "panda": {
     "hello": "Olá! Eu sou Panda 🐼",
@@ -245,5 +280,167 @@
     "notFound": "Recurso não encontrado.",
     "tooManyRequests": "Muitas solicitações. Por favor, reduza a velocidade.",
     "unexpectedError": "Ocorreu um erro inesperado."
+  }
+  ,
+  "proTutorial": {
+    "title": "Bem-vindo ao modo Pro!",
+    "desc": "Complete o tutorial para aprender a usar gráficos como um profissional.",
+    "proceed": "Continuar",
+    "skip": "Pular",
+    "close": "Fechar",
+    "training": "Treinamento",
+    "applyEMA": "Aplicar médias",
+    "movingAverages": "móveis EMA",
+    "rsiIndicator": "força relativa RSI",
+    "smaAverages": "móveis SMA",
+    "nextTask": "Próxima tarefa",
+    "completeTask": "Completar tarefa",
+    "startTrading": "Começar a negociar",
+    "applyIndicator": "Aplicar índice",
+    "addLine": "Adicionar linha",
+    "excellent": "Excelente!",
+    "timeToPractice": "Hora de aplicar conhecimentos na prática!",
+    "tradeCompete": "Negocie, compita e melhore suas habilidades."
+  },
+  "proModal": {
+    "titles": {
+      "chart": "Gráfico",
+      "fx": "Indicadores",
+      "marker": "Marcadores",
+      "share": "Compartilhar",
+      "switch": "Alternar"
+    },
+    "stub": "A seção \"{{title}}\" está em desenvolvimento",
+    "close": "Fechar"
+  }
+  ,
+  "proMenu": {
+    "aria": "Menu inferior Pro",
+    "switch": "Alternar",
+    "chart": "Gráfico",
+    "fx": "Indicadores",
+    "marker": "Marcadores",
+    "share": "Compartilhar",
+    "exit": "Sair"
+  },
+  "proExit": {
+    "title": "Tem certeza de que deseja sair?",
+    "yes": "Sim",
+    "no": "Não"
+  },
+  "wheel": {
+    "yourWin": "Seus ganhos",
+    "tryLuck": "Tente sua sorte!",
+    "spin": "Girar",
+    "spinning": "Girando..."
+  },
+  "video": {
+    "processing": "Processando recompensa...",
+    "claimButton": "Coletar Recompensa"
+  },
+  "ui": {
+    "trials": {
+      "noTasks": "Nenhuma tarefa ativa",
+      "createNewTasks": "Clique em \"Recarregar tarefas\" para criar novas",
+      "clickToOpen": "Clique para abrir!",
+      "rewardReceived": "Recompensa recebida!"
+    },
+    "ads": {
+      "title": "Anúncio",
+      "loading": "Carregando anúncio...",
+      "processing": "Processando recompensa...",
+      "getReward": "Obter recompensa"
+    },
+    "chart": {
+      "lastUpdate": "Última atualização:",
+      "realTimeUpdates": "Atualizações em tempo real",
+      "chartPlaceholder": "O gráfico estará aqui (lightweight-charts desabilitado)",
+      "capturing": "Capturando gráfico...",
+      "noImage": "Nenhuma imagem do gráfico disponível",
+      "share": "Compartilhar",
+      "saveToDevice": "Salvar no dispositivo"
+    },
+    "test": {
+      "proTutorial": "Teste ProTutorial",
+      "openStep1": "Abrir etapa 1",
+      "openStep2": "Abrir etapa 2 (EMA)",
+      "openStep3": "Abrir etapa 3 (EMA)",
+      "openStep4": "Abrir etapa 4 (Próxima tarefa)",
+      "openStep5": "Abrir etapa 5 (destaque fx)",
+      "currentStep": "Etapa atual: {{step}}",
+      "modalOpen": "Modal aberto: {{status}}",
+      "yes": "Sim",
+      "no": "Não",
+      "indicators": "Indicadores",
+      "connectionLineTest": "Teste de linha azul direta",
+      "showHideLine": "{{action}} linha azul",
+      "show": "Mostrar",
+      "hide": "Ocultar",
+      "tutorialModal": "Modal de tutorial",
+      "applyEMA": "Aplicar médias móveis EMA",
+      "scrollDown": "Role para baixo para ver o efeito"
+    }
+  },
+  "alt": {
+    "balance": "saldo",
+    "coins": "moedas",
+    "noTasks": "sem tarefas",
+    "back": "Voltar",
+    "premiumLogo": "Logo Premium",
+    "check": "Verificar",
+    "selected": "Selecionado",
+    "unselected": "Não selecionado",
+    "premium": "premium",
+    "whatsapp": "WhatsApp",
+    "telegram": "Telegram",
+    "email": "Email",
+    "copyLink": "Copiar link",
+    "more": "Mais",
+    "arrow": "Seta",
+    "languagePanda": "Panda de idioma",
+    "logo": "Logo",
+    "facebook": "Facebook",
+    "apple": "Apple",
+    "github": "GitHub",
+    "phone": "telefone",
+    "money": "dinheiro",
+    "rewards": "recompensas",
+    "crown": "Coroa",
+    "language": "Idioma",
+    "notifications": "Notificações",
+    "share": "Compartilhar",
+    "up": "cima",
+    "down": "baixo",
+    "info": "Informação",
+    "close": "fechar",
+    "cryptoCrazeLogo": "Logo CryptoCraze",
+    "marker": "Marcador",
+    "bearCharacter": "Personagem urso",
+    "proTutorial": "Tutorial Pro",
+    "pairs": "pares",
+    "delete": "excluir",
+    "plus": "+",
+    "trades": "negociações",
+    "success": "sucesso",
+    "maxAmount": "valor máximo",
+    "average": "média",
+    "profit": "lucro",
+    "loss": "perda",
+    "openedBox": "Caixa aberta",
+    "edit": "editar",
+    "analytics": "análise",
+    "awards": "prêmios",
+    "transactions": "transações",
+    "energy": "energia",
+    "reload": "recarregar",
+    "bear": "urso",
+    "wheel": "roda",
+    "center": "centro",
+    "chartPreview": "Visualização do gráfico"
+  },
+  "placeholders": {
+    "symbol": "BTCUSDT",
+    "amount": "$0.00",
+    "number": "0"
   }
 }

@@ -1,76 +1,44 @@
 import type { FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../app/hooks';
-import { selectUser } from '../../app/userSlice';
-import { useState } from 'react';
-import { Modal } from '../../components/ui/modal';
+import { selectUser, selectUnreadCount } from '../../app/userSlice';
+import { usePremium } from '../../hooks/usePremium';
+import { useTranslation } from '@/lib/i18n';
 
 const Settings: FC = () => {
   const navigate = useNavigate();
   const user = useAppSelector(selectUser);
-  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
+  const unreadCount = useAppSelector(selectUnreadCount);
+
+  const { isPremium } = usePremium();
+  const { t } = useTranslation();
 
   const handleBackClick = () => {
     void navigate('/home');
   };
 
   const handlePremiumClick = () => {
-    // Логика для перехода на Premium
-    console.log('Переход на Premium');
+    void navigate('/home/premium');
   };
 
   const handleNotificationsClick = () => {
-    // Логика для настроек уведомлений
-    console.log('Настройки уведомлений');
+    void navigate('/home/notifications');
+  };
+
+  const handleShareClick = () => {
+    void navigate('/home/share');
   };
 
   const handleLanguageClick = () => {
     void navigate('/home/language');
   };
 
-  const handleShareClick = () => {
-    // Логика для поделиться
-    console.log('Поделиться');
-  };
 
-  const handleDeleteAccountClick = () => {
-    setIsDeleteAccountModalOpen(true);
-  };
-
-
-
-  const handleCloseDeleteAccountModal = () => {
-    setIsDeleteAccountModalOpen(false);
-  };
-
-  const handleDeleteAccount = () => {
-    // Логика удаления аккаунта
-    console.log('Удаление аккаунта');
-    setIsDeleteAccountModalOpen(false);
-    // Здесь можно добавить логику удаления аккаунта
-  };
-
-  const handleOpenLogoutModal = () => {
-    setIsLogoutModalOpen(true);
-  };
-
-  const handleCloseLogoutModal = () => {
-    setIsLogoutModalOpen(false);
-  };
-
-  const handleLogout = () => {
-    // Логика выхода из аккаунта
-    console.log('Выход из аккаунта');
-    setIsLogoutModalOpen(false);
-    // Здесь можно добавить очистку пользователя и редирект
-    // navigate('/welcome');
-  };
 
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-white min-h-screen pb-[env(safe-area-inset-bottom)]">
       {/* Navigation Bar */}
-      <div className="bg-white">
+      <div className="sticky top-0 z-10 bg-white">
         {/* Top App Bar */}
         <div className="flex items-center justify-between px-2 pt-4 pb-2">
           <div className="flex items-center gap-1">
@@ -80,13 +48,40 @@ const Settings: FC = () => {
             >
               <img src="/top-menu/back.svg" alt="Back" className="w-6 h-6" />
             </button>
-            <h1 className="text-xl font-bold text-black">Настройки</h1>
+            <h1 className="text-xl font-bold text-black">{t('settings.title')}</h1>
           </div>
+
           <button 
             className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100"
-            onClick={handleOpenLogoutModal}
+            onClick={async () => {
+              try {
+                // Вызываем API для выхода на сервере
+                await fetch('/api/auth/logout', {
+                  method: 'POST',
+                  credentials: 'include'
+                });
+              } catch (error) {
+                console.warn('Logout API failed:', error);
+              }
+              
+              // Очищаем локальные данные
+              localStorage.removeItem('auth_token');
+              
+              // Удаляем все cookies
+              document.cookie.split(";").forEach(cookie => {
+                const eqPos = cookie.indexOf("=");
+                const name = eqPos > -1 ? cookie.substring(0, eqPos).trim() : cookie.trim();
+                // Удаляем cookie с разными путями и доменами
+                document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+                document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=.${window.location.hostname}`;
+                document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
+              });
+              
+              // Перенаправляем на главную
+              window.location.href = '/';
+            }}
           >
-            <img src="/top-menu/exit.svg" alt="Exit" className="w-6 h-6" />
+            <img src="/top-menu/exit.svg" alt="Logout" className="w-6 h-6" />
           </button>
         </div>
       </div>
@@ -94,10 +89,16 @@ const Settings: FC = () => {
       {/* Premium Banner */}
       <div className="px-4 py-3">
         <div 
-          className="bg-[#0C54EA] rounded-xl p-4 flex items-center justify-between cursor-pointer"
+          className={`rounded-xl p-4 flex items-center justify-between cursor-pointer ${
+            isPremium ? 'bg-[#F5A600]' : 'bg-[#0C54EA]'
+          }`}
           onClick={handlePremiumClick}
         >
-          <span className="text-white font-bold text-base">Перейти на Premium</span>
+          <span className={`font-bold text-base ${
+            isPremium ? 'text-black' : 'text-white'
+          }`}>
+             {isPremium ? t('settings.premium.pro') : t('settings.premium.goPremium')}
+          </span>
           <div className="relative">
             {/* Crown icon */}
             <img src="/settings/crown.svg" alt="Crown" className="w-[64px] h-[42px]" />
@@ -107,29 +108,33 @@ const Settings: FC = () => {
 
       {/* Settings List */}
       <div className="px-4 py-3 space-y-2">
-        {/* Notifications */}
-        <div 
-          className="bg-white rounded-full border border-gray-200 p-4 flex items-center gap-3.5 cursor-pointer"
-          onClick={handleNotificationsClick}
-        >
-          <div className="w-6 h-6 flex items-center justify-center">
-            <img src="/settings/notifications.svg" alt="Notifications" className="w-5.5 h-5.5" />
-          </div>
-          <span className="text-black font-medium text-base">Уведомления</span>
-        </div>
-
         {/* Language */}
         <div 
-          className="bg-white rounded-full border border-gray-200 p-4 flex items-center gap-3.5 cursor-pointer relative"
+          className="bg-white rounded-full border border-gray-200 p-4 flex items-center gap-3.5 cursor-pointer"
           onClick={handleLanguageClick}
         >
           <div className="w-6 h-6 flex items-center justify-center">
             <img src="/settings/language.svg" alt="Language" className="w-6 h-6" />
           </div>
-          <span className="text-black font-medium text-base">Язык</span>
-          <span className="absolute right-4 text-black font-semibold text-xs opacity-50">
-            {user?.preferredLanguage ?? 'Русский'}
-          </span>
+          <span className="text-black font-medium text-base">{t('settings.language')}</span>
+        </div>
+
+        {/* Notifications */}
+        <div 
+          className="bg-white rounded-full border border-gray-200 p-4 flex items-center gap-3.5 cursor-pointer relative"
+          onClick={handleNotificationsClick}
+        >
+          <div className="w-6 h-6 flex items-center justify-center">
+            <img src="/settings/notifications.svg" alt="Notifications" className="w-5.5 h-5.5" />
+          </div>
+          <span className="text-black font-medium text-base">{t('settings.notifications')}</span>
+          
+          {/* Notification badge */}
+          {unreadCount > 0 && (
+            <div className="absolute -top-1 -right-1 bg-[#F6465D] text-white text-xs rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </div>
+          )}
         </div>
 
         {/* Share */}
@@ -140,123 +145,23 @@ const Settings: FC = () => {
           <div className="w-6 h-6 flex items-center justify-center">
             <img src="/settings/share.svg" alt="Share" className="w-6 h-6" />
           </div>
-          <span className="text-black font-medium text-base">Поделиться</span>
+          <span className="text-black font-medium text-base">{t('settings.share')}</span>
         </div>
 
-        {/* Delete Account */}
-        <div 
-          className="bg-white rounded-full border border-gray-200 p-4 flex items-center gap-3.5 cursor-pointer"
-          onClick={handleDeleteAccountClick}
-        >
-          <div className="w-6 h-6 flex items-center justify-center">
-            <img src="/settings/delete.svg" alt="Delete Account" className="w-6 h-6" />
-          </div>
-          <span className="text-black font-medium text-base">Удалить аккаунт</span>
-        </div>
+
       </div>
 
       {/* App Info */}
       <div className="px-4 py-4 space-y-1">
         <p className="text-black font-medium text-xs opacity-50 tracking-wide">
-          Версия приложения 0.1.2
+          {t('settings.version')} 0.1.2
         </p>
         <p className="text-black font-medium text-xs opacity-50 tracking-wide">
-          ID аккаунта {user?.id ?? 'Загрузка...'}
+          {t('settings.accountId')} {user?.id ?? t('common.loading')}
         </p>
       </div>
 
-      {/* Logout Modal */}
-      <Modal isOpen={isLogoutModalOpen} onClose={handleCloseLogoutModal}>
-        <div className="flex flex-col items-center text-center w-full max-w-sm">
-          {/* Bear Image */}
-          <div className="mb-6">
-            <img src="/settings/modal-image.svg" alt="Bear" className="w-[141px] h-[198px]" />
-          </div>
-          
-          {/* Title */}
-          <h2 className="text-xl font-bold text-black mb-3 text-center w-full">
-            Вы точно хотите выйти из аккаунта?
-          </h2>
-          
-          
-          {/* Buttons */}
-          <div className="w-full flex flex-row gap-4 justify-center">
-            <button
-              onClick={handleLogout}
-              className="bg-white text-[#0C54EA] font-semibold text-center py-3 px-6 rounded-full border-2 border-[#0C54EA] hover:bg-gray-50 transition-colors"
-              aria-label="Выйти из аккаунта"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  handleLogout();
-                }
-              }}
-            >
-              Да
-            </button>
-            
-            <button
-              onClick={handleCloseLogoutModal}
-              className=" bg-[#0C54EA] text-white font-semibold text-center py-3 px-6 rounded-full hover:bg-[#0A47C7] transition-colors"
-              aria-label="Отменить выход"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  handleCloseLogoutModal();
-                }
-              }}
-            >
-              Нет
-            </button>
-          </div>
-        </div>
-      </Modal>
 
-      {/* Delete Account Modal */}
-      <Modal isOpen={isDeleteAccountModalOpen} onClose={handleCloseDeleteAccountModal}>
-        <div className="flex flex-col items-center text-center w-full max-w-sm">
-          {/* Bear Image */}
-          <div className="mb-6">
-            <img src="/settings/modal-image.svg" alt="Bear" className="w-[141px] h-[198px]" />
-          </div>
-          
-          {/* Title */}
-          <h2 className="text-xl font-bold text-black mb-3 text-center w-full">
-            Вы точно хотите удалить аккаунт?
-          </h2>
-          
-          {/* Buttons */}
-          <div className="w-full flex flex-row gap-4 justify-center">
-            <button
-              onClick={handleDeleteAccount}
-              className="bg-white text-[#0C54EA] font-semibold text-center py-3 px-6 rounded-full border-2 border-[#0C54EA] hover:bg-gray-50 transition-colors"
-              aria-label="Удалить аккаунт"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  handleDeleteAccount();
-                }
-              }}
-            >
-              Да
-            </button>
-            
-            <button
-              onClick={handleCloseDeleteAccountModal}
-              className="bg-[#0C54EA] text-white font-semibold text-center py-3 px-6 rounded-full hover:bg-[#0A47C7] transition-colors"
-              aria-label="Отменить удаление"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  handleCloseDeleteAccountModal();
-                }
-              }}
-            >
-              Нет
-            </button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 };

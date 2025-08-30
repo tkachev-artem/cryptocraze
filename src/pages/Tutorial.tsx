@@ -5,12 +5,13 @@ import { Button } from '../components/ui/button';
 import { Progress } from '../components/ui/progress';
 import { PandaMentor } from '../components/PandaMentor';
 import { apiRequest } from '../lib/queryClient';
+import { API_BASE_URL } from '@/lib/api';
 import { useTranslation } from '../lib/i18n';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/use-toast';
 import { isUnauthorizedError } from '../lib/authUtils';
 
-interface TutorialStep {
+type TutorialStep = {
   id: string;
   title: string;
   content: string;
@@ -20,7 +21,7 @@ interface TutorialStep {
 
 export function Tutorial() {
   const { t } = useTranslation();
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -65,14 +66,14 @@ export function Tutorial() {
     mutationFn: async () => {
       return apiRequest('/api/tutorial/complete', {
         method: 'POST',
-      });
+      }) as Promise<void>;
     },
     onSuccess: () => {
       toast({
         title: t('common.success'),
         description: t('tutorial.congratulations'),
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      void queryClient.invalidateQueries({ queryKey: [`${API_BASE_URL}/auth/user`] });
       setTimeout(() => {
         window.location.href = '/';
       }, 2000);
@@ -85,7 +86,7 @@ export function Tutorial() {
           variant: 'destructive',
         });
         setTimeout(() => {
-          window.location.href = '/api/login';
+          window.location.href = `${API_BASE_URL}/login`;
         }, 500);
         return;
       }
@@ -99,6 +100,7 @@ export function Tutorial() {
 
   // Handle unauthorized access
   React.useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!isLoading && !isAuthenticated) {
       toast({
         title: t('auth.unauthorized'),
@@ -106,7 +108,7 @@ export function Tutorial() {
         variant: 'destructive',
       });
       setTimeout(() => {
-        window.location.href = '/api/login';
+        window.location.href = `${API_BASE_URL}/login`;
       }, 500);
       return;
     }
@@ -124,7 +126,7 @@ export function Tutorial() {
     }
   };
 
-  const handleComplete = async () => {
+  const handleComplete = () => {
     setIsCompleting(true);
     completeTutorialMutation.mutate();
   };
@@ -133,6 +135,7 @@ export function Tutorial() {
     completeTutorialMutation.mutate();
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -176,10 +179,10 @@ export function Tutorial() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <span className="text-sm font-medium">
-                  Step {currentStep + 1} of {tutorialSteps.length}
+                  {t('tutorial.stepProgress', { current: currentStep + 1, total: tutorialSteps.length })}
                 </span>
                 <span className="text-sm text-gray-600">
-                  {Math.round(progress)}% Complete
+                  {t('tutorial.percentComplete', { percent: Math.round(progress) })}
                 </span>
               </div>
               <Progress value={progress} />
@@ -213,7 +216,7 @@ export function Tutorial() {
                         {currentStep === 5 && '🎮'}
                       </div>
                       <div className="text-gray-600">
-                        Interactive demo area
+                        {t('tutorial.interactiveArea')}
                       </div>
                     </div>
                   </div>
@@ -240,9 +243,7 @@ export function Tutorial() {
                         }
                       </Button>
                     ) : (
-                      <Button onClick={handleNext}>
-                        {t('common.next')}
-                      </Button>
+                      <Button onClick={handleNext}>{t('common.next')}</Button>
                     )}
                   </div>
                 </CardContent>
@@ -264,7 +265,7 @@ export function Tutorial() {
                 {/* Tutorial Steps Overview */}
                 <Card className="mt-6">
                   <CardHeader>
-                    <CardTitle className="text-lg">Tutorial Steps</CardTitle>
+                    <CardTitle className="text-lg">{t('tutorial.stepsTitle') || 'Tutorial Steps'}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">

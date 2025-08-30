@@ -1,0 +1,1 @@
+ALTER TABLE "box_openings" ADD COLUMN "energy_spent" integer NOT NULL DEFAULT 0;

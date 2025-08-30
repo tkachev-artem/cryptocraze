@@ -1,0 +1,1 @@
+import{A as n}from"./trading-DauNLBUI.js";const o=n;function e(){window.location.href=`${o}/auth/google`}function s(n){return n.message.includes("401")||n.message.includes("Unauthorized")}export{s as i,e as r};

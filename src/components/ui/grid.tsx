@@ -7,8 +7,8 @@ type GridProps = {
 
 export function Grid({ children, className = '' }: GridProps) {
   return (
-    <div className={`min-h-screen flex justify-center ${className}`}>
-      <div className={`max-w-md w-full bg-white rounded-3xl text-center ${className}`}>
+    <div className={`min-h-dvh flex justify-center`}>
+      <div className={`max-w-md w-full bg-white text-center ${className}`}>
         {children}
       </div>
     </div>

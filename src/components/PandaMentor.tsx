@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { useTranslation } from '../lib/i18n';
 
-interface PandaMentorProps {
+type PandaMentorProps = {
   mode?: 'tutorial' | 'tip' | 'encouragement' | 'warning';
   message?: string;
   onClose?: () => void;
@@ -20,7 +20,7 @@ export function PandaMentor({
   const [currentTip, setCurrentTip] = useState<string>('');
   const [isVisible, setIsVisible] = useState(true);
 
-  const tips = [
+  const tips = useMemo(() => [
     'diversify',
     'patience',
     'research',
@@ -29,14 +29,14 @@ export function PandaMentor({
     'smallStart',
     'stopLoss',
     'trends'
-  ];
+  ], []);
 
   useEffect(() => {
     if (showRandomTips && !message) {
       const randomTip = tips[Math.floor(Math.random() * tips.length)];
       setCurrentTip(t(`panda.tips.${randomTip}`));
     }
-  }, [showRandomTips, message, t]);
+  }, [showRandomTips, message, t, tips]);
 
   const getTitle = () => {
     switch (mode) {
@@ -85,7 +85,7 @@ export function PandaMentor({
       </CardHeader>
       <CardContent>
         <p className="text-sm text-gray-700 mb-4">
-          {message || currentTip}
+          {message ?? currentTip}
         </p>
         {onClose && (
           <div className="flex justify-end">

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "../lib/queryClient";
+import { API_BASE_URL } from "@/lib/api";
 
 type User = {
   id: string;
@@ -22,8 +23,8 @@ type User = {
 
 export function useAuth() {
   const { data: user, isLoading } = useQuery<User>({
-    queryKey: ["/api/auth/user"],
-    queryFn: () => apiRequest("/api/auth/user"),
+    queryKey: [`${API_BASE_URL}/auth/user`],
+    queryFn: () => apiRequest("/api/auth/user") as Promise<User>,
     retry: false,
   });
 

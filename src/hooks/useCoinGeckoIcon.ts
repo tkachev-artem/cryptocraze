@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { getCryptoIconFromCache, setCryptoIconToCache } from '../lib/cookieUtils';
+import { API_BASE_URL } from '@/lib/api';
 
 // Тип для возвращаемого значения
-interface UseCoinGeckoIconResult {
+type UseCoinGeckoIconResult = {
   iconUrl: string | null;
   loading: boolean;
   error: string | null;
@@ -19,24 +21,39 @@ export const useCoinGeckoIcon = (coinId: string): UseCoinGeckoIconResult => {
       setLoading(false);
       return;
     }
+
+    // Сначала проверяем кэш
+    const cachedIcon = getCryptoIconFromCache(coinId);
+    if (cachedIcon) {
+      setIconUrl(cachedIcon);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     let cancelled = false;
     setLoading(true);
     setError(null);
     setIconUrl(null);
-    fetch(`http://localhost:8000/api/coingecko/icon/${coinId}`)
+    
+    fetch(`${API_BASE_URL}/coingecko/icon/${coinId}`)
       .then((res) => {
         if (!res.ok) throw new Error('Network response was not ok');
         return res.json();
       })
-      .then((data) => {
-        console.log('Ответ backend:', data, 'coinId:', coinId);
+      .then((data: unknown) => {
         if (!cancelled) {
-          setIconUrl(data?.icon || null);
+          const iconUrl = (data as { icon?: string }).icon ?? null;
+          setIconUrl(iconUrl);
           setLoading(false);
+          
+          // Сохраняем в кэш если получили иконку
+          if (iconUrl) {
+            setCryptoIconToCache(coinId, iconUrl);
+          }
         }
       })
-      .catch((err) => {
-        console.log('Ошибка запроса:', err, 'coinId:', coinId);
+      .catch(() => {
         if (!cancelled) {
           setError('Не удалось загрузить иконку');
           setIconUrl(null);

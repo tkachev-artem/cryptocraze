@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  app:
+    image: cryptocraze:latest
+    container_name: cryptocraze-app
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - DATABASE_URL=${DATABASE_URL}
+      - PGSSLMODE=${PGSSLMODE:-require}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED:-0}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_CALLBACK_URL=${GOOGLE_CALLBACK_URL}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - BINANCE_API_KEY=${BINANCE_API_KEY:-}
+      - BINANCE_SECRET_KEY=${BINANCE_SECRET_KEY:-}
+      - COINGECKO_API_KEY=${COINGECKO_API_KEY:-}
+      - TUNNEL_URL=${TUNNEL_URL}
+      - API_URL=${API_URL}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - CORS_ORIGIN=${CORS_ORIGIN}
+      - ENABLE_REDIS_SCALING=${ENABLE_REDIS_SCALING:-true}
+      - ENABLE_CLUSTER_MODE=${ENABLE_CLUSTER_MODE:-false}
+      - ENABLE_RATE_LIMITING=${ENABLE_RATE_LIMITING:-true}
+      - ENABLE_SWAGGER=${ENABLE_SWAGGER:-true}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - ENABLE_REQUEST_LOGGING=${ENABLE_REQUEST_LOGGING:-false}
+      - SKIP_MIGRATIONS=${SKIP_MIGRATIONS:-false}
+    volumes:
+      - ./drizzle:/app/drizzle:ro
+    depends_on:
+      - redis
+    networks:
+      - cryptocraze-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http=require('http');const options={host:'localhost',port:3001,path:'/health',timeout:2000};const request=http.request(options,(res)=>{if(res.statusCode===200){process.exit(0)}else{process.exit(1)}});request.on('error',()=>process.exit(1));request.end();"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    container_name: cryptocraze-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - cryptocraze-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: redis-server --appendonly yes
+
+networks:
+  cryptocraze-network:
+    driver: bridge
+
+volumes:
+  redis_data:
+    driver: local

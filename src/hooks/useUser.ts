@@ -7,9 +7,6 @@ import {
   selectIsLoading,
   selectError,
   selectIsAuthenticated,
-  selectUserCoins,
-  selectUserBalance,
-  selectUserExperience,
 } from '../app/userSlice';
 
 export const useUser = () => {
@@ -23,24 +20,22 @@ export const useUser = () => {
 
   // Автоматически загружаем пользователя при инициализации хука
   useEffect(() => {
-    console.log('useUser hook - user:', user, 'isLoading:', isLoading, 'error:', error, 'hasAttemptedAuth:', hasAttemptedAuth.current);
-    
     // Делаем запрос только один раз, если пользователь не загружен и мы еще не пытались
-    if (!user && !isLoading && !hasAttemptedAuth.current) {
-      console.log('useUser hook - dispatching fetchUser');
+    if ((user == null) && !isLoading && !hasAttemptedAuth.current) {
       hasAttemptedAuth.current = true;
-      void dispatch(fetchUser());
+      void dispatch(fetchUser({}));
     }
   }, [dispatch, user, isLoading]);
 
   const loadUser = () => {
-    console.log('useUser hook - manual loadUser called');
     hasAttemptedAuth.current = false; // Сбрасываем флаг для ручной загрузки
-    void dispatch(fetchUser());
+    void dispatch(fetchUser({}));
   };
 
   const updateUserGameData = (gameData: { coins?: number; experience?: number }) => {
-    void dispatch(updateGameData(gameData));
+    const coinsValue = gameData.coins ?? undefined;
+    const experienceValue = gameData.experience ?? undefined;
+    void dispatch(updateGameData({ coins: coinsValue, experience: experienceValue }));
   };
 
   return {

@@ -1,0 +1,924 @@
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useMemo, useCallback } from 'react';
+import { createChart, LineSeries, CandlestickSeries, BarSeries } from 'lightweight-charts';
+import type { ISeriesApi, Time } from 'lightweight-charts';
+import { API_BASE_URL } from '@/lib/api';
+import useLivePrices from '@/hooks/useLivePrices';
+import { useTranslation } from '@/lib/i18n';
+// import LiveBadge from './LiveBadge';
+import type { DrawingTool, DrawingMode, DrawingObject } from '@/types/drawing';
+import DrawingCanvas from './DrawingCanvas';
+import type { DrawingCanvasHandle } from './DrawingCanvas';
+import html2canvas from 'html2canvas';
+
+export type ProChartHandle = {
+  captureImage: () => Promise<{ blob: Blob; url: string; file: File } | null>;
+};
+
+type ProChartProps = {
+  symbol: string; // e.g. BTCUSDT
+  timeframe: string; // e.g. 1m, 5m, 15m, 1h, 4h, 1d
+  chartType?: 'line' | 'candlestick' | 'bar';
+  onPriceUpdate?: (price: number) => void;
+  onOHLCUpdate?: (ohlc: { open: number; high: number; low: number; close: number }) => void;
+  indicators?: { ema: boolean; rsi: boolean; sma: boolean };
+  // Drawing props
+  drawingMode?: DrawingMode;
+  activeTool?: DrawingTool;
+  drawingObjects?: DrawingObject[];
+  onAddDrawingObject?: (object: DrawingObject) => void;
+  onRemoveDrawingObject?: (id: string) => void;
+  selectedDrawingId?: string | null;
+  onSelectDrawingObject?: (id: string | null) => void;
+  sidePaddingPx?: number; // горизонтальные отступы контейнера, для «сжатия» при модалке
+  onTextPlacementRequest?: (position: { x: number; y: number; price: number; time: number; logical?: number }) => void;
+};
+
+type Candle = {
+  time: Time;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+};
+
+const ProChart = forwardRef<ProChartHandle, ProChartProps>(({ 
+  symbol, 
+  timeframe, 
+  chartType = 'line', 
+  onPriceUpdate, 
+  onOHLCUpdate, 
+  indicators = { ema: false, rsi: false, sma: false },
+  drawingMode = 'add',
+  activeTool = 'none',
+  drawingObjects = [],
+  onAddDrawingObject,
+  onRemoveDrawingObject,
+  selectedDrawingId,
+  onSelectDrawingObject,
+  sidePaddingPx = 0,
+  onTextPlacementRequest
+}, ref) => {
+  const { t } = useTranslation();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const pricePaneRef = useRef<HTMLDivElement>(null);
+  const rsiPaneRef = useRef<HTMLDivElement>(null);
+  const priceChartRef = useRef<ReturnType<typeof createChart> | null>(null);
+  const rsiChartRef = useRef<ReturnType<typeof createChart> | null>(null);
+  const userAdjustedRef = useRef<boolean>(false);
+  const programmaticSetRef = useRef<boolean>(false);
+  const seriesRef = useRef<
+    ISeriesApi<'Line'> | ISeriesApi<'Candlestick'> | ISeriesApi<'Bar'> | null
+  >(null);
+  const emaSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const smaSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const rsiSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const drawingCanvasRef = useRef<DrawingCanvasHandle>(null);
+  const [candles, setCandles] = useState<Candle[]>([]);
+  // PRO режим: realtime via socket
+  const { prices } = useLivePrices([symbol]);
+  const [latestPrice, setLatestPrice] = useState<number | null>(null);
+  const [latestOHLC, setLatestOHLC] = useState<{ open: number; high: number; low: number; close: number } | null>(null);
+  
+  // Состояние для размеров контейнера
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+
+  // Упрощенное форматирование времени по примеру Binance
+  const formatTick = useCallback((time: Time, tf: string): string => {
+    try {
+      if (typeof time === 'object' && 'year' in time) {
+        // Обработка BusinessDay для дневных таймфреймов
+        const t = time as { year: number; month: number; day: number };
+        const d = new Date(t.year, t.month - 1, t.day);
+        return d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' });
+      }
+      
+      const ts = typeof time === 'string' ? parseInt(time, 10) : (time as number);
+      if (!Number.isFinite(ts)) return '';
+      
+      const d = new Date(ts * 1000);
+      
+      switch (tf) {
+        case '1m':
+        case '5m':
+        case '15m':
+          // Показываем время в формате HH:MM
+          return d.toLocaleTimeString('ru-RU', { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            hour12: false 
+          });
+        case '1h': {
+          // Показываем дату и время для 1h
+          const hours = d.toLocaleTimeString('ru-RU', { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            hour12: false 
+          });
+          const date = d.toLocaleDateString('ru-RU', { 
+            day: '2-digit', 
+            month: '2-digit' 
+          });
+          return `${hours}\n${date}`;
+        }
+        case '4h':
+        case '1d':
+          // Показываем только дату для больших интервалов
+          return d.toLocaleDateString('ru-RU', { 
+            day: '2-digit', 
+            month: 'short' 
+          });
+        default:
+          return d.toLocaleTimeString('ru-RU', { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            hour12: false 
+          });
+      }
+    } catch {
+      return '';
+    }
+  }, []);
+
+  const timeframeToSeconds = useCallback((tf: string) => {
+    if (tf.endsWith('m')) return parseInt(tf) * 60;
+    if (tf.endsWith('h')) return parseInt(tf) * 60 * 60;
+    if (tf.endsWith('d')) return parseInt(tf) * 60 * 60 * 24;
+    return 60;
+  }, []);
+
+  // Упрощенная логика для показа будущих временных меток
+  const getNextKeyTimeStep = useCallback((nowSec: number, tf: string): number => {
+    const tfSeconds = timeframeToSeconds(tf);
+    
+    // Просто добавляем несколько интервалов таймфрейма вперед
+    const intervalsAhead = {
+      '1m': 5,   // 5 минут вперед
+      '5m': 6,   // 30 минут вперед (6 * 5m)
+      '15m': 4,  // 1 час вперед (4 * 15m)  
+      '1h': 2,   // 2 часа вперед
+      '4h': 6,   // 24 часа вперед (6 * 4h)
+      '1d': 3    // 3 дня вперед
+    }[tf] ?? 2;
+    
+    // Округляем текущее время к ближайшему интервалу и добавляем интервалы вперед
+    const roundedNow = Math.floor(nowSec / tfSeconds) * tfSeconds;
+    return roundedNow + (intervalsAhead * tfSeconds);
+  }, [timeframeToSeconds]);
+
+  // Оптимальное количество видимых баров по умолчанию (по примеру Binance)
+  const getDefaultVisibleBars = useCallback((tf: string): number => {
+    switch (tf) {
+      case '1m': return 60;    // 1 час данных
+      case '5m': return 72;    // 6 часов данных  
+      case '15m': return 96;   // 24 часа данных
+      case '1h': return 168;   // 7 дней данных
+      case '4h': return 126;   // 21 день данных
+      case '1d': return 90;    // 3 месяца данных
+      default: return 100;
+    }
+  }, []);
+
+  // Буферы для показа будущих временных меток
+  const rightBufferByTF = useMemo<Record<string, number>>(() => ({
+    '1m': 5 * 60,     // 5 минут буфер
+    '5m': 15 * 60,    // 15 минут буфер  
+    '15m': 30 * 60,   // 30 минут буфер
+    '1h': 2 * 60 * 60,     // 2 часа буфер
+    '4h': 8 * 60 * 60,     // 8 часов буфер
+    '1d': 2 * 24 * 60 * 60,  // 2 дня буфер
+  }), []);
+
+  // Упрощенный расчет расстояния между барами по примеру Binance
+  const computeBarSpacing = useCallback((containerWidth: number, tf: string): number => {
+    // Базовые значения расстояния для разных таймфреймов
+    const baseSpacing: Record<string, number> = {
+      '1m': 8,   // Компактное отображение для коротких интервалов
+      '5m': 10,  
+      '15m': 12,
+      '1h': 14,  
+      '4h': 16,  
+      '1d': 18   // Более широкое расстояние для дневных баров
+    };
+    
+    const base = baseSpacing[tf] || 12;
+    
+    // Адаптируем к ширине контейнера
+    const scaleFactor = Math.max(0.8, Math.min(1.5, containerWidth / 400));
+    
+    return Math.round(base * scaleFactor);
+  }, []);
+
+  const applyVisibleRangeToLastBars = useCallback((): void => {
+    if (!priceChartRef.current) return;
+    const total = candles.length;
+    if (total < 2) return;
+    try {
+      const bars = getDefaultVisibleBars(timeframe);
+      const tfSec = timeframeToSeconds(timeframe);
+      const nowSec = Math.floor(Date.now() / 1000);
+
+      // Получаем следующую ключевую временную метку + буфер для показа будущих меток
+      const nextKeyTime = getNextKeyTimeStep(nowSec, timeframe);
+      const buffer = rightBufferByTF[timeframe] || 60;
+      const toSec = nextKeyTime + buffer;
+      
+      // Рассчитываем начальное время для показа нужного количества баров
+      const fromSec = toSec - bars * tfSec;
+      
+      priceChartRef.current.timeScale().setVisibleRange({ 
+        from: fromSec as unknown as Time, 
+        to: toSec as unknown as Time 
+      });
+    } catch {
+      // Ignore range setting errors
+    }
+  }, [candles.length, timeframe, getDefaultVisibleBars, timeframeToSeconds, getNextKeyTimeStep, rightBufferByTF]);
+
+  const normalizeHistory = useCallback((arr: Candle[], tfSec: number): Candle[] => {
+    if (!Array.isArray(arr) || arr.length === 0) return [];
+    const byTime = new Map<number, Candle>();
+    for (const c of arr) {
+      const t = Math.floor((c.time as number) / tfSec) * tfSec;
+      byTime.set(t, { ...c, time: t as Time });
+    }
+    const times = Array.from(byTime.keys()).sort((a, b) => a - b);
+    if (times.length === 0) return [];
+    const out: Candle[] = [];
+    let prev: Candle | null = null;
+    for (let t = times[0]; t <= times[times.length - 1]; t += tfSec) {
+      const hit = byTime.get(t);
+      if (hit) {
+        const c = { ...hit, time: t as Time };
+        out.push(c);
+        prev = c;
+      } else if (prev) {
+        out.push({ time: t as Time, open: prev.close, high: prev.close, low: prev.close, close: prev.close });
+      }
+    }
+    return out;
+  }, []);
+
+  // Expose the captureImage method
+  useImperativeHandle(ref, () => ({
+    captureImage: async () => {
+      try {
+        if (!containerRef.current || !pricePaneRef.current) {
+          throw new Error('Chart containers not ready');
+        }
+
+        const dpr = window.devicePixelRatio || 1;
+        const rect = pricePaneRef.current.getBoundingClientRect();
+        
+        // Try to get chart screenshot from lightweight-charts first
+        let chartCanvas: HTMLCanvasElement | null = null;
+        
+        if (priceChartRef.current && typeof (priceChartRef.current as any).takeScreenshot === 'function') {
+          // Use native screenshot if available
+          try {
+            chartCanvas = await (priceChartRef.current as any).takeScreenshot();
+          } catch (error: unknown) {
+            console.warn('Native chart screenshot failed:', error);
+          }
+        }
+
+        // Fallback to html2canvas
+        chartCanvas ??= await html2canvas(pricePaneRef.current, {
+          scale: dpr,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          width: rect.width,
+          height: rect.height,
+        });
+
+        // Create an offscreen canvas for composition
+        const offscreenCanvas = document.createElement('canvas');
+        const ctx = offscreenCanvas.getContext('2d');
+        if (!ctx) throw new Error('Failed to get canvas context');
+
+        offscreenCanvas.width = rect.width * dpr;
+        offscreenCanvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+
+        // Draw the chart
+        ctx.drawImage(chartCanvas, 0, 0, rect.width, rect.height);
+
+        // Draw the drawings overlay if available
+        const drawingCanvas = drawingCanvasRef.current?.getCanvas();
+        if (drawingCanvas) {
+          ctx.drawImage(drawingCanvas, 0, 0, rect.width, rect.height);
+        }
+
+        // Convert to PNG blob
+        return await new Promise<{ blob: Blob; url: string; file: File }>((resolve, reject) => {
+          offscreenCanvas.toBlob((blob) => {
+            if (!blob) {
+              reject(new Error('Failed to create blob'));
+              return;
+            }
+
+            const url = URL.createObjectURL(blob);
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            const filename = `cryptocraze-${symbol}-${timeframe}-${timestamp}.png`;
+            const file = new File([blob], filename, { type: 'image/png' });
+
+            resolve({ blob, url, file });
+          }, 'image/png', 0.92);
+        });
+      } catch (error: unknown) {
+        console.error('Failed to capture chart image:', error);
+        return null;
+      }
+    }
+  }), [symbol, timeframe]);
+
+  // Initial charts creation (price + RSI panes stacked vertically)
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const totalWidth = containerRef.current.clientWidth || 360;
+    const totalHeight = containerRef.current.clientHeight || 360;
+    const rsiEnabled = indicators.rsi;
+    const priceHeight = rsiEnabled ? Math.max(160, Math.floor(totalHeight * 0.7)) : totalHeight;
+    const rsiHeight = rsiEnabled ? Math.max(80, totalHeight - priceHeight) : 0;
+
+    if (pricePaneRef.current) {
+      pricePaneRef.current.style.height = `${priceHeight.toString()}px`;
+      pricePaneRef.current.style.width = '100%';
+      // Enable touch gestures handling by the chart (pinch/drag) on mobile
+      try { (pricePaneRef.current.style as CSSStyleDeclaration & { touchAction?: string }).touchAction = 'none'; } catch {
+        // Ignore touch action assignment errors
+      }
+    }
+    if (rsiPaneRef.current) {
+      rsiPaneRef.current.style.height = rsiEnabled ? `${rsiHeight.toString()}px` : '0px';
+      rsiPaneRef.current.style.width = '100%';
+      rsiPaneRef.current.style.display = rsiEnabled ? 'block' : 'none';
+      try { (rsiPaneRef.current.style as CSSStyleDeclaration & { touchAction?: string }).touchAction = 'none'; } catch {
+        // Ignore touch action assignment errors
+      }
+    }
+
+    if (!pricePaneRef.current) return;
+    const priceChart = createChart(pricePaneRef.current, {
+      width: totalWidth,
+      height: priceHeight,
+      layout: { background: { color: '#FFFFFF' }, textColor: '#222' },
+      grid: { vertLines: { color: '#F1F5F9' }, horzLines: { color: '#F1F5F9' } },
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false, // Отключаем секунды для всех таймфреймов
+        tickMarkFormatter: (t: unknown) => formatTick(t as Time, timeframe),
+        borderVisible: false,
+                        rightOffset: 12, // Достаточно места для будущих временных меток
+        barSpacing: computeBarSpacing(totalWidth, timeframe),
+        rightBarStaysOnScroll: true, // Последний бар остается видимым при прокрутке
+      },
+      localization: {
+        locale: 'ru-RU',
+        timeFormatter: (t: unknown) => formatTick(t as Time, timeframe),
+        priceFormatter: (price: number) => {
+          // Форматируем цену в crosshair с правильным количеством знаков
+          if (price >= 1000) {
+            return price.toFixed(2);
+          } else if (price >= 1) {
+            return price.toFixed(4);
+          } else {
+            return price.toFixed(6);
+          }
+        },
+      },
+      rightPriceScale: { borderVisible: false },
+      leftPriceScale: { visible: false },
+      crosshair: {
+        mode: 0, // Полностью отключен
+      },
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: false,
+      },
+      handleScale: {
+        mouseWheel: true,
+        pinch: true,
+        axisPressedMouseMove: true,
+        // Показываем crosshair при touch events
+        axisDoubleClickReset: false,
+      },
+      kineticScroll: {
+        touch: true,
+        mouse: false,
+      },
+    });
+    priceChartRef.current = priceChart;
+    // barSpacing уже установлен в начальной конфигурации timeScale
+
+    // Crosshair отключен
+
+    priceChart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+      if (programmaticSetRef.current) { programmaticSetRef.current = false; return; }
+      userAdjustedRef.current = true;
+    });
+
+    // RSI chart below
+    if (!rsiPaneRef.current) return;
+    const rsiChart = createChart(rsiPaneRef.current, {
+      width: totalWidth,
+      height: rsiEnabled ? rsiHeight : 0,
+      layout: { background: { color: '#FFFFFF' }, textColor: '#222' },
+      grid: { vertLines: { color: '#F1F5F9' }, horzLines: { color: '#F1F5F9' } },
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false, // Отключаем секунды для всех таймфреймов
+        tickMarkFormatter: (t: unknown) => formatTick(t as Time, timeframe),
+        borderVisible: false,
+                        rightOffset: 12, // Достаточно места для будущих временных меток
+        barSpacing: computeBarSpacing(totalWidth, timeframe),
+        rightBarStaysOnScroll: true, // Последний бар остается видимым при прокрутке
+      },
+      localization: {
+        locale: 'ru-RU',
+        timeFormatter: (t: unknown) => formatTick(t as Time, timeframe),
+        priceFormatter: (price: number) => {
+          // Форматируем цену в crosshair с правильным количеством знаков
+          if (price >= 1000) {
+            return price.toFixed(2);
+          } else if (price >= 1) {
+            return price.toFixed(4);
+          } else {
+            return price.toFixed(6);
+          }
+        },
+      },
+      rightPriceScale: { borderVisible: false },
+      leftPriceScale: { visible: false },
+      crosshair: {
+        mode: 0, // Полностью отключен
+      },
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: false,
+      },
+      handleScale: {
+        mouseWheel: true,
+        pinch: true,
+        axisPressedMouseMove: true,
+        // Показываем crosshair при touch events
+        axisDoubleClickReset: false,
+      },
+      kineticScroll: {
+        touch: true,
+        mouse: false,
+      },
+    });
+    rsiChartRef.current = rsiChart;
+
+    // Simple time synchronization
+    let syncing = false;
+    const syncFromPrice = () => {
+      if (!priceChartRef.current || !rsiChartRef.current) return;
+      if (syncing) return; syncing = true;
+      const range = priceChartRef.current.timeScale().getVisibleLogicalRange();
+      if (range) { try { rsiChartRef.current.timeScale().setVisibleLogicalRange(range); } catch {
+        // Ignore range setting errors
+      } }
+      syncing = false;
+    };
+    const syncFromRSI = () => {
+      if (!priceChartRef.current || !rsiChartRef.current) return;
+      if (syncing) return; syncing = true;
+      const range = rsiChartRef.current.timeScale().getVisibleLogicalRange();
+      if (range) { try { priceChartRef.current.timeScale().setVisibleLogicalRange(range); } catch {
+        // Ignore range setting errors
+      } }
+      syncing = false;
+    };
+    priceChartRef.current.timeScale().subscribeVisibleLogicalRangeChange(syncFromPrice);
+    rsiChartRef.current.timeScale().subscribeVisibleLogicalRangeChange(syncFromRSI);
+
+    const onResize = () => {
+      if (!containerRef.current || !priceChartRef.current || !rsiChartRef.current) return;
+      const w = containerRef.current.clientWidth || totalWidth;
+      const h = containerRef.current.clientHeight || totalHeight;
+      const rsiOn = indicators.rsi;
+      const ph = rsiOn ? Math.max(160, Math.floor(h * 0.7)) : h;
+      const rh = rsiOn ? Math.max(80, h - ph) : 0;
+      if (pricePaneRef.current) pricePaneRef.current.style.height = `${ph.toString()}px`;
+      if (rsiPaneRef.current) {
+        rsiPaneRef.current.style.height = rsiOn ? `${rh.toString()}px` : '0px';
+        rsiPaneRef.current.style.display = rsiOn ? 'block' : 'none';
+      }
+      priceChartRef.current.resize(w, ph);
+      rsiChartRef.current.resize(w, rsiOn ? rh : 0);
+    };
+    window.addEventListener('resize', onResize);
+
+    // Observe container size changes (flex layout mount may be 0 at first)
+    const ro = new ResizeObserver(() => { onResize(); });
+    try { ro.observe(containerRef.current); } catch {
+      // Ignore ResizeObserver errors
+    }
+
+    // Kick a resize in next frame
+    requestAnimationFrame(onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      try { ro.disconnect(); } catch {
+        // Ignore disconnect errors
+      }
+      try { priceChart.remove(); } catch {
+        // Ignore chart removal errors
+      }
+      try { rsiChart.remove(); } catch {
+        // Ignore chart removal errors
+      }
+    };
+  }, [indicators.rsi, timeframe, formatTick, computeBarSpacing]);
+
+  // Update visible seconds and tick formatter on timeframe change
+  useEffect(() => {
+    if (!priceChartRef.current || !rsiChartRef.current) return;
+    userAdjustedRef.current = false;
+    priceChartRef.current.applyOptions({
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: timeframe === '1m',
+        tickMarkFormatter: (t: unknown) => formatTick(t as Time, timeframe),
+      },
+      localization: {
+        locale: 'ru-RU',
+        timeFormatter: (t: unknown) => formatTick(t as Time, timeframe),
+        priceFormatter: (price: number) => {
+          // Форматируем цену в crosshair с правильным количеством знаков
+          if (price >= 1000) {
+            return price.toFixed(2);
+          } else if (price >= 1) {
+            return price.toFixed(4);
+          } else {
+            return price.toFixed(6);
+          }
+        },
+      },
+    });
+    // barSpacing уже установлен в начальной конфигурации timeScale для обоих графиков
+    rsiChartRef.current.applyOptions({
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false, // Отключаем секунды для всех таймфреймов
+        tickMarkFormatter: (t: unknown) => formatTick(t as Time, timeframe),
+        borderVisible: false,
+        rightOffset: 5,
+        rightBarStaysOnScroll: true,
+      },
+      localization: {
+        locale: 'ru-RU',
+        timeFormatter: (t: unknown) => formatTick(t as Time, timeframe),
+        priceFormatter: (price: number) => {
+          // Форматируем цену в crosshair с правильным количеством знаков
+          if (price >= 1000) {
+            return price.toFixed(2);
+          } else if (price >= 1) {
+            return price.toFixed(4);
+          } else {
+            return price.toFixed(6);
+          }
+        },
+      },
+    });
+    applyVisibleRangeToLastBars();
+    rsiChartRef.current.timeScale().scrollToRealTime();
+  }, [timeframe, formatTick, applyVisibleRangeToLastBars]);
+
+  // Load historical candles on symbol/timeframe change
+  useEffect(() => {
+    const fetchCandles = async () => {
+      const url = `${API_BASE_URL}/binance/candlestick/${symbol}?interval=${timeframe}&limit=100`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const data = await res.json() as { openTime: number; open: string; high: string; low: string; close: string }[];
+      const raw: Candle[] = data.map((c) => ({
+        time: Math.floor(Number(c.openTime) / 1000) as Time,
+        open: Number(c.open),
+        high: Number(c.high),
+        low: Number(c.low),
+        close: Number(c.close),
+      }));
+      const tfSec = timeframeToSeconds(timeframe);
+      const mapped = normalizeHistory(raw, tfSec);
+      setCandles(mapped);
+      if (mapped.length) {
+        const last = mapped[mapped.length - 1];
+        setLatestOHLC({ open: last.open, high: last.high, low: last.low, close: last.close });
+      }
+    };
+
+    void fetchCandles().catch(() => { /* ignore for clean UI */ });
+  }, [symbol, timeframe, normalizeHistory, timeframeToSeconds]);
+
+  // (Re)create series when candles or timeframe or chartType change
+  useEffect(() => {
+    if (!priceChartRef.current || !rsiChartRef.current) return;
+    if (seriesRef.current) {
+      try { priceChartRef.current.removeSeries(seriesRef.current); } catch { /* noop */ }
+      seriesRef.current = null;
+    }
+    if (emaSeriesRef.current) { try { priceChartRef.current.removeSeries(emaSeriesRef.current); } catch {
+      // Ignore series removal errors
+    } emaSeriesRef.current = null; }
+    if (smaSeriesRef.current) { try { priceChartRef.current.removeSeries(smaSeriesRef.current); } catch {
+      // Ignore series removal errors
+    } smaSeriesRef.current = null; }
+    if (rsiSeriesRef.current) { try { rsiChartRef.current.removeSeries(rsiSeriesRef.current); } catch {
+      // Ignore series removal errors
+    } rsiSeriesRef.current = null; }
+    let created:
+      | ISeriesApi<'Line'>
+      | ISeriesApi<'Candlestick'>
+      | ISeriesApi<'Bar'>;
+
+    if (chartType === 'candlestick') {
+      created = priceChartRef.current.addSeries(CandlestickSeries, {
+        upColor: '#16B768',
+        downColor: '#FF4D4F',
+        borderVisible: false,
+        wickUpColor: '#16B768',
+        wickDownColor: '#FF4D4F',
+      });
+      if (candles.length) {
+        // candlestick expects {time, open, high, low, close}
+        (created).setData(candles.map(c => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close })));
+      }
+    } else if (chartType === 'bar') {
+      created = priceChartRef.current.addSeries(BarSeries, {
+        upColor: '#16B768',
+        downColor: '#FF4D4F',
+        thinBars: false,
+      });
+      if (candles.length) {
+        // bar expects {time, open, high, low, close}
+        (created).setData(candles.map(c => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close })));
+      }
+    } else {
+      created = priceChartRef.current.addSeries(LineSeries, { color: '#0C54EA', lineWidth: 2 });
+    if (candles.length) {
+        (created).setData(candles.map(c => ({ time: c.time, value: c.close })));
+      }
+    }
+    seriesRef.current = created;
+
+    // overlays
+    if (indicators.sma) {
+      const d = calculateSMA(candles, 14);
+      if (d.length) {
+        smaSeriesRef.current = priceChartRef.current.addSeries(LineSeries, { color: '#0C54EA', lineWidth: 1 });
+        smaSeriesRef.current.setData(d);
+      }
+    }
+    if (indicators.ema) {
+      const d = calculateEMA(candles, 14);
+      if (d.length) {
+        emaSeriesRef.current = priceChartRef.current.addSeries(LineSeries, { color: '#AB1717', lineWidth: 1 });
+        emaSeriesRef.current.setData(d);
+      }
+    }
+    if (indicators.rsi) {
+      const d = calculateRSI(candles, 14);
+      if (d.length) {
+        // RSI on separate bottom chart
+        rsiSeriesRef.current = rsiChartRef.current.addSeries(LineSeries, { color: '#8F1CA4', lineWidth: 1 });
+        rsiSeriesRef.current.setData(d);
+      }
+    }
+  }, [candles, timeframe, chartType, indicators.sma, indicators.ema, indicators.rsi]);
+
+  // Обновить видимый диапазон, когда объём данных или таймфрейм меняется
+  useEffect(() => {
+    if (!userAdjustedRef.current) {
+      applyVisibleRangeToLastBars();
+    }
+  }, [candles.length, timeframe, applyVisibleRangeToLastBars]);
+
+  // Live price updates via socket
+  useEffect(() => {
+    const data = prices[symbol.toUpperCase()];
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!data) return;
+    const price = data.price;
+    if (!candles.length || !Number.isFinite(price)) return;
+    setLatestPrice(price);
+    setCandles(prev => {
+      if (!prev.length) return prev;
+      const p = Number(price);
+      const tfSec = timeframeToSeconds(timeframe);
+      const nowSec = Math.floor(Date.now() / 1000);
+      const bucket = Math.floor(nowSec / tfSec) * tfSec;
+      const last = prev[prev.length - 1];
+      const lastTime = (last.time as number);
+      if (typeof lastTime !== 'number') return prev;
+
+      if (bucket <= lastTime) {
+        const next = [
+          ...prev.slice(0, -1),
+          {
+            ...last,
+            close: p,
+            high: Math.max(last.high, p),
+            low: Math.min(last.low, p),
+          },
+        ];
+        const l = next[next.length - 1];
+        setLatestOHLC({ open: l.open, high: l.high, low: l.low, close: l.close });
+        return next;
+      }
+
+      // fill gaps with flat candles to align to exact buckets
+      const filled: typeof prev = [...prev];
+      let nextTime = lastTime + tfSec;
+      while (nextTime < bucket) {
+        const prevClose = filled[filled.length - 1].close;
+        filled.push({
+          time: nextTime as Time,
+          open: prevClose,
+          high: prevClose,
+          low: prevClose,
+          close: prevClose,
+        });
+        nextTime += tfSec;
+      }
+      filled.push({
+        time: bucket as Time,
+        open: filled[filled.length - 1].close,
+        high: p,
+        low: p,
+        close: p,
+      });
+      const l = filled[filled.length - 1];
+      setLatestOHLC({ open: l.open, high: l.high, low: l.low, close: l.close });
+      return filled;
+    });
+  }, [prices, symbol, timeframe, candles.length, timeframeToSeconds]);
+
+  // Propagate updates to parent in a separate effect to avoid setState during child render warnings
+  useEffect(() => {
+    if (typeof onPriceUpdate === 'function' && latestPrice !== null && Number.isFinite(latestPrice)) {
+      onPriceUpdate(latestPrice);
+    }
+  }, [latestPrice, onPriceUpdate]);
+
+  useEffect(() => {
+    if (typeof onOHLCUpdate === 'function' && latestOHLC) {
+      onOHLCUpdate(latestOHLC);
+    }
+  }, [latestOHLC, onOHLCUpdate]);
+
+  // Отслеживание размера контейнера
+  useEffect(() => {
+    const updateSize = () => {
+      if (pricePaneRef.current) {
+        setContainerSize({
+          width: pricePaneRef.current.clientWidth,
+          height: pricePaneRef.current.clientHeight
+        });
+        // Принудительный ресайз графиков при изменении внутренних паддингов контейнера
+        try {
+          const w = pricePaneRef.current.clientWidth;
+          const h = pricePaneRef.current.clientHeight;
+          if (priceChartRef.current) priceChartRef.current.resize(w, h);
+        } catch {
+          // Ignore chart resize errors
+        }
+      }
+    };
+
+    updateSize();
+    const resizeObserver = new ResizeObserver(updateSize);
+    if (pricePaneRef.current) {
+      resizeObserver.observe(pricePaneRef.current);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  return (
+    <div 
+      ref={containerRef} 
+      className="w-full h-full flex flex-col relative" 
+      style={{ paddingLeft: sidePaddingPx, paddingRight: sidePaddingPx }}
+    >
+      <div ref={pricePaneRef} className={`w-full`} />
+      <div ref={rsiPaneRef} className="w-full border-t border-gray-200" />
+      
+      {/* Продвинутый Canvas для рисования */}
+      <DrawingCanvas
+        ref={drawingCanvasRef}
+        chart={priceChartRef.current}
+        series={seriesRef.current}
+        activeTool={activeTool}
+        drawingMode={drawingMode}
+        drawingObjects={drawingObjects}
+        onAddDrawingObject={onAddDrawingObject || (() => {})}
+        onRemoveDrawingObject={onRemoveDrawingObject || (() => {})}
+        containerWidth={containerSize.width}
+        containerHeight={containerSize.height}
+        selectedObjectId={selectedDrawingId}
+        onSelectObject={onSelectDrawingObject}
+        onTextPlacementRequest={onTextPlacementRequest}
+      />
+      
+      {/* Индикатор и управление активным инструментом */}
+      {activeTool !== 'none' && (
+        <div className="absolute top-2 left-2 bg-gray-50 border border-gray-200 text-black px-3 py-2 rounded-lg text-xs z-30 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="font-medium">
+                {activeTool === 'horizontalLine' && t('markers.tools.horizontalLine')}
+                {activeTool === 'verticalLine' && t('markers.tools.verticalLine')}
+                {activeTool === 'line' && t('markers.tools.line')}
+                {activeTool === 'arrow' && t('markers.tools.arrow')}
+                {activeTool === 'area' && t('markers.tools.area')}
+                {activeTool === 'text' && t('markers.tools.text')}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  // Вызываем функцию из родительского компонента для сброса инструмента
+                  const event = new CustomEvent('resetDrawingTool');
+                  window.dispatchEvent(event);
+                }}
+                className="ml-2 text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded transition-colors pointer-events-auto"
+                title={t('markers.actions.remove')}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
+
+ProChart.displayName = 'ProChart';
+
+export default ProChart;
+
+// helpers
+
+function calculateSMA(candles: Candle[], period = 14): { time: Time; value: number }[] {
+  const result: { time: Time; value: number }[] = [];
+  for (let i = period - 1; i < candles.length; i++) {
+    let sum = 0;
+    for (let j = i - period + 1; j <= i; j++) sum += candles[j].close;
+    result.push({ time: candles[i].time, value: sum / period });
+  }
+  return result;
+}
+
+function calculateEMA(candles: Candle[], period = 14): { time: Time; value: number }[] {
+  if (candles.length < period) return [];
+  const alpha = 2 / (period + 1);
+  const out: { time: Time; value: number }[] = [];
+  let prev = 0;
+  for (let i = 0; i < period; i++) prev += candles[i].close;
+  prev = prev / period;
+  out.push({ time: candles[period - 1].time, value: prev });
+  for (let i = period; i < candles.length; i++) {
+    const next = alpha * candles[i].close + (1 - alpha) * prev;
+    out.push({ time: candles[i].time, value: next });
+    prev = next;
+  }
+  return out;
+}
+
+function calculateRSI(candles: Candle[], period = 14): { time: Time; value: number }[] {
+  if (candles.length <= period) return [];
+  const gains: number[] = [];
+  const losses: number[] = [];
+  for (let i = 1; i < candles.length; i++) {
+    const diff = candles[i].close - candles[i - 1].close;
+    gains.push(Math.max(0, diff));
+    losses.push(Math.max(0, -diff));
+  }
+  let avgGain = 0;
+  let avgLoss = 0;
+  for (let i = 0; i < period; i++) { avgGain += gains[i]; avgLoss += losses[i]; }
+  avgGain /= period; avgLoss /= period;
+  const result: { time: Time; value: number }[] = [];
+  const first = avgLoss === 0 ? 100 : 100 - 100 / (1 + (avgGain / avgLoss));
+  result.push({ time: candles[period].time, value: first });
+  for (let i = period + 1; i < candles.length; i++) {
+    avgGain = (avgGain * (period - 1) + Math.max(0, candles[i].close - candles[i - 1].close)) / period;
+    avgLoss = (avgLoss * (period - 1) + Math.max(0, candles[i - 1].close - candles[i].close)) / period;
+    const rsi = avgLoss === 0 ? 100 : 100 - 100 / (1 + (avgGain / avgLoss));
+    result.push({ time: candles[i].time, value: rsi });
+  }
+  return result;
+}

@@ -1,31 +1,50 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { useUser } from '../../hooks/useUser';
 import { Grid } from '@/components/ui/grid';
+import { formatMoneyShort } from '../../lib/numberUtils';
 import BlockButton from '../../components/BlockButton';
 import BottomNavigation from '../../components/ui/BottomNavigation';
 import TopMenu from '../../components/ui/TopMenu';
+import { useTranslation } from '@/lib/i18n';
+import { useAppDispatch } from '@/app/hooks';
+import { fetchUserStats } from '@/app/userSlice';
+import { openCoinExchange } from '@/app/coinExchangeSlice';
 
-const formatNumberToK = (value: string | number) => {
-  const num = typeof value === 'string' ? parseFloat(value.replace(/[^\d.]/g, '')) : value;
-  if (isNaN(num)) return value;
-  if (num >= 1_000_000) return (num / 1_000_000).toFixed(2).replace(/\.00$/, '') + 'M';
-  if (num >= 1_000) return (num / 1_000).toFixed(2).replace(/\.00$/, '') + 'K';
-  return num.toString();
-};
+
+
+// формат $1K вместо $1000
+const fmt = (v: string | number) => formatMoneyShort(v);
 
 export function Home() {
   const { user, isAuthenticated, isLoading } = useUser();
   const navigate = useNavigate();
+  const { t, isLoading: isI18nLoading } = useTranslation();
+  const dispatch = useAppDispatch();
 
-  console.log('Home component - user:', user, 'isLoading:', isLoading, 'isAuthenticated:', isAuthenticated);
+  // Грузим расширенную статистику (rewardsCount и пр.) для корректного отображения «уровней/награды»
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      void dispatch(fetchUserStats());
+    }
+  }, [dispatch, isAuthenticated, user]);
 
-  // Показываем загрузку пока проверяем авторизацию
-  if (isLoading) {
+  // Показываем загрузку пока проверяем авторизацию или пока не загрузились переводы
+  if (isLoading || isI18nLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-xl">Загрузка...</div>
-      </div>
+      <Grid className='p-2'>
+        <div className='flex flex-col gap-4 pb-[calc(70px+env(safe-area-inset-bottom))]'>
+          <div className='h-10 bg-white rounded-xl border border-gray-200 animate-pulse' />
+          <div className='h-28 bg-white rounded-xl border border-gray-200 animate-pulse' />
+          <div className='grid grid-cols-3 gap-4'>
+            <div className='h-16 bg-white rounded-xl border border-gray-200 animate-pulse' />
+            <div className='h-16 bg-white rounded-xl border border-gray-200 animate-pulse' />
+            <div className='h-16 bg-white rounded-xl border border-gray-200 animate-pulse' />
+          </div>
+          <div className='h-12 bg-white rounded-full border border-gray-200 animate-pulse' />
+        </div>
+      </Grid>
     );
   }
 
@@ -33,38 +52,41 @@ export function Home() {
   if (!isAuthenticated || !user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-xl">Требуется авторизация</div>
+        <div className="text-xl">{t('auth.loginRequired')}</div>
       </div>
     );
   }
 
   return (
     <Grid className='p-2'>
-      <div className='flex flex-col gap-4 pb-[70px]'>
+
+      <div className='flex flex-col gap-4 pb-[calc(70px+env(safe-area-inset-bottom))]'>
         <TopMenu />
 
         {/* баланс */}
-        <div className='flex flex-col w-full h-full p-4 gap-4 items-start justify-between rounded-xl bg-[#0C54EA] relative'>
+        <div className='flex flex-col w-full h-full p-4 gap-4 items-start justify-between rounded-xl bg-[#0C54EA] relative overflow-hidden min-h-[120px]'>
 
           <div className='flex flex-col gap-0 items-start justify-center'> {/* сумма */}
-            <p className='text-xs text-white'>Свободно</p>
-            <p className='text-4xl font-semibold text-white'>${formatNumberToK(user.balance)}</p>
+            <p className='text-xs text-white'>{t('home.free')}</p>
+            <p className='text-4xl font-semibold text-white'>{fmt(user.balance)}</p>
           </div>
 
-          <div className='flex flex-row gap-2 min-w-[198px]'>
-            <Button variant='outline' className='w-full h-9 border-1 border-gray-300 bg-white text-black'>
-              <div className='flex flex-row gap-2 items-center w-full justify-center'>
-                <img src="/money.svg" alt="money" className='w-6 h-6' />
-                <p className='text-[16px] font-semibold text-black'>{user.coins}</p>
-              </div>
-            </Button>
+          {/* Блок с монетами и уровнями/наградами */}
+          <div className='flex items-center gap-3'>
+            {/* Монеты */}
+            <button 
+              onClick={() => dispatch(openCoinExchange())}
+              className='flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-sm hover:bg-gray-50 transition-colors cursor-pointer'
+            >
+              <img src="/money.svg" alt="coins" className='w-6 h-6' />
+              <span className='text-black font-semibold text-base'>{user.coins || 0}</span>
+            </button>
 
-            <Button variant='outline' className='w-full h-9 border-1 border-gray-300 bg-white text-black'>
-              <div className='flex flex-row gap-2 items-center w-full justify-center'>
-                <img src="/awards.svg" alt="awards" className='w-6 h-6' />
-                <p className='text-[16px] font-semibold text-black'>{user.ratingScore}</p>
-              </div>
-            </Button> 
+            {/* Награды/уровни */}
+            <div className='flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-sm'>
+              <img src="/awards.svg" alt="awards" className='w-6 h-6' />
+              <span className='text-black font-semibold text-base'>{user.rewardsCount || 0}</span>
+            </div>
           </div>
 
           <div className='absolute right-4 top-4'> {/* сейф */}
@@ -75,23 +97,38 @@ export function Home() {
 
         {/* меню действий */}
 
-          <div className='w-full grid grid-cols-3 grid-rows-2 gap-4'> {/* сетка меню */}
-            <BlockButton title="Дивиденды" icon="/more-money.svg" size='w-[60px] h-[31px]' />
-            <BlockButton title="Испытания" icon="/phone.svg" size='w-[23px] h-[43px]' />
-            <BlockButton title="Топ инвесторов" icon="/pickaxe.svg" size='w-[42px] h-[38px]' />
-            <BlockButton title="Награды" icon="/awards-arm.svg" size='w-[42px] h-[35px]' />
-            <BlockButton title="Premium" icon="/premium-lock.svg" size='w-[32px] h-[42px]' />
-            <BlockButton title="Сделки" icon="/trade.svg" size='w-[42px] h-[42px]' />
+          <div className='w-full grid grid-cols-3 mt-3 mb-3 gap-4'> {/* сетка меню - одна линия */}
+            {/* <BlockButton title="Дивиденды" icon="/more-money.svg" size='w-[60px] h-[31px]' /> */}
+            <BlockButton title={t('home.trials')} icon="/phone.svg" size='w-[23px] h-[43px]' onClick={() => void navigate('/trials')}/>
+            <BlockButton 
+              title={t('settings.premium.pro')}
+              icon="/premium-lock.svg"
+              size='w-[32px] h-[42px]' 
+              onClick={() => void navigate('/home/premium')}
+            />
+            <BlockButton 
+              title={t('dashboard.openTrades')} 
+              icon="/trade.svg" 
+              size='w-[42px] h-[42px]'
+              onClick={() => void navigate('/deals')}
+            />
+            <BlockButton title={t('nav.topInvestors')} icon="/pickaxe.svg" size='w-[42px] h-[38px]' onClick={() => void navigate('/rating')}/>
+            <BlockButton 
+              title={t('profile.rewards') || 'Награды'} 
+              icon="/awards-arm.svg" 
+              size='w-[42px] h-[35px]'
+              onClick={() => void navigate('/rewards')}
+            />
           </div>
 
         {/* кнопка начать торговлю */}
 
-        <div className='flex py-[20px] items-center justify-center'
+        <div className='flex items-center justify-center'
           onClick={() => {
             void navigate('/trade');
           }}
         >
-          <Button className='w-full h-[48px] text-[16px] font-semibold text-white'>Начать торговлю</Button>
+          <Button className='w-full h-[48px] text-[16px] font-semibold text-white'>{t('landing.getStarted')}</Button>
         </div>
 
       </div>

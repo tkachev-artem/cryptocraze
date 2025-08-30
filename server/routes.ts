@@ -5,7 +5,7 @@ import { createAdapter } from '@socket.io/redis-adapter';
 import { createClient } from 'redis';
 import { WebSocketServer, WebSocket } from 'ws';
 import { storage } from "./storage";
-import { setupSimpleOAuth, isAuthenticated, isAdmin } from "./simpleOAuth";
+import { setupSimpleOAuth, isAuthenticated, isAdmin, isAdminWithAuth } from "./simpleOAuth";
 import { tradingEngine } from "./services/tradingEngine";
 import { unifiedPriceService } from "./services/unifiedPriceService";
 import { binanceApi } from "./services/binanceApi";
@@ -23,9 +23,10 @@ import { TaskTemplateService as DatabaseTaskTemplateService } from './services/t
 import { PrizeService } from './services/prizeService';
 import { spinWheel, getWheelPrizes } from './wheel';
 import { db } from './db';
-import { deals, users, premiumSubscriptions, rewardTiers } from '../shared/schema';
+import { deals, users, premiumSubscriptions, rewardTiers, analytics, userDailyStats, cohortAnalysis, userAcquisitionMetrics, engagementMetrics, revenueMetrics, adPerformanceMetrics } from '../shared/schema';
 import { applyAutoRewards } from './services/autoRewards';
-import { and, eq, gte, inArray, sql } from 'drizzle-orm';
+import { biAnalyticsService } from './services/biAnalyticsService';
+import { and, eq, gte, lte, inArray, sql, desc, asc, count, sum, lt } from 'drizzle-orm';
 
 // Types for authenticated requests  
 type AuthenticatedRequest = Request & {
@@ -54,13 +55,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Debug endpoint for auth
+  app.get('/api/debug/auth', (req, res) => {
+    const shouldSkipAuth = process.env.STATIC_ONLY === 'true';
+    const shouldSkipAdminAuth = process.env.STATIC_ONLY === 'true' || process.env.DISABLE_ADMIN_AUTH === 'true';
+    res.json({
+      DISABLE_ADMIN_AUTH: process.env.DISABLE_ADMIN_AUTH,
+      STATIC_ONLY: process.env.STATIC_ONLY,
+      shouldSkipAuth,
+      shouldSkipAdminAuth,
+      NODE_ENV: process.env.NODE_ENV,
+      debug: {
+        staticOnlyCheck: process.env.STATIC_ONLY === 'true',
+        disableAdminAuthCheck: process.env.DISABLE_ADMIN_AUTH === 'true'
+      }
+    });
+  });
+
   // Swagger UI с защитой паролем
   app.use('/api-docs', swaggerAuth, swaggerUi.serve, swaggerUi.setup(specs, swaggerUiOptions));
   
 
   
-  // Auth middleware
-  const shouldSkipAuth = ((process.env.STATIC_ONLY || process.env.DISABLE_AUTH) || '').toLowerCase() === 'true';
+  // Auth middleware - always setup OAuth unless in static mode
+  const shouldSkipAuth = process.env.STATIC_ONLY === 'true';
   if (!shouldSkipAuth) {
     setupSimpleOAuth(app);
   }
@@ -145,7 +163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * @swagger
    * /api/rating:
    *   get:
-   *     summary: Рейтинг пользователей по PnL за период
+   *     summary: Рейтинг пользователей по PnL за период (только активные трейдеры с trades > 0)
    *     tags: [Рейтинг]
    *     parameters:
    *       - in: query
@@ -171,7 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    *         description: Количество записей
    *     responses:
    *       200:
-   *         description: Массив лидеров
+   *         description: Массив активных трейдеров (только пользователи с trades > 0)
    *         content:
    *           application/json:
    *             schema:
@@ -263,28 +281,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       const premiumSet = new Set(premiumRows.map(r => r.userId));
 
-      // Compose leaderboard: все пользователи, даже без сделок
-      const leaderboard = userRows.map(u => {
-        const agg = aggregateMap.get(u.id as string) || { pnlUsd: 0, trades: 0, wins: 0 };
-        const winRate = agg.trades > 0 ? (agg.wins / agg.trades) * 100 : 0;
-        const username = u.firstName ? `${u.firstName}${u.lastName ? ' ' + u.lastName : ''}` : (u.email ?? u.id);
-        const avatarUrl = u.profileImageUrl ?? null;
-        const isPremium = premiumSet.has(u.id as string) || Boolean(u.isPremium);
-        return {
-          userId: u.id,
-          username,
-          avatarUrl,
-          pnlUsd: Number(agg.pnlUsd || 0),
-          winRate: Number(winRate.toFixed(2)),
-          trades: Number(agg.trades || 0),
-          isPremium,
-        };
-      });
+      // Compose leaderboard: только пользователи с реальными сделками
+      const leaderboard = userRows
+        .map(u => {
+          const agg = aggregateMap.get(u.id as string) || { pnlUsd: 0, trades: 0, wins: 0 };
+          const winRate = agg.trades > 0 ? (agg.wins / agg.trades) * 100 : 0;
+          const username = u.firstName ? `${u.firstName}${u.lastName ? ' ' + u.lastName : ''}` : (u.email ?? u.id);
+          const avatarUrl = u.profileImageUrl ?? null;
+          const isPremium = premiumSet.has(u.id as string) || Boolean(u.isPremium);
+          return {
+            userId: u.id,
+            username,
+            avatarUrl,
+            pnlUsd: Number(agg.pnlUsd || 0),
+            winRate: Number(winRate.toFixed(2)),
+            trades: Number(agg.trades || 0),
+            isPremium,
+          };
+        })
+        .filter(user => user.trades > 0); // Фильтруем только пользователей с реальными сделками
 
-      // Sort: pnlUsd desc, then winRate desc, then trades desc
+      // Sort: P&L desc, then winRate desc, then trades desc
       leaderboard.sort((a, b) => {
+        // First priority: P&L (higher is better)
         if (b.pnlUsd !== a.pnlUsd) return b.pnlUsd - a.pnlUsd;
+        
+        // Second priority: Win rate (higher is better)
         if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+        
+        // Third priority: Number of trades (more is better)
         return b.trades - a.trades;
       });
 
@@ -301,6 +326,235 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Internal server error' });
     }
   });
+
+  /**
+   * @swagger
+   * /api/rating/user/{userId}:
+   *   get:
+   *     summary: Получить позицию пользователя в рейтинге
+   *     tags: [Рейтинг]
+   *     parameters:
+   *       - in: path
+   *         name: userId
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: ID пользователя
+   *       - in: query
+   *         name: period
+   *         schema:
+   *           type: string
+   *           enum: [day, week, month, all]
+   *           default: month
+   *         description: Период для рейтинга
+   *     responses:
+   *       200:
+   *         description: Позиция пользователя в рейтинге
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 userId:
+   *                   type: string
+   *                 username:
+   *                   type: string
+   *                 avatarUrl:
+   *                   type: string
+   *                 pnlUsd:
+   *                   type: number
+   *                 winRate:
+   *                   type: number
+   *                 trades:
+   *                   type: number
+   *                 rank:
+   *                   type: number
+   *                 isPremium:
+   *                   type: boolean
+   *       404:
+   *         description: Пользователь не найден
+   *       500:
+   *         description: Внутренняя ошибка сервера
+   */
+  app.get('/api/rating/user/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const period = String(req.query.period || 'month').toLowerCase();
+      const allowed = new Set(['day', 'week', 'month', 'all']);
+      
+      if (!allowed.has(period)) {
+        res.status(400).json({ error: 'Invalid period. Expected one of: day, week, month, all' });
+        return;
+      }
+
+      // Check if user exists
+      const user = await db.select().from(users).where(eq(users.id, userId));
+      if (user.length === 0) {
+        res.status(404).json({ error: 'User not found' });
+        return;
+      }
+
+      // Use same logic as main rating endpoint but return full ranking
+      let startDate: Date | null = null;
+      const nowMs = Date.now();
+      if (period === 'day') startDate = new Date(nowMs - 24 * 60 * 60 * 1000);
+      else if (period === 'week') startDate = new Date(nowMs - 7 * 24 * 60 * 60 * 1000);
+      else if (period === 'month') startDate = new Date(nowMs - 30 * 24 * 60 * 60 * 1000);
+
+      const whereCond = startDate
+        ? and(eq(deals.status, 'closed'), gte(deals.closedAt, startDate))
+        : eq(deals.status, 'closed');
+
+      // Get deal aggregates
+      const aggregates = await db
+        .select({
+          userId: deals.userId,
+          pnlUsd: sql<number>`COALESCE(SUM((${deals.profit})::numeric), 0)`,
+          trades: sql<number>`COUNT(*)`,
+          wins: sql<number>`SUM(CASE WHEN ((${deals.profit})::numeric) > 0 THEN 1 ELSE 0 END)`
+        })
+        .from(deals)
+        .where(whereCond)
+        .groupBy(deals.userId);
+
+      const aggregateMap = new Map<string, { pnlUsd: number; trades: number; wins: number }>();
+      for (const a of aggregates) {
+        aggregateMap.set(a.userId as string, {
+          pnlUsd: Number(a.pnlUsd || 0),
+          trades: Number(a.trades || 0),
+          wins: Number(a.wins || 0),
+        });
+      }
+
+      // Get all users for ranking calculation
+      const userRows = await db
+        .select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          profileImageUrl: users.profileImageUrl,
+          isPremium: users.isPremium,
+        })
+        .from(users);
+
+      // Get premium status
+      const now = new Date();
+      const userIds = userRows.map(u => u.id as string);
+      const premiumRows = await db
+        .select({ userId: premiumSubscriptions.userId })
+        .from(premiumSubscriptions)
+        .where(
+          and(
+            inArray(premiumSubscriptions.userId, userIds),
+            eq(premiumSubscriptions.isActive, true),
+            gte(premiumSubscriptions.expiresAt, now)
+          )
+        );
+      const premiumSet = new Set(premiumRows.map(r => r.userId));
+
+      // Build leaderboard: только пользователи с реальными сделками
+      const leaderboard = userRows
+        .map(u => {
+          const agg = aggregateMap.get(u.id as string) || { pnlUsd: 0, trades: 0, wins: 0 };
+          const winRate = agg.trades > 0 ? (agg.wins / agg.trades) * 100 : 0;
+          const username = u.firstName ? `${u.firstName}${u.lastName ? ' ' + u.lastName : ''}` : (u.email ?? u.id);
+          const avatarUrl = u.profileImageUrl ?? null;
+          const isPremium = premiumSet.has(u.id as string) || Boolean(u.isPremium);
+          
+          return {
+            userId: u.id,
+            username,
+            avatarUrl,
+            pnlUsd: Number(agg.pnlUsd || 0),
+            winRate: Number(winRate.toFixed(2)),
+            trades: Number(agg.trades || 0),
+            isPremium,
+          };
+        })
+        .filter(user => user.trades > 0); // Фильтруем только пользователей с реальными сделками
+
+      // Sort and rank: P&L desc, then winRate desc, then trades desc
+      leaderboard.sort((a, b) => {
+        // First priority: P&L (higher is better)
+        if (b.pnlUsd !== a.pnlUsd) return b.pnlUsd - a.pnlUsd;
+        
+        // Second priority: Win rate (higher is better)
+        if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+        
+        // Third priority: Number of trades (more is better)
+        return b.trades - a.trades;
+      });
+
+      // Find user position
+      const userPosition = leaderboard.findIndex(item => item.userId === userId);
+      
+      if (userPosition === -1) {
+        res.status(404).json({ error: 'User not found in ranking (only users with trades are ranked)' });
+        return;
+      }
+
+      const userRanking = {
+        ...leaderboard[userPosition],
+        rank: userPosition + 1
+      };
+
+      res.json(userRanking);
+      
+    } catch (error) {
+      console.error('Error getting user rating position:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/rating/sync:
+   *   post:
+   *     summary: Синхронизировать рейтинг пользователей с актуальными данными сделок
+   *     tags: [Рейтинг]
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Синхронизация прошла успешно
+   *       401:
+   *         description: Не авторизован
+   *       403:
+   *         description: Недостаточно прав
+   *       500:
+   *         description: Внутренняя ошибка сервера
+   */
+  app.post('/api/rating/sync', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      // Check if user is admin (basic security)
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== 'admin') {
+        res.status(403).json({ error: 'Access denied. Admin role required.' });
+        return;
+      }
+
+      console.log('🔄 Starting rating synchronization triggered by admin:', req.user.id);
+      
+      // Import and run the sync function
+      const { syncUserStatistics } = await import('../scripts/sync-user-statistics.js');
+      await syncUserStatistics();
+      
+      res.json({ 
+        success: true, 
+        message: 'Rating synchronization completed successfully',
+        timestamp: new Date().toISOString() 
+      });
+      
+    } catch (error) {
+      console.error('Error during rating sync:', error);
+      res.status(500).json({ 
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   /**
    * @swagger
    * /api/trading/pairs:
@@ -1288,6 +1542,463 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error recording analytics event:", error);
       res.status(500).json({ message: "Failed to record analytics event" });
+    }
+  });
+
+  // Enhanced Analytics and BI endpoints
+  
+  // BI Dashboard - User Acquisition Metrics
+  app.get('/api/analytics/bi/user-acquisition', isAuthenticated, isAdmin, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        res.status(400).json({ message: 'startDate and endDate are required' });
+        return;
+      }
+
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+      
+      const { analyticsService } = await import('./services/analyticsService.js');
+      const metrics = await analyticsService.getUserAcquisitionMetrics(start, end);
+
+      res.json({
+        success: true,
+        data: { userAcquisition: metrics },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error fetching user acquisition metrics:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to fetch user acquisition metrics' 
+      });
+    }
+  });
+
+  // BI Dashboard - Engagement Metrics
+  app.get('/api/analytics/bi/engagement', isAuthenticated, isAdmin, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        res.status(400).json({ message: 'startDate and endDate are required' });
+        return;
+      }
+
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+      
+      const { analyticsService } = await import('./services/analyticsService.js');
+      const metrics = await analyticsService.getEngagementMetrics(start, end);
+
+      res.json({
+        success: true,
+        data: { engagement: metrics },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error fetching engagement metrics:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to fetch engagement metrics' 
+      });
+    }
+  });
+
+  // BI Dashboard - Retention Metrics
+  app.get('/api/analytics/bi/retention', isAuthenticated, isAdmin, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { cohortStartDate, cohortEndDate } = req.query;
+      
+      if (!cohortStartDate || !cohortEndDate) {
+        res.status(400).json({ message: 'cohortStartDate and cohortEndDate are required' });
+        return;
+      }
+
+      const start = new Date(cohortStartDate as string);
+      const end = new Date(cohortEndDate as string);
+      
+      const { analyticsService } = await import('./services/analyticsService.js');
+      const metrics = await analyticsService.getRetentionMetrics(start, end);
+
+      res.json({
+        success: true,
+        data: { retention: metrics },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error fetching retention metrics:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to fetch retention metrics' 
+      });
+    }
+  });
+
+  // BI Dashboard - Monetization Metrics
+  app.get('/api/analytics/bi/monetization', isAuthenticated, isAdmin, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        res.status(400).json({ message: 'startDate and endDate are required' });
+        return;
+      }
+
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+      
+      const { analyticsService } = await import('./services/analyticsService.js');
+      const metrics = await analyticsService.getMonetizationMetrics(start, end);
+
+      res.json({
+        success: true,
+        data: { monetization: metrics },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error fetching monetization metrics:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to fetch monetization metrics' 
+      });
+    }
+  });
+
+  // BI Dashboard - Ad Performance Metrics
+  app.get('/api/analytics/bi/ad-performance', isAuthenticated, isAdmin, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        res.status(400).json({ message: 'startDate and endDate are required' });
+        return;
+      }
+
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+      
+      const { analyticsService } = await import('./services/analyticsService.js');
+      const metrics = await analyticsService.getAdPerformanceMetrics(start, end);
+
+      res.json({
+        success: true,
+        data: { adPerformance: metrics },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error fetching ad performance metrics:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to fetch ad performance metrics' 
+      });
+    }
+  });
+
+  // BI Dashboard - Combined Metrics
+  app.get('/api/analytics/bi/overview', isAuthenticated, isAdmin, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        res.status(400).json({ message: 'startDate and endDate are required' });
+        return;
+      }
+
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+      
+      const { analyticsService } = await import('./services/analyticsService.js');
+      
+      // Fetch all metrics in parallel
+      const [userAcquisition, engagement, retention, monetization, adPerformance] = await Promise.all([
+        analyticsService.getUserAcquisitionMetrics(start, end),
+        analyticsService.getEngagementMetrics(start, end),
+        analyticsService.getRetentionMetrics(start, end),
+        analyticsService.getMonetizationMetrics(start, end),
+        analyticsService.getAdPerformanceMetrics(start, end)
+      ]);
+
+      res.json({
+        success: true,
+        data: {
+          userAcquisition,
+          engagement,
+          retention,
+          monetization,
+          adPerformance
+        },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error fetching BI overview:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to fetch BI overview' 
+      });
+    }
+  });
+
+  // User Dashboard - Trading Performance
+  app.get('/api/analytics/user/dashboard', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user.id || req.user.claims?.sub;
+      if (!userId) {
+        res.status(401).json({ message: 'User ID not found' });
+        return;
+      }
+
+      const { analyticsService } = await import('./services/analyticsService.js');
+      const metrics = await analyticsService.getUserDashboardMetrics(userId);
+
+      res.json({
+        success: true,
+        data: metrics,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error fetching user dashboard metrics:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to fetch user dashboard metrics' 
+      });
+    }
+  });
+
+  // User Dashboard - Top Deals
+  app.get('/api/analytics/user/top-deals', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user.id || req.user.claims?.sub;
+      if (!userId) {
+        res.status(401).json({ message: 'User ID not found' });
+        return;
+      }
+
+      const limit = parseInt(req.query.limit as string) || 5;
+      
+      console.log(`[Top Deals] Fetching top ${limit} profitable deals for user ${userId}`);
+      
+      const topDealsResult = await db
+        .select()
+        .from(deals)
+        .where(and(
+          eq(deals.userId, userId),
+          eq(deals.status, 'closed'),
+          sql`${deals.profit} IS NOT NULL`,
+          sql`CAST(${deals.profit} AS DECIMAL) > 0`
+        ))
+        .orderBy(desc(sql<number>`CAST(${deals.profit} AS DECIMAL)`))
+        .limit(limit);
+
+      console.log(`[Top Deals] Found ${topDealsResult.length} profitable deals:`, 
+        topDealsResult.map(d => ({ id: d.id, profit: d.profit })));
+
+      const topDeals = topDealsResult.map(deal => {
+        const openPrice = Number(deal.openPrice);
+        const closePrice = Number(deal.closePrice || 0);
+        const profit = Number(deal.profit || 0);
+        const profitPercentage = openPrice > 0 ? (profit / Number(deal.amount)) * 100 : 0;
+        
+        const duration = deal.closedAt && deal.openedAt 
+          ? Math.floor((deal.closedAt.getTime() - deal.openedAt.getTime()) / (60 * 1000))
+          : 0;
+
+        return {
+          id: deal.id,
+          symbol: deal.symbol,
+          direction: deal.direction,
+          profit: deal.profit || '0',
+          profitPercentage,
+          openPrice: deal.openPrice,
+          closePrice: deal.closePrice || '0',
+          openedAt: deal.openedAt.toISOString(),
+          closedAt: deal.closedAt?.toISOString() || '',
+          duration
+        };
+      });
+
+      res.json({
+        success: true,
+        data: topDeals,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error fetching top deals:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to fetch top deals' 
+      });
+    }
+  });
+
+  // User Dashboard - Profit/Loss Chart
+  app.get('/api/analytics/user/profit-loss-chart', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user.id || req.user.claims?.sub;
+      if (!userId) {
+        res.status(401).json({ message: 'User ID not found' });
+        return;
+      }
+
+      const days = parseInt(req.query.days as string) || 30;
+      const endDate = new Date();
+      const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
+
+      const dailyData = await db
+        .select({
+          date: sql<string>`DATE(${deals.closedAt})`,
+          totalProfit: sum(sql<number>`CASE WHEN CAST(${deals.profit} AS DECIMAL) > 0 THEN CAST(${deals.profit} AS DECIMAL) ELSE 0 END`),
+          totalLoss: sum(sql<number>`CASE WHEN CAST(${deals.profit} AS DECIMAL) < 0 THEN ABS(CAST(${deals.profit} AS DECIMAL)) ELSE 0 END`),
+          netProfit: sum(sql<number>`CAST(${deals.profit} AS DECIMAL)`),
+          tradesCount: count()
+        })
+        .from(deals)
+        .where(and(
+          eq(deals.userId, userId),
+          eq(deals.status, 'closed'),
+          gte(deals.closedAt, startDate),
+          lt(deals.closedAt, endDate),
+          sql`${deals.profit} IS NOT NULL`
+        ))
+        .groupBy(sql`DATE(${deals.closedAt})`)
+        .orderBy(sql`DATE(${deals.closedAt})`);
+
+      const chartData = dailyData.map(data => ({
+        date: data.date,
+        profit: Number(data.totalProfit || 0).toString(),
+        loss: Number(data.totalLoss || 0).toString(),
+        netProfit: Number(data.netProfit || 0).toString(),
+        tradesCount: data.tradesCount
+      }));
+
+      res.json({
+        success: true,
+        data: chartData,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error fetching profit/loss chart:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to fetch profit/loss chart' 
+      });
+    }
+  });
+
+  // Analytics Queue Management (Admin only)
+  app.get('/api/analytics/queue/stats', isAuthenticated, isAdmin, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { analyticsQueueService } = await import('./services/analyticsQueueService.js');
+      const stats = await analyticsQueueService.getQueueStats();
+
+      res.json({
+        success: true,
+        data: stats,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error fetching queue stats:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to fetch queue stats' 
+      });
+    }
+  });
+
+  // Replay Failed Analytics Events (Admin only)
+  app.post('/api/analytics/queue/replay-failed', isAuthenticated, isAdmin, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { analyticsQueueService } = await import('./services/analyticsQueueService.js');
+      const replayedCount = await analyticsQueueService.replayFailedEvents();
+
+      res.json({
+        success: true,
+        data: { replayedCount },
+        message: `Successfully replayed ${replayedCount} failed events`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error replaying failed events:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to replay failed events' 
+      });
+    }
+  });
+
+  // Enhanced Event Recording with Queue
+  app.post('/api/analytics/event/enhanced', async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { eventType, eventData, sessionId, priority } = req.body;
+      const userAgent = req.get('User-Agent');
+      const ipAddress = req.ip;
+      
+      let userId = null;
+      if (typeof (req as any).isAuthenticated === 'function' && (req as any).isAuthenticated()) {
+        userId = ((req as any).user)?.claims?.sub ?? ((req as any).user)?.id ?? null;
+      }
+
+      const { analyticsQueueService } = await import('./services/analyticsQueueService.js');
+      await analyticsQueueService.queueEvent({
+        userId,
+        eventType,
+        eventData,
+        sessionId,
+        userAgent,
+        ipAddress,
+        priority: priority || 'normal'
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error queuing analytics event:", error);
+      res.status(500).json({ message: "Failed to queue analytics event" });
+    }
+  });
+
+  // Batch Event Recording
+  app.post('/api/analytics/events/batch', async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { events } = req.body;
+      
+      if (!Array.isArray(events)) {
+        res.status(400).json({ message: 'events must be an array' });
+        return;
+      }
+
+      const userAgent = req.get('User-Agent');
+      const ipAddress = req.ip;
+      
+      let userId = null;
+      if (typeof (req as any).isAuthenticated === 'function' && (req as any).isAuthenticated()) {
+        userId = ((req as any).user)?.claims?.sub ?? ((req as any).user)?.id ?? null;
+      }
+
+      const { analyticsQueueService } = await import('./services/analyticsQueueService.js');
+      
+      // Queue all events
+      await Promise.all(events.map(event => 
+        analyticsQueueService.queueEvent({
+          userId,
+          eventType: event.eventType,
+          eventData: event.eventData,
+          sessionId: event.sessionId,
+          userAgent,
+          ipAddress,
+          priority: event.priority || 'normal'
+        })
+      ));
+
+      res.json({ 
+        success: true, 
+        processed: events.length,
+        message: `Queued ${events.length} events for processing`
+      });
+    } catch (error) {
+      console.error("Error processing batch events:", error);
+      res.status(500).json({ message: "Failed to process batch events" });
     }
   });
 
@@ -3993,6 +4704,520 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== DASHBOARD & BI ANALYTICS ENDPOINTS =====
+  
+  /**
+   * @swagger
+   * /api/dashboard/stats:
+   *   get:
+   *     summary: Получить статистику пользователя для дашборда
+   *     tags: [Dashboard]
+   *     security:
+   *       - sessionAuth: []
+   *     responses:
+   *       200:
+   *         description: Статистика пользователя
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 totalTrades:
+   *                   type: number
+   *                 totalVolume:
+   *                   type: number
+   *                 totalProfit:
+   *                   type: number
+   *                 successRate:
+   *                   type: number
+   *                 maxProfit:
+   *                   type: number
+   *                 maxLoss:
+   *                   type: number
+   *                 avgTradeAmount:
+   *                   type: number
+   */
+  app.get('/api/dashboard/stats', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user.id;
+      const stats = await biAnalyticsService.getUserDashboardStats(userId);
+      res.json(stats);
+    } catch (error: any) {
+      console.error("Error getting user dashboard stats:", error);
+      res.status(500).json({ error: 'Ошибка получения статистики' });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/dashboard/top-deals:
+   *   get:
+   *     summary: Получить топ сделок пользователя
+   *     tags: [Dashboard]
+   *     security:
+   *       - sessionAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           default: 5
+   *         description: Количество сделок
+   *     responses:
+   *       200:
+   *         description: Список лучших сделок
+   */
+  app.get('/api/dashboard/top-deals', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user.id;
+      const limit = parseInt(req.query.limit as string) || 5;
+      const topDeals = await biAnalyticsService.getUserTopDeals(userId, limit);
+      res.json({ deals: topDeals });
+    } catch (error: any) {
+      console.error("Error getting user top deals:", error);
+      res.status(500).json({ error: 'Ошибка получения топ сделок' });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/dashboard/profit-chart:
+   *   get:
+   *     summary: Получить данные для графика прибыли/убытков
+   *     tags: [Dashboard]
+   *     security:
+   *       - sessionAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: days
+   *         schema:
+   *           type: integer
+   *           default: 30
+   *         description: Количество дней
+   *     responses:
+   *       200:
+   *         description: Данные для графика
+   */
+  app.get('/api/dashboard/profit-chart', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user.id;
+      const days = parseInt(req.query.days as string) || 30;
+      const chartData = await biAnalyticsService.getUserProfitChart(userId, days);
+      res.json({ data: chartData });
+    } catch (error: any) {
+      console.error("Error getting profit chart data:", error);
+      res.status(500).json({ error: 'Ошибка получения данных графика' });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/analytics/batch:
+   *   post:
+   *     summary: Отправить пакет аналитических событий
+   *     tags: [Analytics]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               events:
+   *                 type: array
+   *                 items:
+   *                   type: object
+   *                   properties:
+   *                     eventType:
+   *                       type: string
+   *                     eventData:
+   *                       type: object
+   *                     sessionId:
+   *                       type: string
+   *                     timestamp:
+   *                       type: number
+   *     responses:
+   *       200:
+   *         description: События записаны
+   */
+  app.post('/api/analytics/batch', async (req: Request, res: Response) => {
+    try {
+      const { events } = req.body;
+      if (!Array.isArray(events)) {
+        res.status(400).json({ error: 'events должен быть массивом' });
+        return;
+      }
+
+      const userAgent = req.get('User-Agent');
+      const ipAddress = req.ip;
+      
+      let userId = null;
+      if (typeof (req as any).isAuthenticated === 'function' && (req as any).isAuthenticated()) {
+        userId = ((req as any).user)?.id ?? null;
+      }
+
+      // Batch insert all events
+      const analyticsData = events.map((event: any) => ({
+        userId,
+        eventType: event.eventType,
+        eventData: event.eventData || {},
+        sessionId: event.sessionId,
+        userAgent,
+        ipAddress,
+        timestamp: event.timestamp ? new Date(event.timestamp) : new Date()
+      }));
+
+      await db.insert(analytics).values(analyticsData);
+      res.json({ success: true, processed: events.length });
+    } catch (error: any) {
+      console.error("Error recording batch analytics:", error);
+      res.status(500).json({ error: 'Ошибка записи событий' });
+    }
+  });
+
+  // ===== ADMIN BI ANALYTICS ENDPOINTS =====
+
+  /**
+   * @swagger
+   * /api/admin/analytics/overview:
+   *   get:
+   *     summary: Получить обзор аналитики для администратора
+   *     tags: [Admin Analytics]
+   *     security:
+   *       - sessionAuth: []
+   *     responses:
+   *       200:
+   *         description: Обзор аналитики
+   */
+  app.get('/api/admin/analytics/overview', isAdminWithAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const overview = await biAnalyticsService.getAdminOverview();
+      res.json(overview);
+    } catch (error: any) {
+      console.error("Error getting admin analytics overview:", error);
+      res.status(500).json({ error: 'Ошибка получения обзора аналитики' });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/admin/analytics/engagement:
+   *   get:
+   *     summary: Получить метрики вовлеченности
+   *     tags: [Admin Analytics]
+   *     security:
+   *       - sessionAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: days
+   *         schema:
+   *           type: integer
+   *           default: 30
+   *         description: Количество дней для выборки
+   *     responses:
+   *       200:
+   *         description: Метрики вовлеченности
+   */
+  app.get('/api/admin/analytics/engagement', isAdminWithAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const days = parseInt(req.query.days as string) || 30;
+      const endDate = new Date();
+      const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
+
+      const engagementData = await db
+        .select()
+        .from(engagementMetrics)
+        .where(and(
+          gte(engagementMetrics.date, startDate),
+          lte(engagementMetrics.date, endDate)
+        ))
+        .orderBy(asc(engagementMetrics.date));
+
+      res.json({ data: engagementData });
+    } catch (error: any) {
+      console.error("Error getting engagement metrics:", error);
+      res.status(500).json({ error: 'Ошибка получения метрик вовлеченности' });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/admin/analytics/retention:
+   *   get:
+   *     summary: Получить данные удержания пользователей (когорт анализ)
+   *     tags: [Admin Analytics]
+   *     security:
+   *       - sessionAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: weeks
+   *         schema:
+   *           type: integer
+   *           default: 12
+   *         description: Количество недель для анализа
+   *     responses:
+   *       200:
+   *         description: Данные когорт анализа
+   */
+  app.get('/api/admin/analytics/retention', isAdminWithAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const weeks = parseInt(req.query.weeks as string) || 12;
+      
+      const cohortData = await db
+        .select()
+        .from(cohortAnalysis)
+        .where(lte(cohortAnalysis.periodNumber, weeks))
+        .orderBy(asc(cohortAnalysis.cohortWeek), asc(cohortAnalysis.periodNumber));
+
+      // Group data by cohort for easier frontend consumption
+      const groupedData = cohortData.reduce((acc: any, row) => {
+        const weekKey = row.cohortWeek.toISOString().split('T')[0];
+        if (!acc[weekKey]) {
+          acc[weekKey] = [];
+        }
+        acc[weekKey].push(row);
+        return acc;
+      }, {});
+
+      res.json({ cohorts: groupedData });
+    } catch (error: any) {
+      console.error("Error getting retention data:", error);
+      res.status(500).json({ error: 'Ошибка получения данных удержания' });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/admin/analytics/revenue:
+   *   get:
+   *     summary: Получить метрики доходов и монетизации
+   *     tags: [Admin Analytics]
+   *     security:
+   *       - sessionAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: days
+   *         schema:
+   *           type: integer
+   *           default: 30
+   *         description: Количество дней для выборки
+   *     responses:
+   *       200:
+   *         description: Метрики доходов
+   */
+  app.get('/api/admin/analytics/revenue', isAdminWithAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const days = parseInt(req.query.days as string) || 30;
+      const endDate = new Date();
+      const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
+
+      const revenueData = await db
+        .select()
+        .from(revenueMetrics)
+        .where(and(
+          gte(revenueMetrics.date, startDate),
+          lte(revenueMetrics.date, endDate)
+        ))
+        .orderBy(asc(revenueMetrics.date));
+
+      res.json({ data: revenueData });
+    } catch (error: any) {
+      console.error("Error getting revenue metrics:", error);
+      res.status(500).json({ error: 'Ошибка получения метрик доходов' });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/admin/analytics/acquisition:
+   *   get:
+   *     summary: Получить метрики привлечения пользователей
+   *     tags: [Admin Analytics]
+   *     security:
+   *       - sessionAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: days
+   *         schema:
+   *           type: integer
+   *           default: 30
+   *         description: Количество дней для выборки
+   *     responses:
+   *       200:
+   *         description: Метрики привлечения
+   */
+  app.get('/api/admin/analytics/acquisition', isAdminWithAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const days = parseInt(req.query.days as string) || 30;
+      const endDate = new Date();
+      const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
+
+      const acquisitionData = await db
+        .select()
+        .from(userAcquisitionMetrics)
+        .where(and(
+          gte(userAcquisitionMetrics.date, startDate),
+          lte(userAcquisitionMetrics.date, endDate)
+        ))
+        .orderBy(asc(userAcquisitionMetrics.date));
+
+      res.json({ data: acquisitionData });
+    } catch (error: any) {
+      console.error("Error getting acquisition metrics:", error);
+      res.status(500).json({ error: 'Ошибка получения метрик привлечения' });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/admin/analytics/process-daily:
+   *   post:
+   *     summary: Запустить обработку дневных метрик (админ)
+   *     tags: [Admin Analytics]
+   *     security:
+   *       - sessionAuth: []
+   *     requestBody:
+   *       required: false
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               date:
+   *                 type: string
+   *                 format: date
+   *                 description: Дата для обработки (по умолчанию сегодня)
+   *     responses:
+   *       200:
+   *         description: Метрики обработаны успешно
+   */
+  app.post('/api/admin/analytics/process-daily', isAdminWithAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const dateParam = req.body.date;
+      const date = dateParam ? new Date(dateParam) : new Date();
+      
+      await biAnalyticsService.processDailyMetrics(date);
+      res.json({ 
+        success: true, 
+        message: `Метрики обработаны для ${date.toDateString()}` 
+      });
+    } catch (error: any) {
+      console.error("Error processing daily metrics:", error);
+      res.status(500).json({ error: 'Ошибка обработки метрик' });
+    }
+  });
+
+  /**
+   * /api/admin/analytics/ads:
+   *   get:
+   *     summary: Получить метрики рекламы для администратора
+   *     tags: [Admin Analytics]
+   *     security:
+   *       - sessionAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: days
+   *         schema:
+   *           type: integer
+   *           default: 30
+   *         description: Количество дней для анализа
+   *     responses:
+   *       200:
+   *         description: Ad Performance метрики
+   */
+  app.get('/api/admin/analytics/ads', isAdminWithAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const days = parseInt(req.query.days as string) || 30;
+      const endDate = new Date();
+      const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
+      
+      const adData = await db
+        .select()
+        .from(adPerformanceMetrics)
+        .where(and(
+          gte(adPerformanceMetrics.date, startDate),
+          lte(adPerformanceMetrics.date, endDate)
+        ))
+        .orderBy(desc(adPerformanceMetrics.date));
+
+      // Calculate totals and averages
+      const totals = adData.reduce((acc, day) => ({
+        totalAdSpend: acc.totalAdSpend + Number(day.totalAdSpend || 0),
+        totalInstalls: acc.totalInstalls + Number(day.totalInstalls || 0),
+        totalConversions: acc.totalConversions + Number(day.totalConversions || 0),
+        totalRevenue: acc.totalRevenue + Number(day.totalRevenue || 0),
+        totalImpressions: acc.totalImpressions + Number(day.adImpressions || 0),
+        totalClicks: acc.totalClicks + Number(day.adClicks || 0),
+      }), {
+        totalAdSpend: 0,
+        totalInstalls: 0,
+        totalConversions: 0,
+        totalRevenue: 0,
+        totalImpressions: 0,
+        totalClicks: 0,
+      });
+
+      const avgCPI = totals.totalInstalls > 0 ? totals.totalAdSpend / totals.totalInstalls : 0;
+      const avgCPA = totals.totalConversions > 0 ? totals.totalAdSpend / totals.totalConversions : 0;
+      const avgROAS = totals.totalAdSpend > 0 ? totals.totalRevenue / totals.totalAdSpend : 0;
+      const avgCTR = totals.totalImpressions > 0 ? totals.totalClicks / totals.totalImpressions : 0;
+      const avgConversionRate = totals.totalClicks > 0 ? totals.totalConversions / totals.totalClicks : 0;
+
+      res.json({
+        data: adData,
+        summary: {
+          totalAdSpend: totals.totalAdSpend.toFixed(2),
+          totalInstalls: totals.totalInstalls,
+          totalConversions: totals.totalConversions,
+          totalRevenue: totals.totalRevenue.toFixed(2),
+          avgCPI: avgCPI.toFixed(2),
+          avgCPA: avgCPA.toFixed(2),
+          avgROAS: avgROAS.toFixed(4),
+          avgCTR: (avgCTR * 100).toFixed(4),
+          avgConversionRate: (avgConversionRate * 100).toFixed(4),
+          totalImpressions: totals.totalImpressions,
+          totalClicks: totals.totalClicks,
+        }
+      });
+    } catch (error: any) {
+      console.error("Error getting ad performance metrics:", error);
+      res.status(500).json({ error: 'Ошибка получения метрик рекламы' });
+    }
+  });
+
+  // Test endpoints for analytics (no auth required for debugging)
+  app.get('/api/test/analytics/overview', async (req: Request, res: Response) => {
+    try {
+      const overview = await biAnalyticsService.getAdminOverview();
+      res.json(overview);
+    } catch (error: any) {
+      console.error("Error getting admin overview:", error);
+      res.status(500).json({ error: 'Internal server error', message: error.message });
+    }
+  });
+
+  app.get('/api/test/analytics/engagement', async (req: Request, res: Response) => {
+    try {
+      const days = parseInt(req.query.days as string) || 30;
+      const engagement = await biAnalyticsService.getEngagementMetrics(days);
+      res.json(engagement);
+    } catch (error: any) {
+      console.error("Error getting engagement metrics:", error);
+      res.status(500).json({ error: 'Internal server error', message: error.message });
+    }
+  });
+
+  app.get('/api/test/analytics/revenue', async (req: Request, res: Response) => {
+    try {
+      const days = parseInt(req.query.days as string) || 30;
+      const revenue = await biAnalyticsService.getRevenueMetrics(days);
+      res.json(revenue);
+    } catch (error: any) {
+      console.error("Error getting revenue metrics:", error);
+      res.status(500).json({ error: 'Internal server error', message: error.message });
+    }
+  });
+
   /**
    * @swagger
    * /api/funds/ensure-free:
@@ -4066,10 +5291,171 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const deals = await storage.getUserDeals(userId);
+      
+      console.log(`[User Deals] Found ${deals.length} deals for user ${userId}`);
+      const closedDeals = deals.filter(deal => deal.status === 'closed');
+      console.log(`[User Deals] ${closedDeals.length} closed deals`);
+      
+      const profitableDeals = closedDeals.filter(deal => deal.profit && Number(deal.profit) > 0);
+      const lossDeals = closedDeals.filter(deal => deal.profit && Number(deal.profit) < 0);
+      
+      console.log(`[User Deals] Profitable: ${profitableDeals.length}, Loss: ${lossDeals.length}`);
+      
+      if (profitableDeals.length > 0) {
+        console.log('[User Deals] Sample profitable deals:', profitableDeals.slice(0, 3).map(d => ({
+          id: d.id,
+          symbol: d.symbol,
+          profit: d.profit,
+          status: d.status
+        })));
+      }
+      
       res.json(deals);
     } catch (error: any) {
       console.error("Error getting user deals:", error);
       res.status(500).json({ error: 'Ошибка получения сделок' });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/analytics/user/daily-pnl:
+   *   get:
+   *     summary: Получить P/L по дням за последние 7 дней
+   *     tags: [Аналитика]
+   *     security:
+   *       - sessionAuth: []
+   *     responses:
+   *       200:
+   *         description: P/L данные по дням
+   */
+  app.get('/api/analytics/user/daily-pnl', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user.id;
+      const startTime = Date.now();
+      console.log(`[Daily P/L] 🚀 Starting daily P/L fetch for user ${userId}`);
+      
+      // Получаем пользователя для дополнительной информации
+      const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      const userData = user[0];
+      console.log(`[Daily P/L] 👤 User info: email=${userData?.email}, tradesCount=${userData?.tradesCount}`);
+      
+      // Получаем сделки за последние 30 дней
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      console.log(`[Daily P/L] 📅 Searching for deals closed after: ${thirtyDaysAgo.toISOString()}`);
+      
+      const dealsData = await db
+        .select()
+        .from(deals)
+        .where(and(
+          eq(deals.userId, userId),
+          eq(deals.status, 'closed'),
+          sql`${deals.closedAt} >= ${thirtyDaysAgo.toISOString()}`
+        ))
+        .orderBy(asc(deals.closedAt));
+      
+      console.log(`[Daily P/L] 📊 Query results: Found ${dealsData.length} closed deals in last 30 days`);
+      
+      // Дополнительная диагностика для отладки
+      if (dealsData.length === 0) {
+        console.log(`[Daily P/L] 🔍 No deals found. Checking if user has any deals at all...`);
+        const totalDeals = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(deals)
+          .where(eq(deals.userId, userId));
+        
+        console.log(`[Daily P/L] 📈 Total deals for user: ${totalDeals[0]?.count || 0}`);
+        
+        const totalClosedDeals = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(deals)
+          .where(and(eq(deals.userId, userId), eq(deals.status, 'closed')));
+        
+        console.log(`[Daily P/L] ✅ Total closed deals for user: ${totalClosedDeals[0]?.count || 0}`);
+      }
+      
+      // Группируем все сделки по дням
+      const allDailyPnL = new Map<string, number>();
+      let dealsWithProfit = 0;
+      let dealsWithoutProfit = 0;
+      let totalProfitSum = 0;
+      
+      dealsData.forEach((deal, index) => {
+        if (deal.profit && deal.closedAt) {
+          const dealDate = new Date(deal.closedAt).toDateString();
+          const currentPnL = allDailyPnL.get(dealDate) || 0;
+          const profitAmount = Number(deal.profit);
+          allDailyPnL.set(dealDate, currentPnL + profitAmount);
+          dealsWithProfit++;
+          totalProfitSum += profitAmount;
+          
+          // Log first few deals for debugging
+          if (index < 3) {
+            console.log(`[Daily P/L] 💰 Deal ${deal.id}: ${deal.symbol} on ${dealDate} = $${profitAmount.toFixed(2)}`);
+          }
+        } else {
+          dealsWithoutProfit++;
+          if (index < 3) {
+            console.log(`[Daily P/L] ⚠️ Deal ${deal.id}: ${deal.symbol} - no profit or closedAt (profit: ${deal.profit}, closedAt: ${deal.closedAt})`);
+          }
+        }
+      });
+      
+      console.log(`[Daily P/L] 📋 Processing summary: ${dealsWithProfit} deals with profit, ${dealsWithoutProfit} without`);
+      console.log(`[Daily P/L] 💵 Total profit across all deals: $${totalProfitSum.toFixed(2)}`);
+      
+      // Берем последние 7 дней с активностью
+      const sortedDays = Array.from(allDailyPnL.entries())
+        .sort((a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime())
+        .slice(0, 7)
+        .reverse(); // Показываем в хронологическом порядке
+      
+      console.log(`[Daily P/L] 📈 Active trading days found: ${sortedDays.length}`);
+      if (sortedDays.length > 0) {
+        console.log(`[Daily P/L] 📋 Daily breakdown:`, sortedDays.map(([date, pnl]) => ({
+          date: new Date(date).toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' }),
+          pnl: Number(pnl.toFixed(2)),
+          profit: pnl >= 0
+        })));
+      }
+      
+      // Конвертируем в массив
+      const result = sortedDays.map(([date, pnl]) => ({
+        date: new Date(date).toLocaleDateString('en', { weekday: 'short' }),
+        pnl: Number(pnl.toFixed(2)),
+        isProfit: pnl >= 0
+      }));
+      
+      // Финальная диагностика
+      const processingTime = Date.now() - startTime;
+      const allZeroPnL = result.every(d => d.pnl === 0);
+      const profitableDays = result.filter(d => d.isProfit).length;
+      const totalResultPnL = result.reduce((sum, d) => sum + d.pnl, 0);
+      
+      console.log(`[Daily P/L] ✅ Final response prepared in ${processingTime}ms:`);
+      console.log(`[Daily P/L] 📊 Response stats: ${result.length} days, ${profitableDays} profitable, total P/L: $${totalResultPnL.toFixed(2)}`);
+      console.log(`[Daily P/L] ⚠️ All P/L values are zero: ${allZeroPnL}`);
+      
+      // Отправляем ответ
+      res.json({
+        success: true,
+        data: result,
+        meta: {
+          totalDeals: dealsData.length,
+          activeDays: sortedDays.length,
+          profitableDays: profitableDays,
+          processingTime: processingTime
+        }
+      });
+    } catch (error: any) {
+      console.error("[Daily P/L] ❌ Error getting daily P/L:", error);
+      console.error("[Daily P/L] ❌ Error stack:", error.stack);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Ошибка получения P/L по дням',
+        details: error.message
+      });
     }
   });
 

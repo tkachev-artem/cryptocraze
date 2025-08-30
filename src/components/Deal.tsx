@@ -15,6 +15,7 @@ import { fundsService } from '../services/fundsService';
 import { toast } from '../hooks/use-toast';
 import { formatMoneyShort } from '../lib/numberUtils';
 import { useTranslation } from '@/lib/i18n';
+import { analyticsService } from '../services/analyticsService';
  
 
 // Унифицированный парсер денежных значений
@@ -169,6 +170,14 @@ const Deal = ({ isOpen, onClose, cryptoData, userBalance, direction, bottomOffse
             
 
             const response: OpenDealResponse = await dealService.openDeal(dealData);
+            
+            // Track analytics event
+            analyticsService.trackTradeOpen(
+                cryptoData.symbol,
+                parseFloat(amount),
+                localDirection,
+                parseFloat(multiplier)
+            );
             
             // Сохраняем данные сделки
             setDealStartTime(new Date(response.openedAt));

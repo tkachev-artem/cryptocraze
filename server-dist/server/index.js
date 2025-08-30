@@ -45,11 +45,21 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const routes_1 = require("./routes");
 const migrator_1 = require("drizzle-orm/node-postgres/migrator");
 const db_1 = require("./db");
-// Load environment variables
+// Load environment variables with environment-specific file support
+const NODE_ENV = process.env.NODE_ENV || 'development';
+// Load base .env file first
 dotenv_1.default.config();
+// Then load environment-specific .env file if it exists
+if (NODE_ENV === 'development') {
+    dotenv_1.default.config({ path: '.env.development', override: true });
+}
+else if (NODE_ENV === 'production') {
+    dotenv_1.default.config({ path: '.env.production', override: true });
+}
+console.log(`🚀 Starting CryptoCraze server in ${NODE_ENV} mode`);
+console.log(`📡 Server will run on port ${process.env.PORT || 3001}`);
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3001;
-const NODE_ENV = process.env.NODE_ENV || 'development';
 // Compression middleware for better performance (exclude static assets)
 app.use((0, compression_1.default)({
     level: 6, // Balance between compression ratio and speed

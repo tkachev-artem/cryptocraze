@@ -303,6 +303,13 @@ export function setupSimpleOAuth(app: Express) {
 
 // Authentication middleware
 export const isAuthenticated = (req: any, res: any, next: any) => {
+  // Skip auth only for static mode
+  const shouldSkipAuth = process.env.STATIC_ONLY === 'true';
+  if (shouldSkipAuth) {
+    req.user = { id: 'test-user' };
+    return next();
+  }
+
   const userId = req.session?.userId;
   
   if (!userId) {
@@ -316,6 +323,48 @@ export const isAuthenticated = (req: any, res: any, next: any) => {
 
 // Admin middleware (placeholder - implement based on your needs)
 export const isAdmin = async (req: any, res: any, next: any) => {
+  // Skip admin auth if disabled for testing/development
+  const shouldSkipAuth = process.env.STATIC_ONLY === 'true' || process.env.DISABLE_ADMIN_AUTH === 'true';
+  if (shouldSkipAuth) {
+    req.user = { id: 'test-admin', role: 'admin' };
+    return next();
+  }
+
+  const userId = req.session?.userId;
+  
+  if (!userId) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  try {
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if user is admin
+    if (user.role === 'admin') {
+      req.user = user;
+      return next();
+    }
+
+    res.status(403).json({ message: 'Admin access required' });
+  } catch (error) {
+    console.error('Error checking admin role:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Combined admin middleware that handles both authentication and admin check
+export const isAdminWithAuth = async (req: any, res: any, next: any) => {
+  // Skip both auth and admin check if disabled for testing/development  
+  const shouldSkipAuth = process.env.STATIC_ONLY === 'true' || process.env.DISABLE_ADMIN_AUTH === 'true';
+  if (shouldSkipAuth) {
+    req.user = { id: 'test-admin', role: 'admin' };
+    return next();
+  }
+
+  // Normal flow: check authentication first
   const userId = req.session?.userId;
   
   if (!userId) {

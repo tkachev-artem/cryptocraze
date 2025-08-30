@@ -1,21 +1,30 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../app/hooks';
-import { selectUnreadCount } from '../../app/userSlice';
+import { selectUnreadCount, selectUser } from '../../app/userSlice';
 import { useTranslation } from '@/lib/i18n';
 import { forwardRef } from 'react';
+import { LayoutDashboard } from 'lucide-react';
 
 const BottomNavigation = forwardRef<HTMLDivElement>((_props, ref) => {
   const location = useLocation();
   const navigate = useNavigate();
   const unreadCount = useAppSelector(selectUnreadCount);
+  const user = useAppSelector(selectUser);
   
   const { t } = useTranslation();
-  const tabs = [
+  const isAdmin = (user as any)?.role === 'admin';
+  
+  const baseTabs = [
     { id: 'home', path: '/home', activeIcon: '/menu/active/home.svg', inactiveIcon: '/menu/no-active/home.svg', aria: t('nav.home') },
     { id: 'trading', path: '/trade', activeIcon: '/menu/active/trading.svg', inactiveIcon: '/menu/no-active/trading.svg', aria: t('trading.title') },
     { id: 'rating', path: '/rating', activeIcon: '/menu/active/best.svg', inactiveIcon: '/menu/no-active/best.svg', aria: t('rating.last30d') },
     { id: 'profile', path: '/profile', activeIcon: '/menu/active/profile.svg', inactiveIcon: '/menu/no-active/profile.svg', aria: t('profile.title') }
   ];
+
+  // Add admin tab if user is admin
+  const tabs = isAdmin 
+    ? [...baseTabs, { id: 'admin', path: '/admin/analytics', activeIcon: null, inactiveIcon: null, aria: 'Admin Dashboard' }]
+    : baseTabs;
 
   const handleTabClick = (path: string) => {
     void navigate(path);
@@ -47,11 +56,17 @@ const BottomNavigation = forwardRef<HTMLDivElement>((_props, ref) => {
           aria-label={tab.aria}
         >
           <div className="relative inline-block">
-            <img 
-              src={isActive(tab.path) ? tab.activeIcon : tab.inactiveIcon} 
-              alt={tab.id} 
-              className="w-7 h-7 sm:w-8 sm:h-8"
-            />
+            {tab.id === 'admin' ? (
+              <LayoutDashboard 
+                className={`w-7 h-7 sm:w-8 sm:h-8 ${isActive(tab.path) ? 'text-[#0C54EA]' : 'text-[#808080]'}`}
+              />
+            ) : (
+              <img 
+                src={isActive(tab.path) ? tab.activeIcon : tab.inactiveIcon} 
+                alt={tab.id} 
+                className="w-7 h-7 sm:w-8 sm:h-8"
+              />
+            )}
 
             {/* Notification badge for home tab */}
             {tab.id === 'home' && unreadCount > 0 && (

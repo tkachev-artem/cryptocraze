@@ -12,6 +12,7 @@ import { openDealInfo } from '../../app/dealModalSlice';
 import LoadingScreen from '../../components/LoadingScreen';
 import { useTranslation } from '@/lib/i18n';
 import useLivePrices from '@/hooks/useLivePrices';
+import { analyticsService } from '../../services/analyticsService';
 
 type DealWithLiveData = Deal & {
   currentPrice?: string;
@@ -142,6 +143,21 @@ export function DealList() {
       if (!mountedRef.current) return;
       
       const profitValue = safeNumber(response.profit);
+      
+      // Find the deal for analytics
+      const closedDeal = deals.find(deal => deal.id === dealId);
+      if (closedDeal) {
+        const duration = closedDeal.openedAt 
+          ? Date.now() - new Date(closedDeal.openedAt).getTime()
+          : 0;
+          
+        analyticsService.trackTradeClosed(
+          dealId,
+          profitValue,
+          duration,
+          'manual'
+        );
+      }
        
       dispatch(openDealInfo({
         profit: parseFloat(profitValue.toFixed(2)),
@@ -346,21 +362,21 @@ export function DealList() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Top Navigation */}
-      <div className="flex items-center gap-1 px-2 py-4 bg-white">
-        <button
-          onClick={handleBack}
-          className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100"
-          type="button"
-        >
-          <img src="/top-menu/back.svg" alt={t('common.back')} className="w-6 h-6" />
-        </button>
-        <span className="text-xl font-bold text-black">{t('nav.back') || t('common.back')}</span>
-      </div>
-
-      {/* Tab Buttons */}
-      <div className="flex flex-col gap-2 px-4 py-3 bg-white">
+    <div className="min-h-screen bg-white flex flex-col pb-[calc(56px+env(safe-area-inset-bottom))]">
+      {/* Top Navigation + Tab Buttons - Fixed */}
+      <div className="sticky top-0 z-30 bg-white">
+        <div className="flex items-center justify-between px-4 py-4">
+          <button
+            onClick={handleBack}
+            className="flex items-center gap-2"
+          >
+            <img src="/top-menu/back.svg" alt={t('nav.back')} className="w-6 h-6" />
+            <span className="text-xl font-extrabold text-black">{t('nav.back')}</span>
+          </button>
+          <div className="w-6 h-6" />
+        </div>
+        
+        <div className="flex flex-col gap-2 px-4 pb-4">
         <div className="w-full flex bg-gray-100 rounded-[40px] p-1">
           <button
             onClick={() => handleTabChange('active')}
@@ -395,9 +411,12 @@ export function DealList() {
             }
           </span>
         </div>
+        </div>
       </div>
 
-      {/* Connection Status */}
+      {/* Content */}
+      <div className="flex-1 bg-white">
+        {/* Connection Status */}
       {activeTab === 'active' && openDealIds.length > 0 && (
         <div className="px-4 py-1">
           <div className={`text-xs ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
@@ -437,6 +456,7 @@ export function DealList() {
             />
           ))
         )}
+      </div>
       </div>
 
       {/* Bottom Navigation */}

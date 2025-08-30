@@ -8,12 +8,24 @@ import { registerRoutes } from "./routes";
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { db } from './db';
 
-// Load environment variables
+// Load environment variables with environment-specific file support
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+// Load base .env file first
 dotenv.config();
+
+// Then load environment-specific .env file if it exists
+if (NODE_ENV === 'development') {
+  dotenv.config({ path: '.env.development', override: true });
+} else if (NODE_ENV === 'production') {
+  dotenv.config({ path: '.env.production', override: true });
+}
+
+console.log(`🚀 Starting CryptoCraze server in ${NODE_ENV} mode`);
+console.log(`📡 Server will run on port ${process.env.PORT || 3001}`);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // Compression middleware for better performance (exclude static assets)
 app.use(compression({

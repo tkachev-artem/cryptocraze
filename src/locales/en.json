@@ -247,6 +247,51 @@
       "system_alert": "Important system notification"
     }
   },
+  "dashboard": {
+    "profitChart": "Profit/Loss Chart",
+    "topDeals": "Top Deals",
+    "totalVolume": "Total Volume",
+    "totalProfit": "Total P&L",
+    "bestDeal": "Best Deal",
+    "roi": "ROI",
+    "noData": "No trading data available",
+    "failedToLoad": "Failed to load chart data",
+    "recent": "Recent",
+    "best": "Best",
+    "loading": "Loading...",
+    "days": "days",
+    "trades": "trades"
+  },
+  "admin": {
+    "analytics": {
+      "title": "BI Analytics Dashboard",
+      "subtitle": "Business Intelligence & User Analytics",
+      "totalUsers": "Total Users",
+      "activeDeals": "Active Deals",
+      "dailyActiveUsers": "Daily Active Users",
+      "totalRevenue": "Total Revenue",
+      "engagement": "Engagement Metrics",
+      "revenue": "Revenue & Monetization",
+      "acquisition": "User Acquisition",
+      "weeklyActiveUsers": "Weekly Active Users",
+      "monthlyActiveUsers": "Monthly Active Users",
+      "avgSessionDuration": "Avg Session Duration",
+      "totalTrades": "Total Trades",
+      "arpu": "ARPU",
+      "arppu": "ARPPU", 
+      "conversionRate": "Conversion Rate",
+      "payingUsers": "Paying Users",
+      "totalSignups": "Total Signups",
+      "firstTrades": "First Trades",
+      "tradeOpenRate": "Trade Open Rate",
+      "avgTimeToFirstTrade": "Avg Time to First Trade",
+      "recentActivity": "Recent Activity",
+      "recentRevenue": "Recent Revenue",
+      "processMetrics": "Process Today's Metrics",
+      "metricsProcessed": "Daily metrics processed successfully!",
+      "lastUpdated": "Last updated"
+    }
+  },
   "language": {
     "title": "Choose language",
     "description": "You can always change the app language in Settings",

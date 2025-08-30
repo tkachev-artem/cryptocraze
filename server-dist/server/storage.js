@@ -272,6 +272,13 @@ class DatabaseStorage {
         const newMaxLoss = profit < currentMaxLoss ? profit : currentMaxLoss;
         // Обновляем среднюю сумму сделки
         const newAvgAmount = (currentAvgAmount * currentTradesCount + amount) / (currentTradesCount + 1);
+        // Recalculate rating score based on updated stats
+        const newRatingScore = await this.calculateUserRatingScore(userId, {
+            totalTrades: currentTradesCount + 1,
+            totalPnl: await this.getUserTotalPnl(userId),
+            totalVolume: newTotalVolume,
+            winRate: newSuccessfulPercentage
+        });
         await db_js_1.db
             .update(schema_1.users)
             .set({
@@ -280,9 +287,83 @@ class DatabaseStorage {
             maxProfit: newMaxProfit.toString(),
             maxLoss: newMaxLoss.toString(),
             averageTradeAmount: newAvgAmount.toFixed(2),
+            ratingScore: newRatingScore,
             updatedAt: new Date(),
         })
             .where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
+        // Update user's rating rank after stats update
+        await this.updateUserRatingRank(userId);
+    }
+    /**
+     * Calculate user's total P&L from all closed deals
+     */
+    async getUserTotalPnl(userId) {
+        const result = await db_js_1.db
+            .select({
+            totalPnl: (0, drizzle_orm_1.sql) `COALESCE(SUM((${schema_1.deals.profit})::numeric), 0)`
+        })
+            .from(schema_1.deals)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.deals.userId, userId), (0, drizzle_orm_1.eq)(schema_1.deals.status, 'closed')));
+        return Number(result[0]?.totalPnl || 0);
+    }
+    /**
+     * Calculate user's rating score based on performance metrics
+     */
+    async calculateUserRatingScore(userId, stats) {
+        let userStats = stats;
+        if (!userStats) {
+            const tradingStats = await this.getUserTradingStats(userId);
+            userStats = {
+                totalTrades: tradingStats.totalTrades,
+                totalPnl: tradingStats.totalPnl,
+                totalVolume: tradingStats.avgTradeAmount * tradingStats.totalTrades,
+                winRate: tradingStats.winRate
+            };
+        }
+        // Rating score calculation based on:
+        // - Total P&L (40% weight)
+        // - Win rate (30% weight) 
+        // - Trade volume (20% weight)
+        // - Number of trades (10% weight)
+        const pnlScore = Math.max(0, userStats.totalPnl / 100); // $100 = 1 point
+        const winRateScore = userStats.winRate; // Direct percentage
+        const volumeScore = userStats.totalVolume / 1000; // $1000 = 1 point
+        const tradesScore = Math.min(userStats.totalTrades * 2, 100); // Max 100 points from trades
+        const totalScore = Math.round((pnlScore * 0.4) +
+            (winRateScore * 0.3) +
+            (volumeScore * 0.2) +
+            (tradesScore * 0.1));
+        return Math.max(0, totalScore);
+    }
+    /**
+     * Update user's rating rank based on their current rating score
+     */
+    async updateUserRatingRank(userId) {
+        try {
+            // Get user's current rating score
+            const [user] = await db_js_1.db.select({ ratingScore: schema_1.users.ratingScore }).from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
+            if (!user)
+                return;
+            const userRatingScore = Number(user.ratingScore || 0);
+            // Count users with higher rating scores
+            const higherRatedUsers = await db_js_1.db
+                .select({ count: (0, drizzle_orm_1.count)() })
+                .from(schema_1.users)
+                .where((0, drizzle_orm_1.sql) `${schema_1.users.ratingScore} > ${userRatingScore}`);
+            const rank = Number(higherRatedUsers[0]?.count || 0) + 1;
+            // Update user's rank
+            await db_js_1.db
+                .update(schema_1.users)
+                .set({
+                ratingRank30Days: rank,
+                updatedAt: new Date()
+            })
+                .where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
+            console.log(`Updated rating rank for user ${userId}: #${rank} (score: ${userRatingScore})`);
+        }
+        catch (error) {
+            console.error(`Error updating rating rank for user ${userId}:`, error);
+        }
     }
     /**
      * Полное удаление аккаунта пользователя и связанных данных

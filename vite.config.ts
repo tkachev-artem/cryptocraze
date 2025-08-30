@@ -13,12 +13,22 @@ export default defineConfig(({ mode }) => {
   const nodeEnv = env.NODE_ENV || mode
   
   console.log(`🔧 Vite configuring for mode: ${mode} (NODE_ENV: ${nodeEnv})`);
+  console.log('🔧 Loaded env vars:', {
+    VITE_API_BASE_URL: env.VITE_API_BASE_URL,
+    VITE_API_PROXY_TARGET: env.VITE_API_PROXY_TARGET,
+    VITE_API_SERVER: env.VITE_API_SERVER,
+    API_URL: env.API_URL
+  });
   
-  // Dev proxy target: prefer VITE_API_BASE_URL for consistency
-  const rawProxy = env.VITE_API_BASE_URL || env.VITE_API_PROXY_TARGET || env.VITE_API_SERVER || ""
-  const proxyTarget = /^https?:\/\//i.test(rawProxy) ? rawProxy : "http://localhost:3001"
+  // Dev proxy target: use dedicated proxy env vars, fallback to API_URL from backend config
+  const rawProxy = env.VITE_API_PROXY_TARGET || env.VITE_API_SERVER || env.API_URL || ""
+  // Remove /api suffix from proxy target if present, since proxy will add it
+  const cleanProxy = rawProxy.replace(/\/api$/, "")
+  const proxyTarget = /^https?:\/\//i.test(cleanProxy) ? cleanProxy : "http://localhost:3001"
   
-  console.log(`🔌 API Proxy target: ${proxyTarget}`);
+  console.log(`🔌 Raw proxy: ${rawProxy}`);
+  console.log(`🔌 Clean proxy: ${cleanProxy}`);
+  console.log(`🔌 Final API Proxy target: ${proxyTarget}`);
 
   // HTTPS для доверенного происхождения (IMA SDK требует https/localhost)
   const certDir = path.resolve(process.cwd(), ".cert")

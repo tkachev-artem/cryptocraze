@@ -64,6 +64,13 @@
       "when": 1755510388501,
       "tag": "0008_medical_cerise",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1735612000000,
+      "tag": "0010_add_bi_analytics_tables",
+      "breakpoints": true
     }
   ]
 }

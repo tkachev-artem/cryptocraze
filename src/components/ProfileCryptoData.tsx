@@ -17,9 +17,9 @@ type ProfileCryptoDataProps = {
 };
 
 const ProfileCryptoData: React.FC<ProfileCryptoDataProps> = ({ onShowAnalytics }) => {
+  const navigate = useNavigate();
   const { user, isLoading } = useUser();
   const { t } = useTranslation();
-  const navigate = useNavigate();
 
   // Используем реальные данные пользователя или значения по умолчанию
   const [ratingPlace, setRatingPlace] = useState<string>(t('common.na'));
@@ -115,11 +115,11 @@ const ProfileCryptoData: React.FC<ProfileCryptoDataProps> = ({ onShowAnalytics }
             {/* Аналитика (правая колонка, верх) */}
             <div
               className="bg-white border border-gray-200 rounded-xl p-3 flex flex-col justify-between relative order-2 cursor-pointer"
-              onClick={() => { onShowAnalytics?.(); }}
+              onClick={() => { navigate('/analytics'); }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  onShowAnalytics?.();
+                  navigate('/analytics');
                 }
               }}
               role="button"

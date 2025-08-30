@@ -4,6 +4,7 @@ import { formatMoneyShort } from '../../lib/numberUtils';
 import { API_BASE_URL } from '@/lib/api';
 import { useTranslation } from '@/lib/i18n';
 import { useUser } from '@/hooks/useUser';
+import BottomNavigation from '../../components/ui/BottomNavigation';
 
 type Leader = {
   userId: string;
@@ -162,15 +163,14 @@ const Rating = () => {
     const loadMyRow = async () => {
       setMyLoading(true);
       try {
-        // Узнаём место пользователя за 30 дней
-        const statsRes = await fetch(`${API_BASE_URL}/user/stats`, { credentials: 'include' });
-        if (!statsRes.ok) {
-          return;
-        }
-        const stats = await statsRes.json() as { ratingRank30Days: number | null };
-        const rank = typeof stats.ratingRank30Days === 'number' ? stats.ratingRank30Days : null;
-        if (!rank || rank < 1) {
-          // Фолбэк: показываем карточку пользователя без PnL, если ранк неизвестен
+        // Use new dedicated user rating endpoint
+        const myRatingRes = await fetch(`${API_BASE_URL}/rating/user/${user.id}?period=${period}`, { 
+          credentials: 'include' 
+        });
+        
+        if (!myRatingRes.ok) {
+          console.error('Failed to fetch user rating:', myRatingRes.status);
+          // Fallback: show user card without P&L if rank is unknown
           const username = user.firstName ? `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}` : (user.email || user.id);
           const fallback: Leader = {
             userId: user.id,
@@ -186,20 +186,26 @@ const Rating = () => {
           return;
         }
 
-        // Запрашиваем ровно свою строку по рангу
-        const myParams = new URLSearchParams({
-          period,
-          offset: String(Math.max(0, rank - 1)),
-          limit: '1',
-        });
-        const myRowRes = await fetch(`${API_BASE_URL}/rating?${myParams.toString()}`, { credentials: 'include' });
-        if (!myRowRes.ok) {
-          return;
+        const userRating = await myRatingRes.json() as Leader;
+        if (!cancelled) {
+          console.log('User rating loaded:', userRating);
+          setMyLeader(userRating);
         }
-        const arr = await myRowRes.json() as Leader[];
-        if (!cancelled) setMyLeader(arr[0] ?? null);
       } catch (e) {
         console.error('My rating row load error:', e);
+        // Fallback on error
+        const username = user.firstName ? `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}` : (user.email || user.id);
+        const fallback: Leader = {
+          userId: user.id,
+          username,
+          avatarUrl: user.profileImageUrl,
+          pnlUsd: 0,
+          winRate: 0,
+          trades: 0,
+          rank: 0,
+          isPremium: Boolean(user.isPremium),
+        };
+        if (!cancelled) setMyLeader(fallback);
       } finally {
         if (!cancelled) setMyLoading(false);
       }
@@ -237,7 +243,7 @@ const Rating = () => {
       {/* Tabs удалены: период фиксирован месяц */}
 
       {/* List */}
-      <div className="flex-1 px-4 space-y-3 pb-36">
+      <div className="flex-1 px-4 space-y-3 pb-4">
         {(loading || !leaders) && (
           <div className="space-y-3">
             {skeletonRow}
@@ -261,8 +267,8 @@ const Rating = () => {
 
       {/* Pinned current user row above bottom navigation */}
       {!loading && (myLeader != null || myLoading) && (
-        <div className="absolute left-0 right-0 bottom-0 z-10 bg-[#F1F7FF]">
-          <div className="px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
+        <div className="absolute left-0 right-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-10 bg-[#F1F7FF]">
+          <div className="px-4 pt-3 pb-6">
             {myLeader ? (
               <Row leader={myLeader} />
             ) : (
@@ -281,6 +287,7 @@ const Rating = () => {
           </div>
         </div>
       )}
+      <BottomNavigation />
     </div>
   );
 };

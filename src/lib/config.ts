@@ -8,7 +8,7 @@ export const config = {
   },
   
   api: {
-    baseUrl: import.meta.env.VITE_API_BASE_URL || 'https://trace-exploration-monitored-brussels.trycloudflare.com/api',
+    baseUrl: import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '/api' : '/api'),
     timeout: 10000,
     retryAttempts: 3,
     retryDelay: 1000,

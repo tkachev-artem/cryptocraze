@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics API Debug</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .result { margin: 10px 0; padding: 10px; border: 1px solid #ddd; }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+        button { padding: 10px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Analytics API Debug</h1>
+    <p>Testing API endpoints from the browser (should use Vite proxy)</p>
+    
+    <button onclick="testEndpoint('/api/admin/analytics/overview')">Test Overview</button>
+    <button onclick="testEndpoint('/api/admin/analytics/engagement?days=30')">Test Engagement</button>
+    <button onclick="testEndpoint('/api/admin/analytics/revenue?days=30')">Test Revenue</button>
+    <button onclick="clearResults()">Clear Results</button>
+    
+    <div id="results"></div>
+    
+    <script>
+        async function testEndpoint(url) {
+            const resultsDiv = document.getElementById('results');
+            const resultItem = document.createElement('div');
+            resultItem.className = 'result';
+            
+            try {
+                const response = await fetch(url, {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                const data = await response.text();
+                
+                resultItem.className += response.ok ? ' success' : ' error';
+                resultItem.innerHTML = `
+                    <strong>${url}</strong><br>
+                    Status: ${response.status} ${response.statusText}<br>
+                    Response: ${data.substring(0, 200)}
+                `;
+            } catch (error) {
+                resultItem.className += ' error';
+                resultItem.innerHTML = `
+                    <strong>${url}</strong><br>
+                    Error: ${error.message}
+                `;
+            }
+            
+            resultsDiv.appendChild(resultItem);
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        // Test config API base URL
+        console.log('Current base URL from config would be:', window.location.origin + '/api');
+    </script>
+</body>
+</html>

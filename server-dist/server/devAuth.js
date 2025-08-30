@@ -14,7 +14,7 @@ function getSession() {
     const pgStore = (0, connect_pg_simple_1.default)(express_session_1.default);
     const sessionStore = new pgStore({
         conString: process.env.DATABASE_URL,
-        createTableIfMissing: false,
+        createTableIfMissing: true,
         ttl: sessionTtl,
         tableName: "sessions",
     });

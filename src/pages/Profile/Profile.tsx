@@ -5,10 +5,11 @@ import { useAppDispatch } from '../../app/hooks';
 import { fetchUserStats } from '../../app/userSlice';
 import { openCoinExchange } from '../../app/coinExchangeSlice';
 import { useEffect, useState, lazy, Suspense } from 'react';
+import { useNavigate } from 'react-router-dom';
 import BottomNavigation from '../../components/ui/BottomNavigation';
 import TopMenu from '../../components/ui/TopMenu';
 import { Grid } from '@/components/ui/grid';
-const ProfileDashboard = lazy(() => import('../../components/ProfileDashboard'));
+const EnhancedProfileDashboard = lazy(() => import('../../components/dashboard/EnhancedProfileDashboard'));
 const ProfileCryptoData = lazy(() => import('../../components/ProfileCryptoData'));
 import { formatMoneyShort } from '../../lib/numberUtils';
 
@@ -17,6 +18,7 @@ const fmtMoney = (v: string | number) => formatMoneyShort(v);
 export const Profile: React.FC = () => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { 
     user, 
     isLoading, 
@@ -174,17 +176,18 @@ export const Profile: React.FC = () => {
               </div>
             </div>
           </div>
+
         </div>
 
         {/* Crypto Data (ленивая загрузка) */}
         <Suspense fallback={<div className="px-4 py-4"><div className="h-28 bg-white rounded-xl border border-gray-200 animate-pulse" /></div>}>
-          <ProfileCryptoData onShowAnalytics={() => { setIsDashboardVisible((v) => !v); }} />
+          <ProfileCryptoData />
         </Suspense>
 
         {/* Dashboard (ленивая загрузка) */}
         {isDashboardVisible && (
           <Suspense fallback={<div className="px-4 py-4"><div className="h-40 bg-white rounded-xl border border-gray-200 animate-pulse" /></div>}>
-            <ProfileDashboard />
+            <EnhancedProfileDashboard />
           </Suspense>
         )}
 

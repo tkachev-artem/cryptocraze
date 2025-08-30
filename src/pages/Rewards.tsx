@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '@/lib/api';
 import { useTranslation } from '@/lib/i18n';
+import BottomNavigation from '../components/ui/BottomNavigation';
 
 type RewardTier = {
   level: number;
@@ -58,7 +59,7 @@ const Rewards: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col pb-[calc(56px+env(safe-area-inset-bottom))]">
       <div className="sticky top-0 z-30 bg-white">
         <div className="flex items-center justify-between px-4 py-4">
           <button onClick={handleBack} className="flex items-center gap-2" aria-label={t('nav.back')}>
@@ -67,17 +68,18 @@ const Rewards: React.FC = () => {
           </button>
           <div className="w-6 h-6" />
         </div>
-      </div>
 
-      <div className="px-4">
-        <div className="flex items-center w-full h-[44px] px-4 rounded-[12px] border border-gray-200">
-          <span className="text-sm font-bold w-[84px]">{t('rewards.level') || 'Уровень'}</span>
-          <span className="text-sm font-bold flex-1 text-left pl-4">{t('rewards.accountMoney') || 'Деньги на аккаунте'}</span>
-          <span className="text-sm font-bold">{t('rewards.reward') || 'Награда'}</span>
+        <div className="px-4 pb-4">
+          <div className="flex items-center w-full h-[44px] px-4 rounded-[12px] border border-gray-200">
+            <span className="text-sm font-bold w-[84px]">{t('rewards.level') || 'Level'}</span>
+            <span className="text-sm font-bold flex-1 text-left pl-4">{t('rewards.accountMoney') || 'Account money'}</span>
+            <span className="text-sm font-bold">{t('rewards.reward') || 'Reward'}</span>
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 px-4 pt-2 pb-6">
+      <div className="flex-1 bg-white">
+        <div className="px-4 pb-6">
         {loading && (
           <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -119,7 +121,9 @@ const Rewards: React.FC = () => {
         {!loading && tiers && tiers.length === 0 && (
           <div className="py-8 text-center text-sm text-black opacity-50">{t('common.noData')}</div>
         )}
+        </div>
       </div>
+      <BottomNavigation />
     </div>
   );
 };

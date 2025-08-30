@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isAdmin = exports.isAuthenticated = void 0;
+exports.isAdminWithAuth = exports.isAdmin = exports.isAuthenticated = void 0;
 exports.setupSimpleOAuth = setupSimpleOAuth;
 const storage_js_1 = require("./storage.js");
 const autoRewards_js_1 = require("./services/autoRewards.js");
@@ -39,8 +39,8 @@ function setupSimpleOAuth(app) {
     // Google OAuth URLs
     const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
     const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
-    const TUNNEL_URL = process.env.TUNNEL_URL || 'http://localhost:8080';
-    const CALLBACK_URL = `${TUNNEL_URL}/api/auth/google/callback`;
+    const CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3001/api/auth/google/callback';
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
     console.log(`🔗 OAuth Callback URL: ${CALLBACK_URL}`);
     // Start Google OAuth flow
     app.get('/api/auth/google', (req, res) => {
@@ -67,11 +67,11 @@ function setupSimpleOAuth(app) {
             // Verify state parameter
             if (!state || state !== req.session.oauth_state) {
                 console.error('❌ Invalid state parameter');
-                return res.redirect(`${TUNNEL_URL}/?error=invalid_state`);
+                return res.redirect(`${FRONTEND_URL}/?error=invalid_state`);
             }
             if (!code) {
                 console.error('❌ No authorization code received');
-                return res.redirect(`${TUNNEL_URL}/?error=no_code`);
+                return res.redirect(`${FRONTEND_URL}/?error=no_code`);
             }
             console.log('🔑 Exchanging code for tokens...');
             // Exchange code for tokens
@@ -147,11 +147,11 @@ function setupSimpleOAuth(app) {
             // Clean up OAuth state
             delete req.session.oauth_state;
             // Redirect to frontend
-            res.redirect(`${TUNNEL_URL}/`);
+            res.redirect(`${FRONTEND_URL}/`);
         }
         catch (error) {
             console.error('❌ OAuth callback error:', error);
-            res.redirect(`${TUNNEL_URL}/?error=auth_failed`);
+            res.redirect(`${FRONTEND_URL}/?error=auth_failed`);
         }
     });
     // Get current user
@@ -188,7 +188,7 @@ function setupSimpleOAuth(app) {
                 console.error('❌ Session destroy error:', err);
             }
             res.clearCookie('crypto_session');
-            res.redirect(`${TUNNEL_URL}/`);
+            res.redirect(`${FRONTEND_URL}/`);
         });
     });
     // Update user data
@@ -256,6 +256,12 @@ function setupSimpleOAuth(app) {
 }
 // Authentication middleware
 const isAuthenticated = (req, res, next) => {
+    // Skip auth only for static mode
+    const shouldSkipAuth = process.env.STATIC_ONLY === 'true';
+    if (shouldSkipAuth) {
+        req.user = { id: 'test-user' };
+        return next();
+    }
     const userId = req.session?.userId;
     if (!userId) {
         return res.status(401).json({ message: 'Unauthorized' });
@@ -267,6 +273,12 @@ const isAuthenticated = (req, res, next) => {
 exports.isAuthenticated = isAuthenticated;
 // Admin middleware (placeholder - implement based on your needs)
 const isAdmin = async (req, res, next) => {
+    // Skip admin auth if disabled for testing/development
+    const shouldSkipAuth = process.env.STATIC_ONLY === 'true' || process.env.DISABLE_ADMIN_AUTH === 'true';
+    if (shouldSkipAuth) {
+        req.user = { id: 'test-admin', role: 'admin' };
+        return next();
+    }
     const userId = req.session?.userId;
     if (!userId) {
         return res.status(401).json({ message: 'Unauthorized' });
@@ -289,3 +301,34 @@ const isAdmin = async (req, res, next) => {
     }
 };
 exports.isAdmin = isAdmin;
+// Combined admin middleware that handles both authentication and admin check
+const isAdminWithAuth = async (req, res, next) => {
+    // Skip both auth and admin check if disabled for testing/development  
+    const shouldSkipAuth = process.env.STATIC_ONLY === 'true' || process.env.DISABLE_ADMIN_AUTH === 'true';
+    if (shouldSkipAuth) {
+        req.user = { id: 'test-admin', role: 'admin' };
+        return next();
+    }
+    // Normal flow: check authentication first
+    const userId = req.session?.userId;
+    if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+    }
+    try {
+        const user = await storage_js_1.storage.getUser(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        // Check if user is admin
+        if (user.role === 'admin') {
+            req.user = user;
+            return next();
+        }
+        res.status(403).json({ message: 'Admin access required' });
+    }
+    catch (error) {
+        console.error('Error checking admin role:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+exports.isAdminWithAuth = isAdminWithAuth;

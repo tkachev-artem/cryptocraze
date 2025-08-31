@@ -137,6 +137,105 @@ export const userSessions = pgTable("user_sessions", {
 ]);
 
 // User acquisition tracking
+// Ad system types
+export const adTypeEnum = pgEnum("ad_type", [
+  'rewarded_video',
+  'interstitial',
+  'banner',
+  'native'
+]);
+
+export const adPlacementEnum = pgEnum("ad_placement", [
+  'task_completion',
+  'wheel_spin',
+  'box_opening',
+  'trading_bonus',
+  'screen_transition'
+]);
+
+export const adProviderEnum = pgEnum("ad_provider", [
+  'google_admob',
+  'google_adsense',
+  'simulation'
+]);
+
+export const adRewardTypeEnum = pgEnum("ad_reward_type", [
+  'money',
+  'coins',
+  'energy',
+  'trading_bonus'
+]);
+
+// Ad sessions tracking table
+export const adSessions = pgTable("ad_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  adId: varchar("ad_id", { length: 100 }).notNull(),
+  adType: adTypeEnum("ad_type").notNull(),
+  placement: adPlacementEnum("placement").notNull(),
+  provider: adProviderEnum("provider").notNull().default('simulation'),
+  startTime: timestamp("start_time").notNull().defaultNow(),
+  endTime: timestamp("end_time"),
+  watchTime: integer("watch_time"), // Duration in milliseconds
+  completed: boolean("completed").default(false),
+  rewardClaimed: boolean("reward_claimed").default(false),
+  fraudDetected: boolean("fraud_detected").default(false),
+  fraudReason: text("fraud_reason"),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  deviceInfo: jsonb("device_info"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_ad_sessions_user_id").on(table.userId),
+  index("idx_ad_sessions_ad_id").on(table.adId),
+  index("idx_ad_sessions_placement").on(table.placement),
+  index("idx_ad_sessions_start_time").on(table.startTime),
+  index("idx_ad_sessions_completed").on(table.completed),
+  index("idx_ad_sessions_fraud_detected").on(table.fraudDetected),
+]);
+
+// Ad rewards tracking table
+export const adRewards = pgTable("ad_rewards", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  sessionId: uuid("session_id").notNull().references(() => adSessions.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  rewardType: adRewardTypeEnum("reward_type").notNull(),
+  amount: decimal("amount", { precision: 18, scale: 8 }).notNull(),
+  multiplier: decimal("multiplier", { precision: 5, scale: 2 }).default("1.00"),
+  bonusPercentage: integer("bonus_percentage"), // For trading bonus ads
+  processed: boolean("processed").default(false),
+  processedAt: timestamp("processed_at"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_ad_rewards_session_id").on(table.sessionId),
+  index("idx_ad_rewards_user_id").on(table.userId),
+  index("idx_ad_rewards_processed").on(table.processed),
+  index("idx_ad_rewards_created_at").on(table.createdAt),
+]);
+
+// Ad performance metrics table
+export const adPerformanceMetrics = pgTable("ad_performance_metrics", {
+  id: serial("id").primaryKey(),
+  date: timestamp("date").notNull().defaultNow(),
+  adType: adTypeEnum("ad_type").notNull(),
+  placement: adPlacementEnum("placement").notNull(),
+  provider: adProviderEnum("provider").notNull(),
+  impressions: integer("impressions").default(0),
+  completions: integer("completions").default(0),
+  rewards: integer("rewards").default(0),
+  fraudAttempts: integer("fraud_attempts").default(0),
+  totalWatchTime: bigint("total_watch_time", { mode: 'number' }).default(0), // Total watch time in milliseconds
+  totalRewardAmount: decimal("total_reward_amount", { precision: 18, scale: 8 }).default("0"),
+  revenue: decimal("revenue", { precision: 18, scale: 8 }).default("0"), // Estimated ad revenue
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_ad_performance_date").on(table.date),
+  index("idx_ad_performance_type_placement").on(table.adType, table.placement),
+]);
+
 export const userAcquisition = pgTable("user_acquisition", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
@@ -514,6 +613,7 @@ export const revenueMetrics = pgTable("revenue_metrics", {
   premiumRevenue: decimal("premium_revenue", { precision: 18, scale: 2 }).default("0"),
   adRevenue: decimal("ad_revenue", { precision: 18, scale: 2 }).default("0"),
   totalPayingUsers: integer("total_paying_users").default(0),
+  activePayingUsers: integer("active_paying_users").default(0),
   newPayingUsers: integer("new_paying_users").default(0),
   arpu: decimal("arpu", { precision: 18, scale: 2 }).default("0"), // Average Revenue Per User
   arppu: decimal("arppu", { precision: 18, scale: 2 }).default("0"), // Average Revenue Per Paying User
@@ -524,8 +624,8 @@ export const revenueMetrics = pgTable("revenue_metrics", {
   index("idx_revenue_date").on(table.date),
 ]);
 
-// Ad Performance Metrics Table
-export const adPerformanceMetrics = pgTable("ad_performance_metrics", {
+// Ad Performance Analytics Table (BI)
+export const adPerformanceAnalytics = pgTable("ad_performance_analytics", {
   id: serial("id").primaryKey(),
   date: timestamp("date").notNull(),
   totalAdSpend: decimal("total_ad_spend", { precision: 18, scale: 2 }).default("0"),
@@ -541,7 +641,7 @@ export const adPerformanceMetrics = pgTable("ad_performance_metrics", {
   conversionRate: decimal("conversion_rate", { precision: 5, scale: 4 }).default("0"),
   avgRevenuePerInstall: decimal("avg_revenue_per_install", { precision: 8, scale: 2 }).default("0"),
 }, (table) => [
-  index("idx_ad_performance_date").on(table.date),
+  index("idx_ad_performance_analytics_date").on(table.date),
 ]);
 
 // Relations for BI Analytics

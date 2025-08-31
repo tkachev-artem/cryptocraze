@@ -2,107 +2,66 @@ import type React from 'react';
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from '../lib/i18n'
+import { adService } from '../services/adService'
+import type { AdPlacement, AdWatchResult } from '../services/adService'
 
-// Google IMA SDK type declarations
-type GoogleIMA = {
-  AdDisplayContainer: new (container: HTMLElement, video: HTMLVideoElement) => AdDisplayContainer;
-  AdsLoader: new (adDisplayContainer: AdDisplayContainer) => AdsLoader;
-  AdsRequest: new () => AdsRequest;
-  AdsRenderingSettings: new () => AdsRenderingSettings;
-  AdEvent: {
-    Type: {
-      COMPLETE: string;
-      ALL_ADS_COMPLETED: string;
-    };
-  };
-  AdErrorEvent: {
-    Type: {
-      AD_ERROR: string;
-    };
-  };
-  AdsManagerLoadedEvent: {
-    Type: {
-      ADS_MANAGER_LOADED: string;
-    };
-  };
-  ViewMode: {
-    FULLSCREEN: string;
-  };
+// Props interface
+interface VideoAdModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onAdCompleted: (result: AdWatchResult) => void
+  placement: AdPlacement
+  requiredViews?: number // Number of ads required to watch
+  rewardAmount?: number // Override default reward amount
 }
 
-type AdDisplayContainer = Record<string, unknown>
-
-type AdsLoader = {
-  addEventListener(eventType: string, handler: (event: unknown) => void): void;
-  requestAds(adsRequest: AdsRequest): void;
-  destroy(): void;
+// Component state interface
+interface VideoAdState {
+  isReady: boolean
+  isStarted: boolean
+  isLoading: boolean
+  canClaim: boolean
+  error: string | null
+  viewCount: number
+  progressPercent: number
+  showProgressBar: boolean
+  sessionId: string | null
+  watchStartTime: number | null
 }
 
-type AdsRequest = {
-  adTagUrl: string;
-  linearAdSlotWidth: number;
-  linearAdSlotHeight: number;
-}
+const VideoAdModal: React.FC<VideoAdModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onAdCompleted, 
+  placement,
+  requiredViews = 1,
+  rewardAmount 
+}) => {
+  const { t } = useTranslation()
+  
+  const [state, setState] = useState<VideoAdState>({
+    isReady: false,
+    isStarted: false,
+    isLoading: false,
+    canClaim: false,
+    error: null,
+    viewCount: 0,
+    progressPercent: 0,
+    showProgressBar: false,
+    sessionId: null,
+    watchStartTime: null
+  })
 
-type AdsRenderingSettings = {
-  restoreCustomPlaybackStateOnAdBreakComplete: boolean;
-}
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const adContainerRef = useRef<HTMLDivElement>(null)
+  const cleanupRef = useRef<(() => void) | null>(null)
 
-type AdsManager = {
-  addEventListener(eventType: string, handler: (event?: unknown) => void): void;
-  init(width: number, height: number, viewMode: string): void;
-  start(): void;
-  destroy(): void;
-}
-
-type AdsManagerLoadedEvent = {
-  getAdsManager(video: HTMLVideoElement, container: AdDisplayContainer, settings: AdsRenderingSettings): AdsManager;
-}
-
-type AdErrorEvent = {
-  getError(): { message: string };
-}
-
-declare global {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
-  interface Window {
-    google?: {
-      ima: GoogleIMA;
-    };
-  }
-}
-
-type VideoAdModalProps = {
-	isOpen: boolean
-	onClose: () => void
-	onAdCompleted: () => void
-	adTagUrl: string
-	requiredViews?: number // Количество необходимых просмотров рекламы
-}
-
-const VideoAdModal: React.FC<VideoAdModalProps> = ({ isOpen, onClose, onAdCompleted, adTagUrl, requiredViews = 1 }) => {
-	const { t } = useTranslation()
-	const [isReady, setIsReady] = useState(false)
-	const [isStarted, setIsStarted] = useState(false)
-	const [canClaim, setCanClaim] = useState(false)
-	const [error, setError] = useState<string | null>(null)
-	const [viewCount, setViewCount] = useState(0) // Счетчик просмотренных реклам
-	const [isImaLoaded, setIsImaLoaded] = useState(false)
-	const [progressPercent, setProgressPercent] = useState(0)
-	const [showProgressBar, setShowProgressBar] = useState(false)
-
-	const videoRef = useRef<HTMLVideoElement>(null)
-	const adContainerRef = useRef<HTMLDivElement>(null)
-	const adsManagerRef = useRef<AdsManager | null>(null)
-	const adsLoaderRef = useRef<AdsLoader | null>(null)
-
-	// Анимация прогресс-бара
+	// Progress animation
 	const startProgressAnimation = useCallback(() => {
-		console.log('🎯 VideoAdModal: Запуск анимации прогресса')
-		setShowProgressBar(true)
-		setProgressPercent(0)
+		console.log('🎯 VideoAdModal: Starting progress animation')
+		setState(prev => ({ ...prev, showProgressBar: true, progressPercent: 0 }))
 		
-		// Анимируем прогресс от 0 до 100 за 3 секунды
+		// Animate progress from 0 to 100 over 3 seconds
 		const duration = 3000
 		const startTime = Date.now()
 		
@@ -111,44 +70,44 @@ const VideoAdModal: React.FC<VideoAdModalProps> = ({ isOpen, onClose, onAdComple
 			const progress = Math.min(elapsed / duration, 1)
 			const percent = progress * 100
 			
-			setProgressPercent(percent)
+			setState(prev => ({ ...prev, progressPercent: percent }))
 			
 			if (progress < 1) {
 				requestAnimationFrame(animate)
 			} else {
-				// Прогресс завершен, увеличиваем счетчик просмотров
+				// Progress completed, increment view count
 				setTimeout(() => {
-					const newViewCount = viewCount + 1
-					console.log(`💰 VideoAdModal: Реклама ${String(newViewCount)}/${String(requiredViews)} завершена`)
-					
-					// Увеличиваем счетчик просмотров
-					setViewCount(newViewCount)
-					
-					if (newViewCount >= requiredViews) {
-						// Все рекламы просмотрены, вызываем onAdCompleted и показываем кнопку "Забрать награду"
-						onAdCompleted()
-						setCanClaim(true)
-					} else {
-						// Еще есть рекламы для просмотра, НЕ вызываем onAdCompleted
-						// Сбрасываем состояние для следующей рекламы
-						setShowProgressBar(false)
-						setProgressPercent(0)
-						setCanClaim(false)
+					setState(prev => {
+						const newViewCount = prev.viewCount + 1
+						console.log(`💰 VideoAdModal: Ad ${newViewCount}/${requiredViews} completed`)
 						
-						// Запускаем следующую рекламу через 1 секунду
+						if (newViewCount >= requiredViews) {
+							// All ads watched, enable claim button
+							return { ...prev, viewCount: newViewCount, canClaim: true }
+						} else {
+							// More ads to watch, reset for next ad
+							return {
+								...prev,
+								viewCount: newViewCount,
+								showProgressBar: false,
+								progressPercent: 0,
+								canClaim: false
+							}
+						}
+					})
+					
+					// Auto-start next ad after delay
+					if (state.viewCount + 1 < requiredViews) {
 						setTimeout(() => {
-							// Простая симуляция следующей рекламы
-							setTimeout(() => {
-								startProgressAnimation()
-							}, 3000)
-						}, 1000)
+							startNextAd()
+						}, 2000)
 					}
 				}, 500)
 			}
 		}
 		
 		requestAnimationFrame(animate)
-	}, [onAdCompleted, viewCount, requiredViews])
+	}, [requiredViews, state.viewCount])
 
 	// Загрузка IMA SDK
 	const loadImaScript = useCallback(() => {

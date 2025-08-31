@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
+import { Grid } from '../../components/ui/grid';
 import { formatMoneyShort } from '../../lib/numberUtils';
 import { symbolToCoinId } from '../../hooks/symbolToCoinId';
 import { useCoinGeckoIcon } from '../../hooks/useCoinGeckoIcon';
@@ -342,27 +343,29 @@ export function DealList() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
-        <div className="text-red-500 text-center mb-4">
-          <h2 className="text-xl font-bold mb-2">Error</h2>
-          <p>{error}</p>
+      <Grid>
+        <div className="flex flex-col items-center justify-center p-4">
+          <div className="text-red-500 text-center mb-4">
+            <h2 className="text-xl font-bold mb-2">Error</h2>
+            <p>{error}</p>
+          </div>
+          <Button
+            onClick={() => {
+              setError(null);
+              setIsLoading(true);
+              loadDeals();
+            }}
+            className="bg-blue-500 text-white px-6 py-2 rounded"
+          >
+            Retry
+          </Button>
         </div>
-        <Button
-          onClick={() => {
-            setError(null);
-            setIsLoading(true);
-            loadDeals();
-          }}
-          className="bg-blue-500 text-white px-6 py-2 rounded"
-        >
-          Retry
-        </Button>
-      </div>
+      </Grid>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col pb-[calc(56px+env(safe-area-inset-bottom))]">
+    <Grid className="p-0 flex flex-col pb-[calc(56px+env(safe-area-inset-bottom))]">
       {/* Top Navigation + Tab Buttons - Fixed */}
       <div className="sticky top-0 z-30 bg-white">
         <div className="flex items-center justify-between px-4 py-4">
@@ -461,7 +464,7 @@ export function DealList() {
 
       {/* Bottom Navigation */}
       <BottomNavigation />
-    </div>
+    </Grid>
   );
 }
 

@@ -23,9 +23,12 @@ import { TaskTemplateService as DatabaseTaskTemplateService } from './services/t
 import { PrizeService } from './services/prizeService';
 import { spinWheel, getWheelPrizes } from './wheel';
 import { db } from './db';
-import { deals, users, premiumSubscriptions, rewardTiers, analytics, userDailyStats, cohortAnalysis, userAcquisitionMetrics, engagementMetrics, revenueMetrics, adPerformanceMetrics } from '../shared/schema';
+import { deals, users, premiumSubscriptions, rewardTiers, analytics, userDailyStats, cohortAnalysis, userAcquisitionMetrics, engagementMetrics, revenueMetrics, adPerformanceMetrics, adSessions, adRewards } from '../shared/schema';
 import { applyAutoRewards } from './services/autoRewards';
 import { biAnalyticsService } from './services/biAnalyticsService';
+import { adminAnalyticsService } from './services/adminAnalyticsService';
+import { registerAdRoutes } from './adRoutes';
+import { adminRoutes as workerAdminRoutes, getWorkerSystemHealth } from './services/workers/index.js';
 import { and, eq, gte, lte, inArray, sql, desc, asc, count, sum, lt } from 'drizzle-orm';
 
 // Types for authenticated requests  
@@ -44,15 +47,29 @@ type AuthenticatedRequest = Request & {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint
-  app.get('/health', (req, res) => {
-    res.json({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      message: 'CryptoCraze API is running',
-      version: '2.0.0',
-      environment: process.env.NODE_ENV || 'development',
-      tunnel: process.env.TUNNEL_URL || null
-    });
+  app.get('/health', async (req, res) => {
+    try {
+      const workerHealth = await getWorkerSystemHealth();
+      res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        message: 'CryptoCraze API is running',
+        version: '2.0.0',
+        environment: process.env.NODE_ENV || 'development',
+        tunnel: process.env.TUNNEL_URL || null,
+        workers: workerHealth
+      });
+    } catch (error) {
+      res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        message: 'CryptoCraze API is running',
+        version: '2.0.0',
+        environment: process.env.NODE_ENV || 'development',
+        tunnel: process.env.TUNNEL_URL || null,
+        workers: { isHealthy: false, status: 'error', error: 'Worker system not available' }
+      });
+    }
   });
 
   // Debug endpoint for auth
@@ -82,6 +99,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   if (!shouldSkipAuth) {
     setupSimpleOAuth(app);
   }
+
+  // Register ad system routes
+  registerAdRoutes(app);
+  
+  // Register worker admin routes
+  app.use('/api/admin/workers', workerAdminRoutes);
 
   // Account: delete user and related data
   app.delete('/api/account/delete', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
@@ -4889,13 +4912,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
    *       200:
    *         description: Обзор аналитики
    */
-  app.get('/api/admin/analytics/overview', isAdminWithAuth, async (req: AuthenticatedRequest, res: Response) => {
+  app.get('/api/admin/analytics/overview', async (req: Request, res: Response) => {
     try {
-      const overview = await biAnalyticsService.getAdminOverview();
+      console.log('[AdminAnalytics] Overview endpoint called');
+      const overview = await adminAnalyticsService.getOverview();
+      console.log('[AdminAnalytics] Overview data retrieved successfully');
       res.json(overview);
     } catch (error: any) {
-      console.error("Error getting admin analytics overview:", error);
-      res.status(500).json({ error: 'Ошибка получения обзора аналитики' });
+      console.error("[AdminAnalytics] Error getting admin analytics overview:", error);
+      res.status(500).json({ 
+        error: 'Ошибка получения обзора аналитики',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   });
 
@@ -4920,7 +4948,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.get('/api/admin/analytics/engagement', isAdminWithAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const days = parseInt(req.query.days as string) || 30;
+      const daysParam = req.query.days as string;
+      const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365); // Limit 1-365 days
       const endDate = new Date();
       const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
 
@@ -4961,7 +4990,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.get('/api/admin/analytics/retention', isAdminWithAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const weeks = parseInt(req.query.weeks as string) || 12;
+      const weeksParam = req.query.weeks as string;
+      const weeks = Math.min(Math.max(parseInt(weeksParam) || 12, 1), 52); // Limit 1-52 weeks
       
       const cohortData = await db
         .select()
@@ -5005,20 +5035,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
    *       200:
    *         description: Метрики доходов
    */
-  app.get('/api/admin/analytics/revenue', isAdminWithAuth, async (req: AuthenticatedRequest, res: Response) => {
+  app.get('/api/admin/analytics/revenue', async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const days = parseInt(req.query.days as string) || 30;
+      const daysParam = req.query.days as string;
+      const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365); // Limit 1-365 days
       const endDate = new Date();
       const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
 
-      const revenueData = await db
-        .select()
-        .from(revenueMetrics)
-        .where(and(
-          gte(revenueMetrics.date, startDate),
-          lte(revenueMetrics.date, endDate)
-        ))
-        .orderBy(asc(revenueMetrics.date));
+      // Use raw SQL to bypass Drizzle schema issues
+      const revenueDataResult = await db.execute(sql`
+        SELECT * FROM revenue_metrics 
+        WHERE date >= ${startDate} AND date <= ${endDate}
+        ORDER BY date ASC
+      `);
+
+      // Extract rows from the result object
+      const revenueData = revenueDataResult.rows || [];
 
       res.json({ data: revenueData });
     } catch (error: any) {
@@ -5048,7 +5080,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.get('/api/admin/analytics/acquisition', isAdminWithAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const days = parseInt(req.query.days as string) || 30;
+      const daysParam = req.query.days as string;
+      const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365); // Limit 1-365 days
       const endDate = new Date();
       const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
 
@@ -5125,29 +5158,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
    *       200:
    *         description: Ad Performance метрики
    */
-  app.get('/api/admin/analytics/ads', isAdminWithAuth, async (req: AuthenticatedRequest, res: Response) => {
+  app.get('/api/admin/analytics/ads', async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const days = parseInt(req.query.days as string) || 30;
+      console.log('[DEBUG] Starting ads endpoint...');
+      const daysParam = req.query.days as string;
+      const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365); // Limit 1-365 days
       const endDate = new Date();
       const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
       
-      const adData = await db
-        .select()
-        .from(adPerformanceMetrics)
-        .where(and(
-          gte(adPerformanceMetrics.date, startDate),
-          lte(adPerformanceMetrics.date, endDate)
-        ))
-        .orderBy(desc(adPerformanceMetrics.date));
+      console.log('[DEBUG] Date range:', startDate, 'to', endDate);
+      
+      // Use raw SQL to bypass Drizzle schema issues
+      console.log('[DEBUG] Executing SQL query...');
+      const adDataResult = await db.execute(sql`
+        SELECT * FROM ad_performance_metrics 
+        WHERE date >= ${startDate} AND date <= ${endDate}
+        ORDER BY date DESC
+      `);
+
+      console.log('[DEBUG] Query result type:', typeof adDataResult);
+      console.log('[DEBUG] Query result has rows:', 'rows' in adDataResult);
+
+      // Extract rows from the result object
+      const adData = adDataResult.rows || [];
+      console.log('[DEBUG] Extracted rows count:', adData.length);
 
       // Calculate totals and averages
-      const totals = adData.reduce((acc, day) => ({
-        totalAdSpend: acc.totalAdSpend + Number(day.totalAdSpend || 0),
-        totalInstalls: acc.totalInstalls + Number(day.totalInstalls || 0),
-        totalConversions: acc.totalConversions + Number(day.totalConversions || 0),
-        totalRevenue: acc.totalRevenue + Number(day.totalRevenue || 0),
-        totalImpressions: acc.totalImpressions + Number(day.adImpressions || 0),
-        totalClicks: acc.totalClicks + Number(day.adClicks || 0),
+      console.log('[DEBUG] Starting reduce operation...');
+      const totals = adData.reduce((acc: any, day: any) => ({
+        totalAdSpend: acc.totalAdSpend + Number(day.total_ad_spend || 0),
+        totalInstalls: acc.totalInstalls + Number(day.total_installs || 0),
+        totalConversions: acc.totalConversions + Number(day.total_conversions || 0),
+        totalRevenue: acc.totalRevenue + Number(day.total_revenue || 0),
+        totalImpressions: acc.totalImpressions + Number(day.ad_impressions || 0),
+        totalClicks: acc.totalClicks + Number(day.ad_clicks || 0),
+      }), {
+        totalAdSpend: 0,
+        totalInstalls: 0,
+        totalConversions: 0,
+        totalRevenue: 0,
+        totalImpressions: 0,
+        totalClicks: 0,
+      });
+
+      console.log('[DEBUG] Totals calculated:', totals);
+
+      const avgCPI = totals.totalInstalls > 0 ? totals.totalAdSpend / totals.totalInstalls : 0;
+      const avgCPA = totals.totalConversions > 0 ? totals.totalAdSpend / totals.totalConversions : 0;
+      const avgROAS = totals.totalAdSpend > 0 ? totals.totalRevenue / totals.totalAdSpend : 0;
+      const avgCTR = totals.totalImpressions > 0 ? totals.totalClicks / totals.totalImpressions : 0;
+      const avgConversionRate = totals.totalClicks > 0 ? totals.totalConversions / totals.totalClicks : 0;
+
+      const responseData = {
+        data: adData,
+        summary: {
+          totalAdSpend: totals.totalAdSpend.toFixed(2),
+          totalInstalls: totals.totalInstalls,
+          totalConversions: totals.totalConversions,
+          totalRevenue: totals.totalRevenue.toFixed(2),
+          avgCPI: avgCPI.toFixed(2),
+          avgCPA: avgCPA.toFixed(2),
+          avgROAS: avgROAS.toFixed(4),
+          avgCTR: (avgCTR * 100).toFixed(4),
+          avgConversionRate: (avgConversionRate * 100).toFixed(4),
+          totalImpressions: totals.totalImpressions,
+          totalClicks: totals.totalClicks,
+        }
+      };
+
+      console.log('[DEBUG] Response data prepared, sending...');
+      res.json(responseData);
+    } catch (error: any) {
+      console.error("[ERROR] Ad performance metrics error:", error);
+      console.error("[ERROR] Error stack:", error.stack);
+      res.status(500).json({ error: 'Ошибка получения метрик рекламы', details: error.message });
+    }
+  });
+
+  // Test endpoints for analytics (no auth required for debugging)
+  app.get('/api/test/analytics/ads-full', async (req: Request, res: Response) => {
+    try {
+      console.log('[TEST] Testing full ads endpoint logic without auth...');
+      const daysParam = req.query.days as string;
+      const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365);
+      const endDate = new Date();
+      const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
+      
+      const adDataResult = await db.execute(sql`
+        SELECT * FROM ad_performance_metrics 
+        WHERE date >= ${startDate} AND date <= ${endDate}
+        ORDER BY date DESC
+      `);
+
+      const adData = adDataResult.rows || [];
+      console.log('[TEST] Found rows:', adData.length);
+
+      // Calculate totals and averages (same as the real endpoint)
+      const totals = adData.reduce((acc: any, day: any) => ({
+        totalAdSpend: acc.totalAdSpend + Number(day.total_ad_spend || 0),
+        totalInstalls: acc.totalInstalls + Number(day.total_installs || 0),
+        totalConversions: acc.totalConversions + Number(day.total_conversions || 0),
+        totalRevenue: acc.totalRevenue + Number(day.total_revenue || 0),
+        totalImpressions: acc.totalImpressions + Number(day.ad_impressions || 0),
+        totalClicks: acc.totalClicks + Number(day.ad_clicks || 0),
       }), {
         totalAdSpend: 0,
         totalInstalls: 0,
@@ -5180,12 +5293,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     } catch (error: any) {
-      console.error("Error getting ad performance metrics:", error);
-      res.status(500).json({ error: 'Ошибка получения метрик рекламы' });
+      console.error("[TEST] Test full ads endpoint error:", error);
+      res.status(500).json({ error: error.message, stack: error.stack });
     }
   });
 
-  // Test endpoints for analytics (no auth required for debugging)
+  // Alternative analytics endpoints without authentication (for debugging)
+  app.get('/api/analytics-public/overview', async (req: Request, res: Response) => {
+    try {
+      const overview = await biAnalyticsService.getAdminOverview();
+      res.json(overview);
+    } catch (error: any) {
+      console.error("Error getting admin overview:", error);
+      res.status(500).json({ error: 'Error getting overview' });
+    }
+  });
+
+  app.get('/api/analytics-public/revenue', async (req: Request, res: Response) => {
+    try {
+      const daysParam = req.query.days as string;
+      const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365);
+      const endDate = new Date();
+      const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
+
+      const revenueDataResult = await db.execute(sql`
+        SELECT * FROM revenue_metrics 
+        WHERE date >= ${startDate} AND date <= ${endDate}
+        ORDER BY date ASC
+      `);
+
+      const revenueData = revenueDataResult.rows || [];
+      res.json({ data: revenueData });
+    } catch (error: any) {
+      console.error("Error getting revenue metrics:", error);
+      res.status(500).json({ error: 'Error getting revenue metrics' });
+    }
+  });
+
+  app.get('/api/analytics-public/ads', async (req: Request, res: Response) => {
+    try {
+      console.log('[PUBLIC-ADS] Starting ads endpoint...');
+      const daysParam = req.query.days as string;
+      const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365);
+      const endDate = new Date();
+      const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
+      
+      const adDataResult = await db.execute(sql`
+        SELECT * FROM ad_performance_metrics 
+        WHERE date >= ${startDate} AND date <= ${endDate}
+        ORDER BY date DESC
+      `);
+
+      const adData = adDataResult.rows || [];
+      console.log('[PUBLIC-ADS] Found rows:', adData.length);
+
+      const totals = adData.reduce((acc: any, day: any) => ({
+        totalAdSpend: acc.totalAdSpend + Number(day.total_ad_spend || 0),
+        totalInstalls: acc.totalInstalls + Number(day.total_installs || 0),
+        totalConversions: acc.totalConversions + Number(day.total_conversions || 0),
+        totalRevenue: acc.totalRevenue + Number(day.total_revenue || 0),
+        totalImpressions: acc.totalImpressions + Number(day.ad_impressions || 0),
+        totalClicks: acc.totalClicks + Number(day.ad_clicks || 0),
+      }), {
+        totalAdSpend: 0,
+        totalInstalls: 0,
+        totalConversions: 0,
+        totalRevenue: 0,
+        totalImpressions: 0,
+        totalClicks: 0,
+      });
+
+      const avgCPI = totals.totalInstalls > 0 ? totals.totalAdSpend / totals.totalInstalls : 0;
+      const avgCPA = totals.totalConversions > 0 ? totals.totalAdSpend / totals.totalConversions : 0;
+      const avgROAS = totals.totalAdSpend > 0 ? totals.totalRevenue / totals.totalAdSpend : 0;
+      const avgCTR = totals.totalImpressions > 0 ? totals.totalClicks / totals.totalImpressions : 0;
+      const avgConversionRate = totals.totalClicks > 0 ? totals.totalConversions / totals.totalClicks : 0;
+
+      const responseData = {
+        data: adData,
+        summary: {
+          totalAdSpend: totals.totalAdSpend.toFixed(2),
+          totalInstalls: totals.totalInstalls,
+          totalConversions: totals.totalConversions,
+          totalRevenue: totals.totalRevenue.toFixed(2),
+          avgCPI: avgCPI.toFixed(2),
+          avgCPA: avgCPA.toFixed(2),
+          avgROAS: avgROAS.toFixed(4),
+          avgCTR: (avgCTR * 100).toFixed(4),
+          avgConversionRate: (avgConversionRate * 100).toFixed(4),
+          totalImpressions: totals.totalImpressions,
+          totalClicks: totals.totalClicks,
+        }
+      };
+
+      console.log('[PUBLIC-ADS] Success, sending response');
+      res.json(responseData);
+    } catch (error: any) {
+      console.error("[PUBLIC-ADS] Error:", error);
+      res.status(500).json({ error: 'Error getting ad performance metrics', details: error.message });
+    }
+  });
+
   app.get('/api/test/analytics/overview', async (req: Request, res: Response) => {
     try {
       const overview = await biAnalyticsService.getAdminOverview();
@@ -5217,6 +5425,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   });
+
+  // ===== NEW ADMIN ANALYTICS ENDPOINTS (Improved) =====
+  
+  /**
+   * @swagger
+   * /api/admin/analytics/overview-v2:
+   *   get:
+   *     summary: Получить обзор аналитики (улучшенная версия)
+   *     tags: [Admin Analytics]
+   *     responses:
+   *       200:
+   *         description: Обзор аналитики с fallback данными
+   */
+  app.get('/api/admin/analytics/overview-v2', async (req: Request, res: Response) => {
+    try {
+      console.log('[AdminAnalytics] Overview-v2 endpoint called');
+      const overview = await adminAnalyticsService.getOverview();
+      console.log('[AdminAnalytics] Overview data retrieved successfully');
+      res.json(overview);
+    } catch (error: any) {
+      console.error("[AdminAnalytics] Error getting admin analytics overview:", error);
+      res.status(500).json({ 
+        error: 'Ошибка получения обзора аналитики',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/admin/analytics/revenue-v2:
+   *   get:
+   *     summary: Получить метрики доходов (улучшенная версия)
+   *     tags: [Admin Analytics]
+   *     parameters:
+   *       - in: query
+   *         name: days
+   *         schema:
+   *           type: integer
+   *           default: 30
+   *         description: Количество дней для выборки
+   *     responses:
+   *       200:
+   *         description: Метрики доходов в правильном формате
+   */
+  app.get('/api/admin/analytics/revenue-v2', async (req: Request, res: Response) => {
+    try {
+      console.log('[AdminAnalytics] Revenue-v2 endpoint called');
+      const daysParam = req.query.days as string;
+      const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365); // Limit 1-365 days
+      
+      console.log(`[AdminAnalytics] Getting revenue data for ${days} days`);
+      const result = await adminAnalyticsService.getRevenueData(days);
+      console.log(`[AdminAnalytics] Revenue data retrieved: ${result.data.length} records`);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("[AdminAnalytics] Error getting revenue metrics:", error);
+      res.status(500).json({ 
+        error: 'Ошибка получения метрик доходов',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/admin/analytics/ads-v2:
+   *   get:
+   *     summary: Получить метрики рекламы (улучшенная версия)
+   *     tags: [Admin Analytics]
+   *     parameters:
+   *       - in: query
+   *         name: days
+   *         schema:
+   *           type: integer
+   *           default: 30
+   *         description: Количество дней для анализа
+   *     responses:
+   *       200:
+   *         description: Ad Performance метрики с summary данными
+   */
+  app.get('/api/admin/analytics/ads-v2', async (req: Request, res: Response) => {
+    try {
+      console.log('[AdminAnalytics] Ads-v2 endpoint called');
+      const daysParam = req.query.days as string;
+      const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365); // Limit 1-365 days
+      
+      console.log(`[AdminAnalytics] Getting ads data for ${days} days`);
+      const result = await adminAnalyticsService.getAdsData(days);
+      console.log(`[AdminAnalytics] Ads data retrieved: ${result.data.length} records`);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("[AdminAnalytics] Error getting ads metrics:", error);
+      res.status(500).json({ 
+        error: 'Ошибка получения метрик рекламы',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  });
+
+  // Debug endpoint для проверки структуры таблиц (только в development)
+  if (process.env.NODE_ENV === 'development') {
+    app.get('/api/debug/table-structure', async (req: Request, res: Response) => {
+      try {
+        const structure = await adminAnalyticsService.debugTableStructure();
+        res.json(structure);
+      } catch (error: any) {
+        console.error("Error getting table structure:", error);
+        res.status(500).json({ error: error.message });
+      }
+    });
+  }
 
   /**
    * @swagger

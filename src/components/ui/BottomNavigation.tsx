@@ -23,7 +23,7 @@ const BottomNavigation = forwardRef<HTMLDivElement>((_props, ref) => {
 
   // Add admin tab if user is admin
   const tabs = isAdmin 
-    ? [...baseTabs, { id: 'admin', path: '/admin/analytics', activeIcon: null, inactiveIcon: null, aria: 'Admin Dashboard' }]
+    ? [...baseTabs, { id: 'admin', path: '/admin/dashboard', activeIcon: null, inactiveIcon: null, aria: 'Admin Dashboard' }]
     : baseTabs;
 
   const handleTabClick = (path: string) => {
@@ -37,7 +37,7 @@ const BottomNavigation = forwardRef<HTMLDivElement>((_props, ref) => {
       ref={ref}
       role="navigation"
       aria-label={t('nav.home')}
-      className='absolute bottom-0 left-0 right-0 w-full bg-white border-t border-gray-200 flex justify-center items-center gap-[35px] sm:gap-[45px] px-3 sm:px-4 min-h-[60px] sm:min-h-[70px] pt-2 sm:pt-3 pb-[calc(10px+env(safe-area-inset-bottom))] sm:pb-[calc(12px+env(safe-area-inset-bottom))] touch-pan-x select-none z-[70]'
+      className='absolute bottom-0 left-0 right-0 w-full bg-white border-t border-gray-200 flex justify-around items-center px-3 sm:px-4 min-h-[75px] sm:min-h-[80px] pt-2 pb-[calc(10px+env(safe-area-inset-bottom))] sm:pb-[calc(12px+env(safe-area-inset-bottom))] touch-pan-x select-none z-[70]'
       onTouchMove={(e) => {
         e.preventDefault();
       }}
@@ -48,14 +48,20 @@ const BottomNavigation = forwardRef<HTMLDivElement>((_props, ref) => {
           onClick={() => {
             handleTabClick(tab.path);
           }}
-          className={`flex flex-col items-center gap-1 sm:gap-2 transition-colors relative px-3 sm:px-4 py-2.5 sm:py-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0C54EA]/50 rounded-md ${
-            isActive(tab.path) 
-              ? 'text-[#0C54EA]' 
-              : 'text-[#808080]'
-          }`}
+          className={`
+            flex flex-col items-center justify-center gap-1 sm:gap-2 
+            transition-all duration-200 relative rounded-lg
+            min-w-[48px] min-h-[48px] 
+            sm:min-w-[52px] sm:min-h-[52px]
+            px-3 sm:px-4 
+            py-2.5 sm:py-3
+            focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0C54EA]/50
+            active:scale-95 hover:bg-gray-50/50
+            ${isActive(tab.path) ? 'text-[#0C54EA]' : 'text-[#808080]'}
+          `}
           aria-label={tab.aria}
         >
-          <div className="relative inline-block">
+          <div className="relative inline-block flex-shrink-0">
             {tab.id === 'admin' ? (
               <LayoutDashboard 
                 className={`w-7 h-7 sm:w-8 sm:h-8 ${isActive(tab.path) ? 'text-[#0C54EA]' : 'text-[#808080]'}`}
@@ -64,13 +70,14 @@ const BottomNavigation = forwardRef<HTMLDivElement>((_props, ref) => {
               <img 
                 src={isActive(tab.path) ? tab.activeIcon : tab.inactiveIcon} 
                 alt={tab.id} 
-                className="w-7 h-7 sm:w-8 sm:h-8"
+                className="w-7 h-7 sm:w-8 sm:h-8 object-contain"
+                loading="eager"
               />
             )}
 
             {/* Notification badge for home tab */}
             {tab.id === 'home' && unreadCount > 0 && (
-              <div className="absolute -top-1 -right-1 bg-[#F6465D] text-white text-[9px] sm:text-[10px] leading-none rounded-full min-w-[14px] sm:min-w-[16px] h-3.5 sm:h-4 flex items-center justify-center px-1">
+              <div className="absolute -top-1 -right-1 bg-[#F6465D] text-white text-[9px] sm:text-[10px] font-medium leading-none rounded-full min-w-[15px] sm:min-w-[16px] h-3.5 sm:h-4 flex items-center justify-center px-1">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </div>
             )}

@@ -60,8 +60,13 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
+      // Force cache invalidation by changing output filenames
       rollupOptions: {
         output: {
+          // Add timestamp to force cache busting
+          entryFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
+          chunkFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
+          assetFileNames: `assets/[name]-[hash]-${Date.now()}.[ext]`,
           manualChunks: {
             // Vendor libraries
             'vendor-react': ['react', 'react-dom', 'react-router-dom'],

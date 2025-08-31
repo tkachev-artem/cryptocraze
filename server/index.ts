@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import { registerRoutes } from "./routes";
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { db } from './db';
+import { initializeWorkerSystem, shutdownWorkerSystem } from './services/workers/index.js';
 
 // Load environment variables with environment-specific file support
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -95,6 +96,16 @@ async function bootstrap() {
     const staticOnly = (process.env.STATIC_ONLY || '').toLowerCase() === 'true';
     if (!staticOnly) {
       await import('./services/dealsAutoCloser');
+      
+      // Initialize the TP/SL worker system
+      console.log('🔧 Initializing TP/SL worker system...');
+      try {
+        await initializeWorkerSystem();
+        console.log('✅ TP/SL worker system initialized');
+      } catch (error) {
+        console.error('❌ Failed to initialize TP/SL worker system:', error);
+        console.log('⚠️  Server will continue without worker system');
+      }
     }
 
     const server = await registerRoutes(app);
@@ -146,6 +157,27 @@ async function bootstrap() {
       }
       console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
     });
+
+    // Graceful shutdown handlers (worker system has its own handlers)
+    const gracefulShutdown = async (signal: string) => {
+      console.log(`\n📡 ${signal} received. Starting graceful shutdown...`);
+      
+      try {
+        // Close HTTP server
+        server.close(() => {
+          console.log('✅ HTTP server closed');
+        });
+        
+        // Worker system will handle its own shutdown via its own handlers
+        
+      } catch (error) {
+        console.error('❌ Error during graceful shutdown:', error);
+        process.exit(1);
+      }
+    };
+
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
   } catch (error) {
     console.error("❌ Failed to start server:", error);
     process.exit(1);

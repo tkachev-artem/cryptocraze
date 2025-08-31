@@ -77,7 +77,20 @@
     "freeBalance": "Free Balance",
     "openTrades": "Open Trades",
     "noTrades": "No open trades",
-    "startTrading": "Start trading to see your positions here"
+    "startTrading": "Start trading to see your positions here",
+    "profitChart": "Profit/Loss Chart",
+    "topDeals": "Top Deals",
+    "totalVolume": "Total Volume",
+    "totalProfit": "Total P&L",
+    "bestDeal": "Best Deal",
+    "roi": "ROI",
+    "noData": "No trading data available",
+    "failedToLoad": "Failed to load chart data",
+    "recent": "Recent",
+    "best": "Best",
+    "loading": "Loading...",
+    "days": "days",
+    "trades": "trades"
   },
   "nav": {
     "back": "Back",
@@ -174,10 +187,14 @@
     "claim": "Collect",
     "execute": "Execute",
     "premium": "PREMIUM",
+    "retry": "Retry",
+    "attemptsLeft": "attempts left",
     "coin": "Coin",
     "coins": "Coins",
-    "retry": "Retry",
-    "viewAll": "View All"
+    "viewAll": "View All",
+    "page": "Page",
+    "of": "of",
+    "lastUpdated": "Last updated"
   },
   "app": {
     "phoneOnly": {
@@ -247,21 +264,6 @@
       "system_alert": "Important system notification"
     }
   },
-  "dashboard": {
-    "profitChart": "Profit/Loss Chart",
-    "topDeals": "Top Deals",
-    "totalVolume": "Total Volume",
-    "totalProfit": "Total P&L",
-    "bestDeal": "Best Deal",
-    "roi": "ROI",
-    "noData": "No trading data available",
-    "failedToLoad": "Failed to load chart data",
-    "recent": "Recent",
-    "best": "Best",
-    "loading": "Loading...",
-    "days": "days",
-    "trades": "trades"
-  },
   "admin": {
     "analytics": {
       "title": "BI Analytics Dashboard",
@@ -317,7 +319,15 @@
     "stepProgress": "Step {{current}} of {{total}}",
     "percentComplete": "{{percent}}% Complete",
     "stepsTitle": "Tutorial Steps",
-    "interactiveArea": "Interactive demo area"
+    "interactiveArea": "Interactive demo area",
+    "errorTitle": "Tutorial Error",
+    "errorMessage": "Something went wrong: {{error}}",
+    "errorCanRetry": "Error occurred: {{error}}. You can try again.",
+    "errorFinal": "Final error: {{error}}. Please contact support.",
+    "retry": "Retry",
+    "emergencyExit": "Exit Tutorial",
+    "emergencyExitDesc": "Tutorial was skipped due to technical issues.",
+    "maxRetriesReached": "Maximum retry attempts reached. Please contact support."
   },
   "tradeTutorial": {
     "start": "Start",
@@ -611,7 +621,10 @@
     "simulation": "Simulating viewing...",
     "processing": "Processing reward...",
     "claimReward": "Claim reward",
-    "claimButton": "Claim Reward"
+    "claimButton": "Claim Reward",
+    "watchAd": "Watch Advertisement",
+    "startingAd": "Starting advertisement...",
+    "initializing": "Initializing..."
   },
   "ad": {
     "title": "Advertisement",
@@ -631,8 +644,14 @@
     },
     "openError": "Box opening error",
     "proPrize": "PRO mode for {{days}} days!",
+    "energyPrize": "{{amount}} Energy!",
     "yourPrize": "Your prize",
-    "tapInstruction": "Tap the box to get your prize!"
+    "tapInstruction": "Tap the box to get your prize!",
+    "opening": "Opening box...",
+    "openAction": "Open {{type}}",
+    "error": {
+      "title": "Oops! Something went wrong"
+    }
   },
   "wheel": {
     "yourWin": "Your winnings",
@@ -751,7 +770,30 @@
       "title": "Advertisement",
       "loading": "Loading advertisement...",
       "processing": "Processing reward...",
-      "getReward": "Get Reward"
+      "getReward": "Get Reward",
+      "watchAd": "Watch Ad",
+      "watchForBonus": "Watch for Bonus",
+      "watchForSpin": "Watch for Spin",
+      "watchForReward": "Watch for Reward",
+      "watchToEarn": "Watch ad to earn",
+      "checking": "Checking...",
+      "availableIn": "Available in {{minutes}} min",
+      "bonus": "bonus",
+      "energy": "energy",
+      "premiumNoAds": "Premium users enjoy ad-free experience",
+      "dailyLimitReached": "Daily ad limit reached",
+      "hourlyLimitReached": "Hourly ad limit reached",
+      "waitBetweenAds": "Please wait before watching another ad",
+      "adFailed": "Ad failed to load",
+      "rewardProcessed": "Reward processed successfully",
+      "fraudDetected": "Suspicious activity detected",
+      "initialization": "Initializing ad system...",
+      "simulation": "Demo advertisement",
+      "testAd": "Test Advertisement",
+      "startingAd": "Starting advertisement...",
+      "initializing": "Initializing...",
+      "claimReward": "Claim Reward",
+      "claimButton": "Claim Reward"
     },
     "chart": {
       "lastUpdate": "Last update:",

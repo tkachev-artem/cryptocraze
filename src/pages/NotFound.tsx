@@ -1,13 +1,14 @@
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Grid } from '../components/ui/grid';
 import { useTranslation } from '../lib/i18n';
 
 export function NotFound() {
   const { t } = useTranslation();
 
   return (
-    <div className="min-h-dvh bg-gray-50 flex items-center justify-center px-4 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
-      <Card className="max-w-md w-full text-center">
+    <Grid className="flex items-center justify-center px-4 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
+      <Card className="w-full text-center">
         <CardHeader>
           <div className="text-6xl mb-4">🤔</div>
           <CardTitle className="text-2xl">{t('errors.404.title')}</CardTitle>
@@ -33,6 +34,6 @@ export function NotFound() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </Grid>
   );
 }

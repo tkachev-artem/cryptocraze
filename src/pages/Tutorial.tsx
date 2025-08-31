@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Progress } from '../components/ui/progress';
 import { PandaMentor } from '../components/PandaMentor';
+import { Grid } from '../components/ui/grid';
 import { apiRequest } from '../lib/queryClient';
 import { API_BASE_URL } from '@/lib/api';
 import { useTranslation } from '../lib/i18n';
@@ -152,10 +153,10 @@ export function Tutorial() {
   const progress = ((currentStep + 1) / tutorialSteps.length) * 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <Grid>
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b">
-        <div className="container mx-auto px-4 py-4">
+      <header className="bg-white border-b">
+        <div className="px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="text-2xl">🎓</div>
@@ -164,7 +165,7 @@ export function Tutorial() {
             <Button
               variant="outline"
               onClick={handleSkip}
-              disabled={completeTutorialMutation.isPending}
+              disabled={isCompleting}
             >
               {t('tutorial.skipTutorial')}
             </Button>
@@ -234,16 +235,26 @@ export function Tutorial() {
                     {currentStep === tutorialSteps.length - 1 ? (
                       <Button
                         onClick={handleComplete}
-                        disabled={isCompleting || completeTutorialMutation.isPending}
-                        className="bg-green-600 hover:bg-green-700"
+                        disabled={isCompleting}
+                        className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
                       >
-                        {isCompleting || completeTutorialMutation.isPending
-                          ? t('common.loading')
+                        {isCompleting
+                          ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              {t('common.loading')}
+                            </>
+                          )
                           : t('common.finish')
                         }
                       </Button>
                     ) : (
-                      <Button onClick={handleNext}>{t('common.next')}</Button>
+                      <Button 
+                        onClick={handleNext}
+                        disabled={isCompleting}
+                      >
+                        {t('common.next')}
+                      </Button>
                     )}
                   </div>
                 </CardContent>
@@ -304,6 +315,6 @@ export function Tutorial() {
           </div>
         </div>
       </main>
-    </div>
+    </Grid>
   );
 }

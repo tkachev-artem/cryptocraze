@@ -1,290 +1,511 @@
 {
-  "common": {
-    "loading": "Chargement...",
-    "error": "Erreur",
-    "success": "Succès",
-    "cancel": "Annuler",
-    "confirm": "Confirmer",
-    "save": "Sauvegarder",
-    "close": "Fermer",
-    "back": "Retour",
-    "next": "Suivant",
-    "previous": "Précédent",
-    "finish": "Terminer",
-    "continue": "Continuer",
-    "retry": "Réessayer",
-    "refresh": "Actualiser",
-    "search": "Rechercher",
-    "filter": "Filtrer",
-    "sort": "Trier",
-    "logout": "Se déconnecter",
-    "claim": "Réclamer",
-    "yes": "Oui",
-    "no": "Non"
-  },
-  "auth": {
-    "login": "Se connecter",
-    "loginWithProvider": "Se connecter avec {{provider}}",
-    "welcome": "Bienvenue",
-    "unauthorized": "Non autorisé",
-    "sessionExpired": "Session expirée. Veuillez vous reconnecter.",
-    "loginRequired": "Veuillez vous connecter pour continuer"
-  },
   "landing": {
-    "title": "Simulateur de Trading de Cryptomonnaies",
-    "subtitle": "Apprenez le trading de cryptomonnaies sans risque d'argent réel",
-    "ctaTitle": "Prêt à commencer votre parcours de trading ?",
+    "title": "Maîtrisez le Trading Crypto Sans Risque",
+    "subtitle": "Apprenez le trading de cryptomonnaies avec de l'argent virtuel et des données de marché réelles. Développez vos compétences, gagnez des réalisations, et devenez un trader confiant.",
+    "getStarted": "Commencez à Trader Maintenant",
+    "ctaTitle": "Prêt à Commencer Votre Parcours de Trading ?",
     "ctaSubtitle": "Rejoignez des milliers de traders qui ont amélioré leurs compétences avec notre simulateur sans risque.",
-    "description": "Maîtrisez le trading de cryptomonnaies avec notre simulateur complet. Pratiquez avec des données de marché réelles, apprenez du mentor virtuel Panda, et gagnez des réalisations en développant vos compétences de trading.",
     "features": {
-      "title": "Pourquoi choisir notre simulateur ?",
       "realData": {
-        "title": "Données de marché réelles",
-        "description": "Tradez avec des prix et conditions de marché de cryptomonnaies en temps réel"
+        "title": "Données de Marché Réelles",
+        "description": "Pratiquez avec les prix de cryptomonnaies en direct des principales bourses"
       },
       "virtualMoney": {
-        "title": "Argent virtuel",
-        "description": "Pratiquez avec un solde de départ de 10 000 $ - aucun risque d'argent réel"
+        "title": "Argent Virtuel",
+        "description": "Commencez avec 10 000 $ de monnaie virtuelle pour pratiquer sans risque"
       },
       "learning": {
-        "title": "Apprentissage interactif",
-        "description": "Apprenez de Panda, notre mentor virtuel, avec des tutoriels étape par étape"
+        "title": "Mentor IA",
+        "description": "Recevez des conseils de Panda, votre mentor de trading personnel"
       },
       "gamification": {
-        "title": "Expérience gamifiée",
-        "description": "Gagnez des réalisations, des récompenses quotidiennes et débloquez des fonctionnalités spéciales"
+        "title": "Réalisations",
+        "description": "Débloquez des récompenses et suivez vos progrès en vous améliorant"
       }
-    },
-    "cta": "Commencer à trader maintenant",
-    "getStarted": "Commencer"
+    }
+  },
+  "home": {
+    "welcome": "Bon retour !",
+    "portfolio": "Valeur du Portefeuille",
+    "todayPnl": "P&L d'Aujourd'hui",
+    "totalTrades": "Total des Trades",
+    "free": "Gratuit",
+    "trials": "Défis"
+  },
+  "wallet": {
+    "total": "Total",
+    "free": "Disponible"
+  },
+  "trading": {
+    "title": "Trading",
+    "buy": "Acheter",
+    "sell": "Vendre",
+    "amount": "Montant",
+    "leverage": "Levier",
+    "stopLoss": "Stop Loss",
+    "takeProfit": "Prise de Profit",
+    "selectPair": "Sélectionner la Paire de Trading",
+    "currentPrice": "Prix Actuel",
+    "direction": "Direction",
+    "long": "Long",
+    "short": "Short",
+    "openTrade": "Ouvrir un Trade",
+    "closeTrade": "Fermer le Trade",
+    "tradeOpened": "Trade ouvert avec succès",
+    "tradeClosed": "Trade fermé avec succès",
+    "invalidAmount": "Montant invalide",
+    "insufficientBalance": "Solde insuffisant",
+    "watchAd": "Regarder une Pub pour +5%",
+    "adBonus": "Bonus pub appliqué !",
+    "tradeDetails": "Détails du Trade",
+    "riskWarning": "Le trading implique des risques. Ne tradez qu'avec de l'argent que vous pouvez vous permettre de perdre.",
+    "min24h": "Plus Bas 24h",
+    "max24h": "Plus Haut 24h",
+    "tradesShort": "Trades",
+    "crypto": "Crypto",
+    "gain": "Gain",
+    "loss": "Perte"
+  },
+  "chart": {
+    "candlestick": "Chandelier",
+    "line": "Ligne",
+    "bar": "Barre",
+    "proMode": "Mode Pro",
+    "live": "Graphique en direct"
+  },
+  "dashboard": {
+    "freeBalance": "Solde Disponible",
+    "openTrades": "Trades Ouverts",
+    "noTrades": "Aucun trade ouvert",
+    "startTrading": "Commencez à trader pour voir vos positions ici",
+    "profitChart": "Graphique P&L",
+    "topDeals": "Top Deals",
+    "totalVolume": "Volume Total",
+    "totalProfit": "P&L Total",
+    "bestDeal": "Meilleur Deal",
+    "roi": "ROI",
+    "noData": "Aucune donnée de trading disponible",
+    "failedToLoad": "Échec du chargement des données de graphique",
+    "recent": "Récent",
+    "best": "Meilleur",
+    "loading": "Chargement...",
+    "days": "jours",
+    "trades": "trades"
   },
   "nav": {
     "back": "Retour",
     "home": "Accueil",
-    "topInvestors": "Top Investisseurs",
-    "trading": "Trading",
-    "dashboard": "Tableau de bord",
-    "profile": "Profil",
-    "achievements": "Réalisations",
-    "rewards": "Récompenses",
-    "tutorial": "Tutoriel"
-  },
-  "home": {
-    "welcome": "Bon retour !",
-    "portfolio": "Valeur du portefeuille",
-    "todayPnl": "P&L d'aujourd'hui",
-    "totalTrades": "Total des trades",
-    "free": "Disponible",
-    "trials": "Défis"
-  },
-  "live": {
-    "title": "Prix en direct",
-    "subtitle": "Cotations en temps réel via Socket.io"
-  },
-  "priceTicker": {
-    "aria": "Ticker des prix en direct",
-    "updated": "Mis à jour :",
-    "cardAria": "Carte de prix {{symbol}}"
-  },
-  "liveBadge": {
-    "live": "EN LIGNE",
-    "offline": "HORS LIGNE",
-    "ariaLiveActive": "Connexion en direct active",
-    "ariaLiveOffline": "Connexion en direct hors ligne"
-  },
-  "trading": {
-    "title": "Terminal de Trading",
-    "selectPair": "Sélectionner la paire de trading",
-    "currentPrice": "Prix actuel",
-    "amount": "Montant",
-    "direction": "Direction",
-    "long": "Long (Acheter)",
-    "short": "Short (Vendre)",
-    "leverage": "Levier",
-    "takeProfit": "Prise de profit",
-    "stopLoss": "Stop Loss",
-    "openTrade": "Ouvrir une position",
-    "closeTrade": "Fermer la position",
-    "updateTrade": "Mettre à jour la position",
-    "tradeOpened": "Position ouverte avec succès",
-    "tradeClosed": "Position fermée avec succès",
-    "tradeUpdated": "Position mise à jour avec succès",
-    "insufficientBalance": "Solde insuffisant",
-    "invalidAmount": "Montant invalide",
-    "invalidPrice": "Prix invalide",
-    "watchAd": "Regarder une pub (+5% bonus)",
-    "adBonus": "Bonus publicitaire appliqué !",
-    "confirmTrade": "Confirmer la position",
-    "tradeDetails": "Détails de la position",
-    "estimatedFee": "Commission estimée",
-    "potentialProfit": "Profit potentiel",
-    "potentialLoss": "Perte potentielle",
-    "riskWarning": "Le trading implique des risques. Ne tradez jamais plus que ce que vous pouvez vous permettre de perdre."
-  },
-  "chart": {
-    "candlestick": "Chandelier japonais",
-    "line": "Ligne",
-    "intervals": {
-      "1m": "1 Minute",
-      "5m": "5 Minutes",
-      "15m": "15 Minutes",
-      "1h": "1 Heure",
-      "4h": "4 Heures",
-      "1d": "1 Jour"
-    }
-  },
-  "dashboard": {
-    "title": "Tableau de bord",
-    "balance": "Solde",
-    "totalBalance": "Solde total",
-    "freeBalance": "Solde disponible",
-    "totalPnL": "P&L total",
-    "todayPnL": "P&L d'aujourd'hui",
-    "openTrades": "Positions ouvertes",
-    "totalTrades": "Positions totales",
-    "winRate": "Taux de réussite",
-    "averageProfit": "Profit moyen",
-    "maxProfit": "Profit maximum",
-    "maxLoss": "Perte maximum",
-    "recentTrades": "Positions récentes",
-    "topPerformance": "Meilleure performance",
-    "worstPerformance": "Pire performance",
-    "noTrades": "Aucune position encore",
-    "startTrading": "Commencez votre première position",
-    "profit": "Profit",
-    "loss": "Perte"
-  },
-  "profile": {
-    "title": "Profil",
-    "personalInfo": "Informations personnelles",
-    "tradingStats": "Statistiques de trading",
-    "settings": "Paramètres",
-    "language": "Langue",
-    "notifications": "Notifications",
-    "privacy": "Confidentialité",
-    "deleteAccount": "Supprimer le compte",
-    "level": "Niveau",
-    "experience": "Expérience",
-    "memberSince": "Membre depuis",
-    "proMode": "Mode Pro",
-    "adsDisabled": "Publicités désactivées",
-    "expires": "Expire"
-  },
-  "achievements": {
-    "title": "Réalisations",
-    "completed": "Terminé",
-    "progress": "Progrès",
-    "reward": "Récompense",
-    "claimReward": "Réclamer la récompense",
-    "categories": {
-      "trading": "Trading",
-      "learning": "Apprentissage",
-      "gamification": "Gamification"
-    },
-    "first_trade": "Premier trade",
-    "profitable_trade": "Premier trade profitable",
-    "complete_tutorial": "Maître du tutoriel",
-    "daily_login_streak": "Visiteur quotidien",
-    "trades_count": "Trader actif",
-    "total_volume": "Trader de gros volume",
-    "win_streak": "Série de victoires",
-    "high_leverage_trade": "Preneur de risques",
-    "big_profit": "Gros gagnant",
-    "watch_ads": "Supporter de publicités"
+    "topInvestors": "Top Investisseurs"
   },
   "rewards": {
-    "title": "Récompenses quotidiennes",
+    "title": "Récompenses",
     "level": "Niveau",
     "accountMoney": "Argent du compte",
     "reward": "Récompense",
     "proDays": "+ Mode Pro pour {{count}} jours",
-    "daysShort": "j",
-    "dailyBonus": "Bonus quotidien",
-    "streak": "Jour {{day}}",
-    "claimed": "Réclamé",
-    "comeBaclTomorrow": "Revenez demain !",
-    "streakBroken": "Série brisée. Recommencez demain !",
-    "roulette": "Roulette chanceuse",
-    "lootBox": "Coffre au trésor",
-    "spin": "Tourner",
-    "open": "Ouvrir",
-    "congratulations": "Félicitations !",
-    "youWon": "Vous avez gagné :",
-    "currency": "Monnaie virtuelle",
-    "proMode": "Mode Pro",
-    "noAds": "Sans publicités",
-    "duration": "pour {{duration}} jours"
+    "daysShort": "j"
   },
-  "lootbox": {
-    "roulette": "Roulette",
-    "treasureBox": "Coffre au trésor",
-    "spin": "Tourner maintenant",
-    "openBox": "Ouvrir le coffre",
-    "prizes": "Prix possibles",
-    "spinning": "En rotation...",
-    "opening": "Ouverture...",
-    "prize": "Prix",
-    "noTickets": "Aucun ticket disponible",
-    "watchAdForTicket": "Regarder une pub pour un ticket gratuit"
-  },
-  "tutorial": {
-    "title": "Tutoriel de Trading",
-    "welcome": "Bienvenue dans le Simulateur de Trading de Cryptomonnaies !",
-    "skipTutorial": "Passer le tutoriel",
-    "pandaIntro": "Salut ! Je suis Panda, votre mentor virtuel de trading. Je vais vous guider à travers les bases du trading de cryptomonnaies.",
-    "step1": {
-      "title": "Comprendre l'interface",
-      "content": "Commençons par l'interface principale de trading. Vous pouvez voir votre solde, sélectionner des paires de trading et voir les graphiques de prix ici."
-    },
-    "step2": {
-      "title": "Lire les graphiques de prix",
-      "content": "Les graphiques montrent les mouvements de prix dans le temps. Les bougies vertes signifient que les prix ont monté, les bougies rouges signifient qu'ils ont baissé."
-    },
-    "step3": {
-      "title": "Ouvrir votre premier trade",
-      "content": "Choisissez un montant à trader, sélectionnez Long (acheter) si vous pensez que les prix vont monter, ou Short (vendre) si vous pensez qu'ils vont baisser."
-    },
-    "step4": {
-      "title": "Gestion des risques",
-      "content": "Définissez toujours des niveaux de Take Profit et Stop Loss pour gérer votre risque. Ne risquez jamais plus que ce que vous pouvez vous permettre de perdre."
-    },
-    "step5": {
-      "title": "Fonctionnalités de gamification",
-      "content": "Gagnez des réalisations, réclamez des récompenses quotidiennes et débloquez des fonctionnalités spéciales en progressant dans votre parcours de trading."
-    },
-    "complete": "Tutoriel terminé !",
-    "congratulations": "Félicitations ! Vous êtes prêt à commencer à trader. Bonne chance !",
-    "interactiveArea": "Zone de démonstration interactive"
-  },
-  "panda": {
-    "hello": "Salut ! Je suis Panda 🐼",
-    "tip": "Conseil de trading",
-    "encouragement": "Bon travail !",
-    "warning": "Soyez prudent !",
-    "tips": {
-      "diversify": "Ne mettez pas tous vos œufs dans le même panier. Diversifiez vos trades !",
-      "patience": "La patience est la clé du trading. Ne vous précipitez pas dans les décisions.",
-      "research": "Recherchez toujours avant de faire un trade. La connaissance c'est le pouvoir !",
-      "riskManagement": "Une bonne gestion des risques est plus importante que de gros profits.",
-      "emotions": "Ne laissez pas les émotions contrôler vos décisions de trading.",
-      "smallStart": "Commencez petit et augmentez progressivement la taille de vos positions.",
-      "stopLoss": "Utilisez toujours des stop losses pour protéger votre capital.",
-      "trends": "La tendance est votre amie. Tradez avec la tendance, pas contre elle."
-    }
+  "auth": {
+    "unauthorized": "Non autorisé",
+    "loginRequired": "Veuillez vous connecter pour continuer",
+    "sessionExpired": "Votre session a expiré"
   },
   "errors": {
-    "networkError": "Erreur réseau. Veuillez vérifier votre connexion.",
-    "serverError": "Erreur serveur. Veuillez réessayer plus tard.",
-    "invalidInput": "Entrée invalide. Veuillez vérifier vos données.",
-    "unauthorized": "Accès non autorisé. Veuillez vous reconnecter.",
-    "notFound": "Ressource non trouvée.",
-    "tooManyRequests": "Trop de requêtes. Veuillez ralentir.",
-    "unexpectedError": "Une erreur inattendue s'est produite."
-  }
-  ,
+    "404": {
+      "title": "Page Non Trouvée",
+      "description": "La page que vous recherchez n'existe pas ou a été déplacée.",
+      "goHome": "Aller à l'Accueil"
+    },
+    "general": "Erreur",
+    "dataLoading": "Erreur de chargement des données",
+    "binanceStats": "Erreur dans fetchBinanceStats",
+    "userNotFound": "Utilisateur non trouvé",
+    "insufficientFunds": "Fonds insuffisants",
+    "symbolNotFound": "Symbole non trouvé ou non pris en charge",
+    "invalidLeverage": "Valeur de levier invalide",
+    "invalidAmount": "Le montant doit être supérieur à 0",
+    "invalidTakeProfit": "Prise de Profit invalide",
+    "invalidStopLoss": "Stop Loss invalide",
+    "dealNotFound": "Deal non trouvé",
+    "noAccess": "Aucun accès au deal",
+    "dealAlreadyClosed": "Deal déjà fermé",
+    "priceNotFound": "Échec de récupération du prix"
+  },
+  "profile": {
+    "title": "Profil",
+    "editTitle": "Modifier le profil",
+    "successRate": "Taux de réussite",
+    "maxTradeAmount": "Montant de trade maximum",
+    "avgTradeAmount": "Montant de trade moyen",
+    "maxProfit": "Profit maximum",
+    "maxLoss": "Perte maximum",
+    "name": "Nom",
+    "namePlaceholder": "Votre nom",
+    "phone": "Numéro de téléphone",
+    "phonePlaceholder": "Votre numéro de téléphone",
+    "email": "Email",
+    "emailPlaceholder": "Votre email",
+    "updated": "Vos données ont été mises à jour avec succès",
+    "logout": "Se déconnecter",
+    "avatar": "Avatar",
+    "avatarDefault": "Avatar par défaut",
+    "editBg": "Modifier l'arrière-plan",
+    "editIcon": "Modifier",
+    "rewards": "Récompenses",
+    "analytics": "Analyses"
+  },
+  "deal": {
+    "commission": "Commission",
+    "edit": "Modifier",
+    "updated": "TP/SL mis à jour",
+    "updateFail": "Échec de mise à jour du deal",
+    "closeFail": "Échec de fermeture du deal",
+    "openedAt": "Ouvert",
+    "time": "Temps",
+    "sumAndMultiplier": "Montant/Multiplicateur",
+    "closing": "Fermeture...",
+    "closeTrade": "Fermer le trade"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "success": "Succès",
+    "error": "Erreur",
+    "ok": "OK",
+    "yes": "Oui",
+    "no": "Non",
+    "cancel": "Annuler",
+    "save": "Sauvegarder",
+    "close": "Fermer",
+    "back": "←",
+    "na": "N/A",
+    "noData": "Aucune donnée",
+    "select": "Sélectionner",
+    "info": "Information",
+    "previous": "Précédent",
+    "finish": "Terminer",
+    "next": "Suivant",
+    "claim": "Réclamer",
+    "execute": "Exécuter",
+    "premium": "PREMIUM",
+    "retry": "Réessayer",
+    "attemptsLeft": "tentatives restantes",
+    "coin": "Pièce",
+    "coins": "Pièces",
+    "viewAll": "Voir Tout",
+    "page": "Page",
+    "of": "de",
+    "lastUpdated": "Dernière mise à jour"
+  },
+  "app": {
+    "phoneOnly": {
+      "title": "Téléphone Uniquement",
+      "description": "Ouvrez l'application sur votre smartphone. La plateforme n'est pas disponible sur les ordinateurs de bureau et tablettes.",
+      "cta": "Ouvrir sur le téléphone"
+    },
+    "name": "Cryptocraze"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "language": "Langue",
+    "notifications": "Notifications",
+    "share": "Partager",
+    "deleteAccount": "Supprimer le compte",
+    "version": "Version de l'app",
+    "accountId": "ID du compte",
+    "logout": {
+      "confirm": "Êtes-vous sûr de vouloir vous déconnecter ?"
+    },
+    "premium": {
+      "goPremium": "Passer Premium",
+      "pro": "PRO"
+    }
+  },
+  "premium": {
+    "activateErrorTitle": "Échec d'activation PRO",
+    "tryLater": "Veuillez réessayer plus tard",
+    "activated": "PRO activé",
+    "enabled": "Mode premium activé",
+    "unexpected": "Réponse serveur inattendue",
+    "network": "Vérifiez votre connexion et réessayez",
+    "noAds": "Pas de publicités",
+    "moreOrders": "Limite d'ordres ouverts augmentée",
+    "moreMultipliers": "Plus d'options de multiplicateur disponibles",
+    "highlighted": "Votre compte est mis en évidence dans le classement",
+    "monthly": "par mois",
+    "yearly": "par an",
+    "chargeMonthly": "499,00 ₽ seront facturés automatiquement chaque mois jusqu'à ce que vous annuliez votre abonnement",
+    "chargeYearly": "5 199,00 ₽ seront facturés automatiquement chaque année jusqu'à ce que vous annuliez votre abonnement"
+  },
+  "notifications": {
+    "emptyTitle": "Aucune notification active",
+    "emptySubtitle": "Les nouvelles notifications apparaîtront ici automatiquement",
+    "read": "Lu",
+    "unread": "Non lu",
+    "delete": "Supprimer la notification",
+    "types": {
+      "daily_reward": "Récompense Quotidienne",
+      "trade_opened": "Trade Ouvert",
+      "trade_closed": "Trade Fermé",
+      "achievement_unlocked": "Réalisation Débloquée",
+      "auto_close_trade": "Fermeture Auto du Trade",
+      "personal_messages": "Message Personnel",
+      "maintenance": "Maintenance",
+      "system_alert": "Alerte Système"
+    },
+    "messages": {
+      "daily_reward": "Votre récompense quotidienne est prête !",
+      "trade_opened": "Un nouveau trade a été ouvert",
+      "trade_closed": "Un trade a été fermé",
+      "achievement_unlocked": "Vous avez gagné une nouvelle réalisation !",
+      "auto_close_trade": "Un trade a été fermé automatiquement",
+      "personal_messages": "Vous avez un nouveau message personnel",
+      "maintenance": "Travaux de maintenance programmés",
+      "system_alert": "Notification système importante"
+    }
+  },
+  "admin": {
+    "analytics": {
+      "title": "Tableau de Bord d'Analyses BI",
+      "subtitle": "Business Intelligence et Analyses Utilisateur",
+      "totalUsers": "Utilisateurs Totaux",
+      "activeDeals": "Deals Actifs",
+      "dailyActiveUsers": "Utilisateurs Actifs Quotidiens",
+      "totalRevenue": "Revenus Totaux",
+      "engagement": "Métriques d'Engagement",
+      "revenue": "Revenus et Monétisation",
+      "acquisition": "Acquisition d'Utilisateurs",
+      "weeklyActiveUsers": "Utilisateurs Actifs Hebdomadaires",
+      "monthlyActiveUsers": "Utilisateurs Actifs Mensuels",
+      "avgSessionDuration": "Durée Moyenne de Session",
+      "totalTrades": "Trades Totaux",
+      "arpu": "ARPU",
+      "arppu": "ARPPU",
+      "conversionRate": "Taux de Conversion",
+      "payingUsers": "Utilisateurs Payants",
+      "totalSignups": "Inscriptions Totales",
+      "firstTrades": "Premiers Trades",
+      "tradeOpenRate": "Taux d'Ouverture de Trade",
+      "avgTimeToFirstTrade": "Temps Moyen au Premier Trade",
+      "recentActivity": "Activité Récente",
+      "recentRevenue": "Revenus Récents",
+      "processMetrics": "Traiter les Métriques d'Aujourd'hui",
+      "metricsProcessed": "Métriques quotidiennes traitées avec succès !",
+      "lastUpdated": "Dernière mise à jour"
+    }
+  },
+  "language": {
+    "title": "Choisir la langue",
+    "description": "Vous pouvez toujours changer la langue de l'app dans les Paramètres",
+    "languages": {
+      "ru": "Русский",
+      "en": "English",
+      "es": "Español",
+      "fr": "Français",
+      "pt": "Português"
+    }
+  },
+  "tutorial": {
+    "title": "Tutoriel",
+    "welcome": "Bienvenue !",
+    "pandaIntro": "Panda vous aidera à apprendre l'interface et le trading.",
+    "step1": { "title": "Interface", "content": "Familiarisez-vous avec les sections principales." },
+    "step2": { "title": "Graphiques", "content": "Apprenez à lire les graphiques et trouver les tendances." },
+    "step3": { "title": "Trades", "content": "Ouvrez et fermez des trades avec TP/SL." },
+    "step4": { "title": "Risque", "content": "Gérez les risques et utilisez le levier de manière responsable." },
+    "step5": { "title": "Gamification", "content": "Débloquez des réalisations et interagissez avec les fonctionnalités." },
+    "skipTutorial": "Passer",
+    "congratulations": "Félicitations ! Tutoriel terminé.",
+    "stepProgress": "Étape {{current}} de {{total}}",
+    "percentComplete": "{{percent}}% Terminé",
+    "stepsTitle": "Étapes du Tutoriel",
+    "interactiveArea": "Zone de démonstration interactive",
+    "errorTitle": "Erreur du Tutoriel",
+    "errorMessage": "Quelque chose s'est mal passé : {{error}}",
+    "errorCanRetry": "Une erreur s'est produite : {{error}}. Vous pouvez réessayer.",
+    "errorFinal": "Erreur finale : {{error}}. Veuillez contacter le support.",
+    "retry": "Réessayer",
+    "emergencyExit": "Quitter le Tutoriel",
+    "emergencyExitDesc": "Le tutoriel a été ignoré en raison de problèmes techniques.",
+    "maxRetriesReached": "Nombre maximum de tentatives atteint. Veuillez contacter le support."
+  },
+  "tradeTutorial": {
+    "start": "Commencer",
+    "skip": "Passer",
+    "close": "Fermer le tutoriel",
+    "startAria": "Commencer le tutoriel",
+    "skipAria": "Passer le tutoriel",
+    "closeAria": "Fermer le tutoriel",
+    "finish": "Terminer",
+    "next": "Suivant",
+    "finishAria": "Terminer le tutoriel",
+    "nextAria": "Suivant",
+    "stepImage": "Illustration de l'étape",
+    "steps": {
+      "1": { "title": "Commencez à apprendre !", "description": "Il est temps de maîtriser les bases : regarder les graphiques, ouvrir des trades, et multiplier les profits." },
+      "2": { "title": "Solde", "description": "Votre solde total et les fonds disponibles pour le trading." },
+      "3": { "title": "Paire de trading", "description": "Sélectionnez la paire de cryptomonnaies que vous voulez trader." },
+      "4": { "title": "Graphique", "description": "Le graphique montre les changements de prix dans le temps avec les axes vertical (prix) et horizontal (temps)." },
+      "5": { "title": "Paramètres du graphique", "description": "Timeframe : choisissez de 1m à 1d. Type : chandelier, barres, ou ligne." },
+      "6": { "title": "Créer un ordre", "description": "Définissez le montant du trade et choisissez un multiplicateur." },
+      "7": { "title": "Prise de Profit et Stop Loss", "description": "Le Stop Loss limite les pertes ; la Prise de Profit verrouille le profit en fermant automatiquement le trade." },
+      "8": { "title": "Modifier le deal", "description": "Si vous attendez un retournement, ajustez les paramètres de votre deal en un tap." },
+      "9": { "title": "Acheter ou Vendre", "description": "Après avoir défini les paramètres, tapez Acheter ou Vendre pour confirmer." },
+      "10": { "title": "Trade ouvert", "description": "Tapez Acheter pour voir la confirmation — le trade est ouvert." },
+      "11": { "title": "Fermer le trade", "description": "Vous pouvez fermer le trade et récupérer votre profit." },
+      "12": { "title": "Trade fermé", "description": "Tapez Fermer le trade et vérifiez le résultat dans la modal de confirmation." }
+    }
+  },
+  "panda": {
+    "tip": "Conseil",
+    "hello": "Salut !",
+    "encouragement": "Excellent travail !",
+    "warning": "Attention !",
+    "tips": {
+      "diversify": "Diversifiez votre portefeuille pour réduire les risques.",
+      "patience": "La patience est la clé du trading réussi.",
+      "research": "Recherchez les actifs avant d'entrer dans les trades.",
+      "riskManagement": "Utilisez toujours la gestion des risques.",
+      "emotions": "Ne laissez pas les émotions guider vos décisions.",
+      "smallStart": "Commencez petit et augmentez graduellement.",
+      "stopLoss": "Définissez des ordres stop-loss pour limiter les pertes.",
+      "trends": "Suivez la tendance ; évitez de trader contre le marché."
+    }
+  },
+  "welcome": {
+    "login": {
+      "google": "Se connecter avec Google",
+      "facebook": "Facebook",
+      "apple": "Apple ID",
+      "github": "GitHub"
+    },
+    "terms": {
+      "agree": "En cliquant sur 'Se connecter', vous acceptez nos",
+      "terms": "Conditions d'Utilisation",
+      "privacy": "Politique de Confidentialité",
+      "and": "et"
+    },
+    "authError": {
+      "title": "Erreur",
+      "message": "Une erreur d'authentification s'est produite. Veuillez réessayer."
+    }
+  },
+  "share": {
+    "message": "Essayez CryptoCraze — le meilleur simulateur de trading crypto !",
+    "copyLink": "Copier le lien",
+    "more": "Plus",
+    "copied": "Lien copié",
+    "copiedDesc": "Le lien de l'app a été copié dans votre presse-papiers",
+    "copyError": "Échec de copie du lien",
+    "shareError": "Échec du partage",
+    "whatsappAria": "Partager sur WhatsApp",
+    "telegramAria": "Partager sur Telegram",
+    "smsAria": "Partager par SMS",
+    "emailAria": "Partager par Email"
+  },
+  "rating": {
+    "last30d": "Classement des 30 derniers jours",
+    "open30d": "Ouvrir le classement 30 jours",
+    "premium": "Premium",
+    "top": "Top"
+  },
+  "proMenu": {
+    "switch": "Basculer",
+    "chart": "Graphique",
+    "fx": "Indicateurs",
+    "marker": "Marqueurs",
+    "share": "Partager",
+    "exit": "Quitter",
+    "aria": "Menu inférieur Pro"
+  },
+  "proExit": {
+    "title": "Êtes-vous sûr de vouloir quitter ?",
+    "yes": "Oui",
+    "no": "Non"
+  },
+  "proModal": {
+    "titles": {
+      "chart": "Paramètres du graphique",
+      "fx": "Indicateurs",
+      "marker": "Marqueurs",
+      "share": "Partager",
+      "switch": "Changer de paire"
+    },
+    "stub": "Modal stub pour {{title}}. Le contenu sera ajouté plus tard.",
+    "marker": {
+      "add": "Ajouter",
+      "remove": "Supprimer",
+      "tools": {
+        "horizontalLine": "Ligne Horizontale",
+        "verticalLine": "Ligne Verticale",
+        "line": "Ligne",
+        "text": "Texte",
+        "area": "Sélection de Zone",
+        "arrow": "Flèche"
+      }
+    }
+  },
+  "dealInfo": {
+    "closed": "Trade fermé !",
+    "closedDesc": "Le trade a été fermé avec succès.",
+    "profit": "Profit",
+    "loss": "Perte",
+    "take": "Récupérer"
+  },
+  "dealAlert": {
+    "opened": "Trade ouvert !",
+    "openDate": "Date d'ouverture :",
+    "openPrice": "Prix d'ouverture",
+    "amount": "Mise",
+    "volume": "Volume (${{tp}}, x{{mult}})",
+    "autoClose": "Le trade se fermera automatiquement dans 48 heures. Vous pourrez l'étendre plus tard."
+  },
+  "moreInfo": {
+    "multiplier": {
+      "title": "Multiplicateur",
+      "desc": "Un coefficient qui multiplie le montant de votre investissement initial. Il augmente à la fois les profits et pertes potentiels."
+    },
+    "takeProfit": { "desc": "Définissez votre profit désiré. Une fois atteint, l'ordre se fermera automatiquement." },
+    "stopLoss": { "desc": "Définissez le montant de perte maximum acceptable pour limiter le risque." },
+    "commission": { "desc": "La commission est calculée à partir du volume de trade et peut différer. La commission finale est calculée sur le serveur lors de la fermeture." },
+    "info": { "title": "Information", "desc": "Informations supplémentaires sur la fonctionnalité." }
+  },
+  "deals": {
+    "active": "Actif",
+    "closed": "Fermé",
+    "activeCount": "Actif",
+    "noOpenOrders": "Vous n'avez pas encore d'ordres ouverts",
+    "noClosedTrades": "Vous n'avez pas encore de trades fermés",
+    "openList": "Liste des deals ouverts",
+    "title": "Deals"
+  },
+  "validation": {
+    "nameRequired": "Le nom est requis",
+    "nameMin": "Le nom doit contenir au moins 2 caractères",
+    "nameMax": "Le nom ne doit pas dépasser 50 caractères",
+    "phoneRequired": "Le numéro de téléphone est requis",
+    "phoneInvalid": "Entrez un numéro de téléphone valide",
+    "emailRequired": "L'email est requis",
+    "emailMax": "L'email ne doit pas dépasser 100 caractères",
+    "emailInvalid": "Entrez un email valide"
+  },
+  "live": {
+    "title": "Prix en Direct",
+    "subtitle": "Cotations en temps réel via Socket.io"
+  },
+  "priceTicker": {
+    "aria": "Ticker de prix en direct",
+    "updated": "Mis à jour :",
+    "cardAria": "Carte de prix {{symbol}}"
+  },
+  "liveBadge": {
+    "live": "EN DIRECT",
+    "offline": "HORS LIGNE",
+    "ariaLiveActive": "Connexion en direct active",
+    "ariaLiveOffline": "Connexion en direct hors ligne"
+  },
   "proTutorial": {
-    "title": "Bienvenue en mode Pro !",
-    "desc": "Complétez le tutoriel pour apprendre à utiliser les graphiques comme un professionnel.",
+    "title": "Bienvenue en Mode Pro !",
+    "desc": "Terminez le tutoriel pour apprendre à utiliser les graphiques comme un pro.",
     "proceed": "Continuer",
     "skip": "Passer",
     "close": "Fermer",
@@ -292,56 +513,233 @@
     "applyEMA": "Appliquer les moyennes",
     "movingAverages": "mobiles EMA",
     "rsiIndicator": "force relative RSI",
-    "smaAverages": "mobiles SMA",
-    "nextTask": "Tâche suivante",
-    "completeTask": "Terminer la tâche",
-    "startTrading": "Commencer à trader",
+    "smaAverages": "moyennes SMA",
+    "nextTask": "Tâche Suivante",
+    "completeTask": "Terminer la Tâche",
+    "startTrading": "Commencer à Trader",
     "applyIndicator": "Appliquer l'indice",
-    "addLine": "Ajouter une ligne",
+    "addLine": "Ajouter une Ligne",
     "excellent": "Excellent !",
     "timeToPractice": "Il est temps d'appliquer les connaissances en pratique !",
     "tradeCompete": "Tradez, rivalisez et améliorez vos compétences."
   },
-  "proModal": {
-    "titles": {
-      "chart": "Graphique",
-      "fx": "Indicateurs",
-      "marker": "Marqueurs",
-      "share": "Partager",
-      "switch": "Basculer"
-    },
-    "stub": "La section \"{{title}}\" est en cours de développement",
-    "close": "Fermer"
-  }
-  ,
-  "proMenu": {
-    "aria": "Menu inférieur Pro",
-    "switch": "Basculer",
-    "chart": "Graphique",
-    "fx": "Indicateurs",
-    "marker": "Marqueurs",
-    "share": "Partager",
-    "exit": "Quitter"
+  "energy": {
+    "title": "Système d'Énergie",
+    "progress": "Progrès",
+    "completed": "Terminé",
+    "bonus": "Bonus de Tâche",
+    "trades": "Trades",
+    "energy": "énergie",
+    "reset": "Réinitialiser",
+    "error": "Erreur du système d'énergie",
+    "confirmReset": "Êtes-vous sûr de vouloir réinitialiser le progrès d'énergie ?",
+    "completedMessage": "Tâche terminée ! Le progrès sera réinitialisé.",
+    "remainingMessage": "Énergie restante : {{remaining}}",
+    "example": {
+      "title": "Exemple d'Utilisation",
+      "demonstration": "Démonstration API",
+      "currentProgress": "Progrès actuel :",
+      "status": "Statut :",
+      "inProgress": "En Cours",
+      "taskComplete": "Terminer la Tâche (+30 énergie)",
+      "smallTask": "Petite Tâche (+10 énergie)",
+      "endpoints": "Points de terminaison API disponibles :",
+      "getProgress": "Obtenir le progrès actuel",
+      "addEnergy": "Ajouter de l'énergie",
+      "resetProgress": "Réinitialiser le progrès",
+      "getUserStats": "Obtenir les statistiques utilisateur",
+      "taskCompleted": "🎉 Tâche terminée ! Tâches terminées : {{count}}"
+    }
   },
-  "proExit": {
-    "title": "Êtes-vous sûr de vouloir quitter ?",
-    "yes": "Oui",
-    "no": "Non"
+  "task": {
+    "dailyBonus": "Bonus Quotidien",
+    "videoBonus": "Bonus Vidéo",
+    "videoBonus2": "Bonus Vidéo 2",
+    "dealOfDay": "Deal du Jour",
+    "progressLabel": "Progrès de la tâche",
+    "types": {
+      "daily_bonus": "Bonus Quotidien",
+      "video_bonus": "Bonus Vidéo",
+      "video_bonus_2": "Bonus Vidéo 2",
+      "deal_of_day": "Deal du Jour",
+      "energy_bonus_small": "Charge d'Énergie",
+      "energy_bonus_medium": "Boost d'Énergie",
+      "energy_bonus_large": "Explosion d'Énergie",
+      "social_share": "Partager avec des Amis",
+      "social_invite": "Inviter un Ami",
+      "trade_bonus": "Bonus de Trading",
+      "crypto_trade": "Trading Crypto",
+      "energy_meditation": "Méditation Énergétique",
+      "energy_training": "Entraînement Énergétique",
+      "energy_reading": "Lecture Énergétique",
+      "energy_analysis": "Analyse Énergétique",
+      "energy_community": "Communauté Énergétique",
+      "bitcoin_trade": "Trading Bitcoin",
+      "ethereum_trade": "Trading Ethereum",
+      "altcoin_trade": "Trading Altcoin",
+      "profitable_trade": "Trade Profitable",
+      "volume_trade": "Trading de Volume"
+    },
+    "descriptions": {
+      "daily_bonus": "Obtenez votre récompense quotidienne en vous connectant à l'app",
+      "video_bonus": "Regardez une pub et obtenez un bonus",
+      "video_bonus_2": "Regardez une deuxième pub et obtenez un bonus supplémentaire",
+      "deal_of_day": "Terminez le deal spécial du jour",
+      "energy_bonus_small": "Terminez une tâche et obtenez de l'énergie",
+      "energy_bonus_medium": "Terminez une tâche difficile et obtenez beaucoup d'énergie",
+      "energy_bonus_large": "Terminez une tâche très difficile et obtenez le maximum d'énergie",
+      "social_share": "Partagez le lien de la plateforme sur les réseaux sociaux",
+      "social_invite": "Invitez un ami et obtenez une récompense",
+      "trade_bonus": "Terminez une tâche de trading",
+      "crypto_trade": "Tradez des cryptomonnaies et gagnez des récompenses",
+      "energy_meditation": "Passez 5 minutes à méditer pour restaurer l'énergie",
+      "energy_training": "Faites 10 minutes d'exercice pour obtenir de l'énergie",
+      "energy_reading": "Lisez des articles sur les cryptomonnaies et obtenez de l'énergie",
+      "energy_analysis": "Effectuez une analyse technique et obtenez de l'énergie",
+      "energy_community": "Participez aux discussions communautaires et obtenez de l'énergie",
+      "bitcoin_trade": "Ouvrez un trade Bitcoin et obtenez des pièces",
+      "ethereum_trade": "Ouvrez un trade Ethereum et obtenez des pièces",
+      "altcoin_trade": "Ouvrez un trade avec n'importe quel altcoin et obtenez des pièces",
+      "profitable_trade": "Fermez un trade profitable et obtenez de l'énergie",
+      "volume_trade": "Terminez des trades d'une valeur supérieure à 1000 USDT et obtenez des pièces"
+    }
+  },
+  "video": {
+    "sdk": {
+      "timeout": "Délai d'expiration du chargement du SDK IMA",
+      "loadError": "Erreur de chargement du SDK IMA",
+      "initError": "Erreur d'initialisation IMA"
+    },
+    "ad": {
+      "loadError": "Erreur de chargement de la pub"
+    },
+    "loading": "Chargement du SDK IMA...",
+    "testAd": "🎬 Publicité Test",
+    "simulation": "Simulation de visionnage...",
+    "processing": "Traitement de la récompense...",
+    "claimReward": "Réclamer la récompense",
+    "claimButton": "Réclamer la Récompense",
+    "watchAd": "Regarder la Publicité",
+    "startingAd": "Démarrage de la publicité...",
+    "initializing": "Initialisation..."
+  },
+  "ad": {
+    "title": "Publicité",
+    "loading": "Chargement de la publicité...",
+    "videoAd": "Publicité vidéo",
+    "claimReward": "Réclamer la récompense"
+  },
+  "box": {
+    "red": {
+      "title": "Ouvrir la boîte rouge"
+    },
+    "green": {
+      "title": "Ouvrir la boîte verte"
+    },
+    "x": {
+      "title": "Ouvrir la boîte X"
+    },
+    "openError": "Erreur d'ouverture de boîte",
+    "proPrize": "Mode PRO pour {{days}} jours !",
+    "energyPrize": "{{amount}} Énergie !",
+    "yourPrize": "Votre prix",
+    "tapInstruction": "Tapez sur la boîte pour obtenir votre prix !",
+    "opening": "Ouverture de la boîte...",
+    "openAction": "Ouvrir {{type}}",
+    "error": {
+      "title": "Oups ! Quelque chose s'est mal passé"
+    }
   },
   "wheel": {
     "yourWin": "Vos gains",
-    "tryLuck": "Essayez votre chance !",
+    "tryLuck": "Tentez votre chance !",
     "spin": "Tourner",
     "spinning": "En rotation..."
   },
-  "video": {
-    "processing": "Traitement de la récompense...",
-    "claimButton": "Récupérer la Récompense"
+  "indicators": {
+    "ema": "Moyenne Mobile Exponentielle (EMA)",
+    "rsi": "Indice de Force Relative (RSI)",
+    "sma": "Moyenne Mobile Simple (SMA)"
+  },
+  "drawing": {
+    "noObjects": "Aucun objet"
+  },
+  "status": {
+    "checking": "Vérification de la connexion...",
+    "connected": "Connecté",
+    "disconnected": "Déconnecté",
+    "reconnect": "Reconnecter",
+    "apiOffline": "API hors ligne",
+    "socketOffline": "WebSocket hors ligne"
+  },
+  "exchange": {
+    "title": "Échanger des Pièces",
+    "rate": "Taux de Change",
+    "available": "Pièces Disponibles",
+    "currentBalance": "Solde Actuel",
+    "amount": "Pièces à Échanger",
+    "exchange": "Échanger des Pièces",
+    "exchanging": "Échange en cours...",
+    "disclaimer": "L'échange est instantané et ne peut pas être annulé"
+  },
+  "crypto": {
+    "names": {
+      "BTC": "Bitcoin",
+      "ETH": "Ethereum",
+      "SOL": "Solana",
+      "XRP": "XRP",
+      "DOGE": "Dogecoin",
+      "default": "Crypto"
+    }
+  },
+  "textMarker": {
+    "title": "Ajouter un Marqueur de Texte",
+    "label": {
+      "text": "Texte",
+      "fontSize": "Taille de Police",
+      "color": "Couleur",
+      "preview": "Aperçu",
+      "customColor": "Couleur personnalisée"
+    },
+    "placeholder": "Entrez votre texte ici...",
+    "error": {
+      "emptyText": "Le texte ne peut pas être vide",
+      "tooLong": "Le texte ne peut pas dépasser 100 caractères"
+    },
+    "preview": {
+      "empty": "L'aperçu apparaîtra ici..."
+    },
+    "save": "Ajouter le Texte"
+  },
+  "markers": {
+    "title": "Outils de Dessin",
+    "tools": {
+      "horizontalLine": "Ligne Horizontale",
+      "verticalLine": "Ligne Verticale",
+      "line": "Ligne",
+      "text": "Texte",
+      "area": "Sélection de Zone",
+      "arrow": "Flèche",
+      "none": "Aucun"
+    },
+    "actions": {
+      "add": "Ajouter",
+      "remove": "Supprimer",
+      "clear": "Tout Effacer"
+    },
+    "modes": {
+      "draw": "Mode Dessin",
+      "remove": "Mode Suppression"
+    },
+    "tutorial": {
+      "drawArea": "Dessiner une sélection de zone sur le graphique",
+      "addArrow": "Ajouter une flèche"
+    }
   },
   "ui": {
     "trials": {
       "noTasks": "Aucune tâche active",
-      "createNewTasks": "Cliquez sur \"Recharger les tâches\" pour en créer de nouvelles",
+      "createNewTasks": "Cliquez sur \"Recharger les Tâches\" pour en créer de nouvelles",
       "clickToOpen": "Cliquez pour ouvrir !",
       "rewardReceived": "Récompense reçue !"
     },
@@ -349,7 +747,30 @@
       "title": "Publicité",
       "loading": "Chargement de la publicité...",
       "processing": "Traitement de la récompense...",
-      "getReward": "Obtenir la récompense"
+      "getReward": "Obtenir la Récompense",
+      "watchAd": "Regarder une Pub",
+      "watchForBonus": "Regarder pour un Bonus",
+      "watchForSpin": "Regarder pour Tourner",
+      "watchForReward": "Regarder pour une Récompense",
+      "watchToEarn": "Regarder une pub pour gagner",
+      "checking": "Vérification...",
+      "availableIn": "Disponible dans {{minutes}} min",
+      "bonus": "bonus",
+      "energy": "énergie",
+      "premiumNoAds": "Les utilisateurs premium profitent d'une expérience sans pub",
+      "dailyLimitReached": "Limite quotidienne de pubs atteinte",
+      "hourlyLimitReached": "Limite horaire de pubs atteinte",
+      "waitBetweenAds": "Veuillez attendre avant de regarder une autre pub",
+      "adFailed": "Échec de chargement de la pub",
+      "rewardProcessed": "Récompense traitée avec succès",
+      "fraudDetected": "Activité suspecte détectée",
+      "initialization": "Initialisation du système publicitaire...",
+      "simulation": "Publicité de démonstration",
+      "testAd": "Publicité Test",
+      "startingAd": "Démarrage de la publicité...",
+      "initializing": "Initialisation...",
+      "claimReward": "Réclamer la Récompense",
+      "claimButton": "Réclamer la Récompense"
     },
     "chart": {
       "lastUpdate": "Dernière mise à jour :",
@@ -358,21 +779,21 @@
       "capturing": "Capture du graphique...",
       "noImage": "Aucune image de graphique disponible",
       "share": "Partager",
-      "saveToDevice": "Enregistrer sur l'appareil"
+      "saveToDevice": "Enregistrer sur l'Appareil"
     },
     "test": {
       "proTutorial": "Test ProTutorial",
       "openStep1": "Ouvrir l'étape 1",
       "openStep2": "Ouvrir l'étape 2 (EMA)",
       "openStep3": "Ouvrir l'étape 3 (EMA)",
-      "openStep4": "Ouvrir l'étape 4 (Tâche suivante)",
+      "openStep4": "Ouvrir l'étape 4 (Tâche Suivante)",
       "openStep5": "Ouvrir l'étape 5 (mise en surbrillance fx)",
       "currentStep": "Étape actuelle : {{step}}",
       "modalOpen": "Modal ouvert : {{status}}",
       "yes": "Oui",
       "no": "Non",
       "indicators": "Indicateurs",
-      "connectionLineTest": "Test de ligne bleue directe",
+      "connectionLineTest": "Test de ligne bleue de connexion directe",
       "showHideLine": "{{action}} ligne bleue",
       "show": "Afficher",
       "hide": "Masquer",
@@ -394,10 +815,10 @@
     "whatsapp": "WhatsApp",
     "telegram": "Telegram",
     "email": "Email",
-    "copyLink": "Copier le lien",
+    "copyLink": "Copier le Lien",
     "more": "Plus",
     "arrow": "Flèche",
-    "languagePanda": "Panda de langue",
+    "languagePanda": "Panda de Langue",
     "logo": "Logo",
     "facebook": "Facebook",
     "apple": "Apple",
@@ -420,15 +841,15 @@
     "pairs": "paires",
     "delete": "supprimer",
     "plus": "+",
-    "trades": "transactions",
+    "trades": "trades",
     "success": "succès",
     "maxAmount": "montant maximum",
     "average": "moyenne",
     "profit": "profit",
     "loss": "perte",
-    "openedBox": "Boîte ouverte",
+    "openedBox": "Boîte Ouverte",
     "edit": "modifier",
-    "analytics": "analyse",
+    "analytics": "analyses",
     "awards": "récompenses",
     "transactions": "transactions",
     "energy": "énergie",
@@ -440,7 +861,7 @@
   },
   "placeholders": {
     "symbol": "BTCUSDT",
-    "amount": "$0.00",
+    "amount": "0,00 $",
     "number": "0"
   }
 }

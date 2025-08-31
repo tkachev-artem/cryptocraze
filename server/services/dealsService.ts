@@ -4,6 +4,7 @@ import { eq, and } from 'drizzle-orm';
 import { unifiedPriceService } from './unifiedPriceService.js';
 import { storage } from '../storage.js';
 import { applyAutoRewards } from './autoRewards.js';
+import { workerManager } from './workers/workerManager.js';
 
 export const dealsService = {
   async openDeal({ userId, symbol, direction, amount, multiplier, takeProfit, stopLoss }: {
@@ -74,6 +75,28 @@ export const dealsService = {
     // Увеличиваем счетчик сделок пользователя
     await storage.incrementUserTradesCount(userId);
 
+    // Add order to worker monitoring if TP or SL is set
+    if (takeProfit || stopLoss) {
+      try {
+        await workerManager.addOrderToMonitoring({
+          dealId: deal.id,
+          userId,
+          symbol,
+          direction,
+          amount,
+          multiplier,
+          openPrice,
+          takeProfit,
+          stopLoss,
+          openedAt: now,
+        });
+        console.log(`[dealsService] Added order ${deal.id} to TP/SL monitoring`);
+      } catch (error) {
+        console.error(`[dealsService] Failed to add order ${deal.id} to monitoring:`, error);
+        // Don't fail the deal opening, just log the error
+      }
+    }
+
     return {
       id: deal.id,
       status: deal.status,
@@ -84,6 +107,15 @@ export const dealsService = {
 
   async closeDeal({ userId, dealId }: { userId: string, dealId: number }) {
     console.log(`[dealsService] Закрытие сделки: userId=${userId}, dealId=${dealId}`);
+    
+    // Remove from worker monitoring first (if it exists)
+    try {
+      await workerManager.removeOrderFromMonitoring(dealId);
+      console.log(`[dealsService] Removed order ${dealId} from TP/SL monitoring`);
+    } catch (error) {
+      console.error(`[dealsService] Failed to remove order ${dealId} from monitoring:`, error);
+      // Continue with manual closure
+    }
     
     // Получаем сделку
     const [deal] = await db.select().from(deals).where(eq(deals.id, dealId));

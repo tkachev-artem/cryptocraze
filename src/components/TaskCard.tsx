@@ -1,15 +1,20 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import type { Task } from '../services/taskService';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from '../lib/i18n';
 import { useTaskTranslation } from '../lib/translationUtils';
+import type {
+  Task,
+  TaskState,
+  TaskCardProps,
+  TaskCardState,
+  ApiError
+} from '../types/task';
 
-type TaskCardProps = {
-  task: Task;
-  onComplete: (taskId: string) => Promise<{ wheelResult?: { prize: number; index: number; label: string } }>;
-  onUpdateProgress?: (taskId: string, progress: number) => Promise<void>;
-  onReplace?: (taskId: string) => Promise<boolean>;
-  onWheelOpen?: (taskId: string) => void;
-};
+// Constants for better maintainability
+const PROGRESS_UPDATE_DEBOUNCE_MS = 500;
+const VIDEO_AD_SIMULATION_DURATION_MS = 3000;
+const LOADING_ANIMATION_DURATION_MS = 500;
+const SLIDE_OUT_DELAY_MS = 1000;
+const SLIDE_IN_ANIMATION_DURATION_MS = 400;
 
 export const TaskCard: React.FC<TaskCardProps> = React.memo(({ 
   task, 
@@ -20,12 +25,20 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 }) => {
   const { t } = useTranslation();
   const { translateTask } = useTaskTranslation();
-  const [isLoading, setIsLoading] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [isSlidingOut, setIsSlidingOut] = useState(false);
-  const [isSlidingIn, setIsSlidingIn] = useState(true); // Новое состояние для анимации появления
-  // Видеозадания теперь используют server-side прогресс, локальное состояние не требуется
-  const [isSimulatingAd, setIsSimulatingAd] = useState(false); // Симуляция просмотра рекламы
+  
+  // Component state management with proper typing
+  const [componentState, setComponentState] = useState<TaskCardState>({
+    isLoading: false,
+    isAnimating: false,
+    isSlidingOut: false,
+    isSlidingIn: true,
+    isSimulatingAd: false,
+    apiError: null
+  });
+  
+  // Refs for cleanup and preventing race conditions
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isUpdatingRef = useRef(false);
 
   // Мемоизируем вычисляемые значения
   const progress = useMemo(() => {
@@ -45,26 +58,42 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
     return calculatedProgress;
   }, [task.progress, task.title, task.id]);
   
-  const isActive = useMemo(() => task.status === 'active', [task.status]);
-  const isCompleted = useMemo(() => task.status === 'completed', [task.status]);
+  // Fixed task state management - resolve conflicting boolean flags
+  const taskState = useMemo((): TaskState => {
+    const isActive = task.status === 'active';
+    const isCompleted = task.status === 'completed';
+    const isProgressComplete = task.progress.current >= task.progress.total && task.progress.total > 0;
+    
+    // Resolve conflicting flags - prioritize server status over local flags
+    const canClaimReward = (
+      task.isCompleted === true && task.rewardClaimed === false
+    ) || (
+      isActive && isProgressComplete
+    ) || (
+      isCompleted
+    );
+    
+    return {
+      isActive,
+      isCompleted,
+      isProgressComplete,
+      canClaimReward
+    };
+  }, [task.status, task.progress, task.isCompleted, task.rewardClaimed]);
+
+  // Use computed task state instead of separate variables
+  const { isActive, isCompleted, isProgressComplete, canClaimReward } = taskState;
   
-  // Проверяем, достигнут ли максимальный прогресс
-  const isProgressComplete = useMemo(() => {
-    return task.progress.current >= task.progress.total && task.progress.total > 0;
-  }, [task.progress]);
+  // Destructure component state for easier access
+  const { isLoading, isAnimating, isSlidingOut, isSlidingIn, isSimulatingAd, apiError } = componentState;
 
-  // Проверяем, завершено ли задание но награда не получена
-  const isCompletedButNotClaimed = useMemo(() => {
-    return task.isCompleted === true && task.rewardClaimed === false;
-  }, [task.isCompleted, task.rewardClaimed]);
-
-  // Управление анимацией появления
+  // Slide-in animation management
   useEffect(() => {
     if (isSlidingIn) {
-      // Убираем класс анимации появления после завершения
+      // Remove slide-in animation class after completion
       const timer = setTimeout(() => {
-        setIsSlidingIn(false);
-      }, 400); // Время анимации slideInFromBottom
+        setComponentState(prev => ({ ...prev, isSlidingIn: false }));
+      }, SLIDE_IN_ANIMATION_DURATION_MS);
       
       return () => {
         clearTimeout(timer);
@@ -72,13 +101,25 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
     }
   }, [isSlidingIn]);
 
-  // Останавливаем симуляцию рекламы если задание больше не активно
+  // Stop ad simulation if task is no longer active
   useEffect(() => {
     if (!isActive && isSimulatingAd) {
       console.log(`[TaskCard] Task ${task.title} no longer active, stopping ad simulation`);
-      setIsSimulatingAd(false);
+      setComponentState(prev => ({ ...prev, isSimulatingAd: false }));
+      isUpdatingRef.current = false;
     }
   }, [isActive, isSimulatingAd, task.title]);
+  
+  // Cleanup on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+        updateTimeoutRef.current = null;
+      }
+      isUpdatingRef.current = false;
+    };
+  }, []);
 
   // Переводим задание
   const translatedTask = useMemo(() => translateTask(task), [task, translateTask]);
@@ -89,10 +130,10 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
   const isVideoBonus2 = useMemo(() => translatedTask.title === t('task.videoBonus2'), [translatedTask.title, t]);
   const isDealOfDay = useMemo(() => translatedTask.title === t('task.dealOfDay'), [translatedTask.title, t]);
 
-  // Определяем, нужно ли показать кнопку pickup для видео заданий
+  // Simplified pickup button logic
   const shouldShowPickupButton = useMemo(() => {
-    return (isVideoBonus || isVideoBonus2) && isActive && (isProgressComplete || isCompletedButNotClaimed);
-  }, [isVideoBonus, isVideoBonus2, isActive, isProgressComplete, isCompletedButNotClaimed]);
+    return (isVideoBonus || isVideoBonus2) && isActive && canClaimReward;
+  }, [isVideoBonus, isVideoBonus2, isActive, canClaimReward]);
 
   const getRewardIcon = useCallback((type: string) => {
     switch (type) {
@@ -114,8 +155,12 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
   // Получаем награду для отображения
   const displayReward = useMemo(() => task.reward, [task.reward]);
 
+  // Enhanced task completion with proper error handling
   const handleComplete = useCallback(async () => {
-    if (isLoading || !isActive) return;
+    if (componentState.isLoading || !isActive || isUpdatingRef.current) {
+      console.log(`[TaskCard] Cannot complete task - conditions not met for ${task.title}`);
+      return;
+    }
     
     // For wheel tasks - open wheel modal instead of completing directly
     if (task.reward.type === 'wheel') {
@@ -130,8 +175,13 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
       reward: task.reward
     });
     
-    setIsLoading(true);
-    setIsAnimating(true);
+    isUpdatingRef.current = true;
+    setComponentState(prev => ({
+      ...prev,
+      isLoading: true,
+      isAnimating: true,
+      apiError: null
+    }));
     
     try {
       const result = await onComplete(task.id);
@@ -144,88 +194,124 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
       
       // Task will disappear automatically from the list
       setTimeout(() => {
-        setIsSlidingOut(true);
-      }, 1000);
+        setComponentState(prev => ({ ...prev, isSlidingOut: true }));
+      }, SLIDE_OUT_DELAY_MS);
       
     } catch (error) {
       console.error('[TaskCard] Error completing task:', error);
-    } finally {
-      setIsLoading(false);
+      const errorMessage = error instanceof Error ? error.message : 'Task completion failed';
+      setComponentState(prev => ({
+        ...prev,
+        apiError: errorMessage,
+        isLoading: false
+      }));
+      isUpdatingRef.current = false;
       setTimeout(() => {
-        setIsAnimating(false);
-      }, 500);
+        setComponentState(prev => ({ ...prev, isAnimating: false }));
+      }, LOADING_ANIMATION_DURATION_MS);
+    } finally {
+      isUpdatingRef.current = false;
     }
   }, [isLoading, isActive, task.id, task.title, task.reward, onComplete, onWheelOpen]);
 
-  // Видео-бонус: пользователь нажал «Выполнить» — запускаем симуляцию просмотра рекламы
+  // Fixed video task progress - ensure simulation accounts for completed tasks
   const handleVideoStart = useCallback(async () => {
-    if (isLoading || !isActive || !onUpdateProgress) return;
-    
-    // Предотвращаем запуск если задание уже завершено
-    if (isProgressComplete || isCompletedButNotClaimed) {
-      console.log(`[TaskCard] Task ${task.title} already completed, ignoring video start`);
+    if (componentState.isLoading || !isActive || !onUpdateProgress || isUpdatingRef.current) {
+      console.log(`[TaskCard] Cannot start video - conditions not met for ${task.title}`);
       return;
     }
     
-    setIsSimulatingAd(true);
-    setIsLoading(true);
+    // Prevent starting if already completed
+    if (canClaimReward) {
+      console.log(`[TaskCard] Task ${task.title} can claim reward, ignoring video start`);
+      return;
+    }
+    
+    // Prevent multiple simultaneous updates
+    isUpdatingRef.current = true;
+    setComponentState(prev => ({
+      ...prev,
+      isSimulatingAd: true,
+      isLoading: true,
+      apiError: null
+    }));
     
     try {
-      // Симулируем просмотр рекламы (3 секунды)
       console.log(`[TaskCard] Starting video ad simulation for ${task.title}`);
       
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Simulate ad viewing with proper duration
+      await new Promise(resolve => setTimeout(resolve, VIDEO_AD_SIMULATION_DURATION_MS));
       
-      // Обновляем прогресс на +1
-      const next = Math.min((task.progress.current || 0) + 1, task.progress.total || 1);
-      console.log(`[TaskCard] Updating progress for ${task.title}: ${(task.progress.current || 0).toString()} -> ${next.toString()}`);
+      // Calculate next progress value safely
+      const currentProgress = task.progress.current || 0;
+      const maxProgress = task.progress.total || 1;
+      const nextProgress = Math.min(currentProgress + 1, maxProgress);
       
-      await onUpdateProgress(task.id, next);
+      console.log(`[TaskCard] Updating progress for ${task.title}: ${currentProgress} -> ${nextProgress}`);
+      
+      await onUpdateProgress(task.id, nextProgress);
       
       console.log(`[TaskCard] Video ad completed successfully for ${task.title}`);
       
     } catch (error) {
       console.error(`[TaskCard] Error during video ad simulation:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Video ad failed';
+      setComponentState(prev => ({
+        ...prev,
+        apiError: errorMessage,
+        isSimulatingAd: false,
+        isLoading: false
+      }));
     } finally {
-      setIsSimulatingAd(false);
-      setIsLoading(false);
+      isUpdatingRef.current = false;
     }
-  }, [isLoading, isActive, onUpdateProgress, task.id, task.progress, task.title, isProgressComplete, isCompletedButNotClaimed]);
+  }, [isLoading, isActive, onUpdateProgress, task.id, task.progress, task.title, canClaimReward]);
 
   // Claim reward for completed task (same as handleComplete for simplicity)
   const handleClaimReward = handleComplete;
 
+  // Enhanced task replacement with better error handling
   const handleReplace = useCallback(async () => {
-    if (isLoading || !onReplace) return;
+    if (componentState.isLoading || !onReplace || isUpdatingRef.current) {
+      console.log(`[TaskCard] Cannot replace task - conditions not met for ${task.title}`);
+      return;
+    }
     
-    console.log('🔄 TaskCard: Нажата кнопка "Заменить" для задания:', {
+    console.log('🔄 TaskCard: Replace button clicked for task:', {
       id: task.id,
       title: task.title
     });
     
-    setIsLoading(true);
+    isUpdatingRef.current = true;
+    setComponentState(prev => ({
+      ...prev,
+      isLoading: true,
+      apiError: null
+    }));
     
     try {
       const replaced = await onReplace(task.id);
       if (replaced) {
-        console.log('✅ TaskCard: Задание заменено успешно');
-        // Запускаем анимацию исчезновения только при успешной замене
+        console.log('✅ TaskCard: Task replaced successfully');
+        // Start disappearing animation only on successful replacement
         setTimeout(() => {
-          setIsSlidingOut(true);
+          setComponentState(prev => ({ ...prev, isSlidingOut: true }));
         }, 100);
       } else {
-        console.log('ℹ️ TaskCard: Замена не выполнена (лимиты). Показываем короткую анимацию обратной связи');
-        // Лёгкая анимация обратной связи, карточка остаётся на месте
-        setIsAnimating(true);
+        console.log('ℹ️ TaskCard: Replacement not performed (limits). Showing feedback animation');
+        // Light feedback animation, card stays in place
+        setComponentState(prev => ({ ...prev, isAnimating: true }));
         setTimeout(() => {
-          setIsAnimating(false);
+          setComponentState(prev => ({ ...prev, isAnimating: false }));
         }, 350);
       }
     } catch (error) {
-      console.error('❌ TaskCard: Ошибка при замене задания:', error);
-      // НЕ запускаем анимацию при ошибке
+      console.error('❌ TaskCard: Error replacing task:', error);
+      setComponentState(prev => ({ ...prev, apiError: error instanceof Error ? error.message : 'Task replacement failed' }));
+      // Don't start animation on error
     } finally {
-      setIsLoading(false);
+      setComponentState(prev => ({ ...prev, isLoading: false }));
+      isUpdatingRef.current = false;
     }
   }, [isLoading, task.id, task.title, onReplace]);
 
@@ -237,14 +323,14 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 
 
 
-  // Мемоизируем стили для предотвращения лишних вычислений
+  // Memoize styles to prevent unnecessary recalculations
   const cardClassName = useMemo(() => {
     const baseClasses = 'task-card bg-white rounded-xl border border-gray-200 transition-all duration-300 relative transform hover:scale-105';
-    const animatingClasses = isAnimating ? 'scale-105' : '';
-    const slidingOutClasses = isSlidingOut ? 'slideOut' : '';
-    const slidingInClasses = isSlidingIn ? 'slideInFromBottom' : '';
+    const animatingClasses = componentState.isAnimating ? 'scale-105' : '';
+    const slidingOutClasses = componentState.isSlidingOut ? 'slideOut' : '';
+    const slidingInClasses = componentState.isSlidingIn ? 'slideInFromBottom' : '';
     return `${baseClasses} ${animatingClasses} ${slidingOutClasses} ${slidingInClasses}`.trim();
-  }, [isAnimating, isSlidingOut, isSlidingIn]);
+  }, [componentState.isAnimating, componentState.isSlidingOut, componentState.isSlidingIn]);
 
   const progressBarClassName = useMemo(() => 
     'h-4 rounded-full transition-all duration-500 ease-out bg-[#0C54EA]'
@@ -339,8 +425,14 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 
         {/* Правая часть - Информация о задании */}
         <div className={`flex-1 p-3 flex flex-col justify-between ${
-          (isProgressComplete || isCompleted || isCompletedButNotClaimed || (isDailyBonus && isActive) || shouldShowPickupButton) ? 'bg-[#0C54EA26]' : ''
+          (canClaimReward || (isDailyBonus && isActive) || shouldShowPickupButton) ? 'bg-[#0C54EA26]' : ''
         }`}>
+          {/* Error message display */}
+          {apiError && (
+            <div className="mb-2 p-2 bg-red-100 border border-red-400 rounded text-red-700 text-xs">
+              Error: {apiError}
+            </div>
+          )}
           {/* Заголовок и описание */}
           <div className="space-y-1 text-start mb-4">
             <div className="flex items-center justify-between">
@@ -350,7 +442,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
           </div>
 
           {/* Прогресс бар или кнопки */}
-          {isActive && !isDailyBonus && !isVideoBonus && !isVideoBonus2 && !isProgressComplete ? (
+          {isActive && !isDailyBonus && !isVideoBonus && !isVideoBonus2 && !canClaimReward ? (
             <div className="space-y-2">
               <div className="flex items-center justify-end">
                 <span className="text-xs font-bold text-[#0C54EA]">
@@ -372,7 +464,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                 />
               </div>
             </div>
-          ) : isDailyBonus && isActive && !isProgressComplete && !isCompleted ? (
+          ) : isDailyBonus && isActive && !canClaimReward ? (
             <div className="flex justify-start mt-4">
               <button
                 onClick={() => {
@@ -391,7 +483,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                 )}
               </button>
             </div>
-          ) : (isVideoBonus || isVideoBonus2) && isActive && !isProgressComplete ? (
+          ) : (isVideoBonus || isVideoBonus2) && isActive && !canClaimReward ? (
             <div className="space-y-3">
               <div className="flex items-center justify-end">
                 <span className="text-xs font-bold text-[#0C54EA]">
@@ -454,7 +546,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                 )}
               </button>
             </div>
-          ) : (isActive && (isProgressComplete || isCompleted)) ? (
+          ) : (isActive && canClaimReward) ? (
             <div className="flex justify-start mt-4">
               <button
                 onClick={() => {
@@ -473,7 +565,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                 )}
               </button>
             </div>
-          ) : (isDailyBonus || isDealOfDay) && (isCompleted || isProgressComplete) ? (
+          ) : (isDailyBonus || isDealOfDay) && canClaimReward ? (
             <div className="flex justify-start mt-4">
               <button
                 onClick={() => {
@@ -499,7 +591,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 
         {/* Иконка перезагрузки в правом верхнем углу */}
         <div className="absolute top-3 right-3">
-          {(isDailyBonus || isDealOfDay || isVideoBonus) && (isCompleted || isProgressComplete) ? (
+          {(isDailyBonus || isDealOfDay || isVideoBonus) && canClaimReward ? (
             <button
               onClick={() => {
                 void handleReplace();

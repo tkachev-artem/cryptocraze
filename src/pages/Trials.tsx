@@ -1,40 +1,51 @@
-import { useMemo, useEffect, useRef, useState } from 'react';
+import { useMemo, useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '@/lib/i18n';
 import { useUser } from '@/hooks/useUser';
 import { useTasks } from '@/hooks/useTasks';
 import { formatMoneyShort } from '@/lib/numberUtils';
 import { Grid } from '@/components/ui/grid';
-import WheelFortune from '@/components/WheelFortune';
+import { WheelFortune } from '@/components/WheelFortune';
 import TaskCard from '@/components/TaskCard';
 import { Box } from '@/components/Box';
 import { useAppDispatch } from '@/app/hooks';
 import { forceUserUpdate } from '@/app/userSlice';
 import { fetchUserDataNoCache } from '@/lib/noCacheApi';
+import type { LevelProgressProps, BoxType, BoxPositions } from '@/types/task';
 
-// Компонент прогресса уровня
-const LevelProgress = ({ 
+// Constants for better maintainability
+const BOX_POSITIONS: BoxPositions = {
+  ENERGY: 0,
+  RED_BOX: 30,
+  GREEN_BOX: 70,
+  X_BOX: 100
+} as const;
+
+const MAX_ENERGY_DISPLAY = 100;
+const PROGRESS_UPDATE_DEBOUNCE_MS = 500;
+const PERIODIC_UPDATE_INTERVAL_MS = 10000;
+
+// Energy level progress component
+const LevelProgress: React.FC<LevelProgressProps> = ({ 
   energyProgress, 
   onRedBoxClick,
   onGreenBoxClick,
   onXBoxClick
-}: { 
-  energyProgress: number; 
-  onRedBoxClick: () => void;
-  onGreenBoxClick: () => void;
-  onXBoxClick: () => void;
 }) => {
   const { t } = useTranslation();
-  const progressPercentage = Math.min(energyProgress, 100);
   
-  // Позиции коробок на прогресс-баре
-  const displayedEnergy = Math.min(energyProgress, 100); // Показываем максимум 100 в лейбле
-  const boxPositions = [
-    { position: 0, icon: '/trials/energy.svg', label: `${String(displayedEnergy)}/100`, isEnergy: true },
-    { position: 30, icon: '/trials/red-box.svg', label: '30', isRedBox: true },
-    { position: 70, icon: '/trials/green-box.svg', label: '70', isGreenBox: true },
-    { position: 100, icon: '/trials/x-box.svg', label: '100', isXBox: true }
-  ];
+  // Fixed energy calculation - properly handle values exceeding 100
+  const progressPercentage = Math.min(energyProgress, MAX_ENERGY_DISPLAY);
+  const actualEnergy = Math.floor(energyProgress);
+  const displayedEnergy = Math.min(actualEnergy, MAX_ENERGY_DISPLAY);
+  
+  // Extract box positions to constants and make them responsive
+  const boxPositions = useMemo(() => [
+    { position: BOX_POSITIONS.ENERGY, icon: '/trials/energy.svg', label: `${displayedEnergy}/${MAX_ENERGY_DISPLAY}`, isEnergy: true },
+    { position: BOX_POSITIONS.RED_BOX, icon: '/trials/red-box.svg', label: '30', isRedBox: true },
+    { position: BOX_POSITIONS.GREEN_BOX, icon: '/trials/green-box.svg', label: '70', isGreenBox: true },
+    { position: BOX_POSITIONS.X_BOX, icon: '/trials/x-box.svg', label: '100', isXBox: true }
+  ], [displayedEnergy]);
   
   return (
     <div className="w-full py-4">
@@ -49,17 +60,30 @@ const LevelProgress = ({
           <div className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 h-[20px] w-[20px] bg-white rounded-l-full z-[5]" />          
           {boxPositions.map((box) => {
               const isBoxReached = energyProgress >= box.position;
-              const isRedBoxActive = box.isRedBox && isBoxReached;
-              const isGreenBoxActive = box.isGreenBox && isBoxReached;
-              const isXBoxActive = box.isXBox && isBoxReached;
-              const isAnyBoxActive = isRedBoxActive ? true : (isGreenBoxActive ? true : isXBoxActive);
-              const translateX = box.position === 0 ? '0%' : (box.position === 100 ? '-100%' : '-50%');
-
-              const handleBoxClick = () => {
-                if (isRedBoxActive) onRedBoxClick();
-                if (isGreenBoxActive) onGreenBoxClick();
-                if (isXBoxActive) onXBoxClick();
+              
+              // Simplified box click logic - replace complex nested ternary operators
+              const boxState = {
+                isRedBoxActive: box.isRedBox && isBoxReached,
+                isGreenBoxActive: box.isGreenBox && isBoxReached,
+                isXBoxActive: box.isXBox && isBoxReached
               };
+              
+              const isAnyBoxActive = boxState.isRedBoxActive || boxState.isGreenBoxActive || boxState.isXBoxActive;
+              
+              // Calculate responsive translate based on position
+              const getTranslateX = (position: number): string => {
+                if (position === 0) return '0%';
+                if (position === 100) return '-100%';
+                return '-50%';
+              };
+              
+              const translateX = getTranslateX(box.position);
+
+              const handleBoxClick = useCallback(() => {
+                if (boxState.isRedBoxActive) onRedBoxClick();
+                else if (boxState.isGreenBoxActive) onGreenBoxClick();
+                else if (boxState.isXBoxActive) onXBoxClick();
+              }, [boxState.isRedBoxActive, boxState.isGreenBoxActive, boxState.isXBoxActive]);
 
               return (
                 <div 
@@ -149,20 +173,50 @@ export function Trials() {
 
   const fmt = (v: string | number) => formatMoneyShort(v);
 
-  // Принудительное обновление пользователя
-  const forceUpdateUser = async () => {
+  // Fix race conditions with debounced user updates
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isUpdatingRef = useRef(false);
+  
+  const forceUpdateUser = useCallback(async () => {
+    // Prevent multiple simultaneous updates
+    if (isUpdatingRef.current) {
+      console.log('[Trials] Update already in progress, skipping');
+      return;
+    }
+    
     try {
-      console.log('[Trials] ПРИНУДИТЕЛЬНОЕ обновление пользователя');
+      isUpdatingRef.current = true;
+      console.log('[Trials] Force updating user data');
+      
       const response = await fetchUserDataNoCache();
       if (response.ok) {
         const userData = await response.json();
         dispatch(forceUserUpdate(userData));
-        console.log('[Trials] Пользователь обновлен:', { coins: userData.coins, balance: userData.balance });
+        console.log('[Trials] User updated successfully:', { 
+          coins: userData.coins, 
+          balance: userData.balance,
+          energy: userData.energyTasksBonus 
+        });
+      } else {
+        console.warn('[Trials] Failed to fetch user data:', response.status);
       }
     } catch (error) {
-      console.error('[Trials] Ошибка обновления пользователя:', error);
+      console.error('[Trials] Error updating user data:', error);
+    } finally {
+      isUpdatingRef.current = false;
     }
-  };
+  }, [dispatch]);
+  
+  // Debounced version of forceUpdateUser to prevent excessive API calls
+  const debouncedForceUpdateUser = useCallback(() => {
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+    }
+    
+    updateTimeoutRef.current = setTimeout(() => {
+      void forceUpdateUser();
+    }, PROGRESS_UPDATE_DEBOUNCE_MS);
+  }, [forceUpdateUser]);
 
   // Обработчики кликов по коробкам
   const handleRedBoxClick = () => {
@@ -184,13 +238,13 @@ export function Trials() {
     setIsWheelOpen(true); 
   };
 
-  const handleCloseWheel = () => { 
-    console.log('🎰 Trials: Закрываем рулетку');
+  const handleCloseWheel = useCallback(() => { 
+    console.log('🎰 Trials: Closing wheel');
     setIsWheelOpen(false); 
     setActiveWheelTaskId(null);
-    // Принудительно обновляем данные
-    void forceUpdateUser();
-  };
+    // Use debounced update to prevent race conditions
+    debouncedForceUpdateUser();
+  }, [debouncedForceUpdateUser]);
 
   const handleSpinWheel = async (): Promise<{ prize: number; index: number }> => {
     try {
@@ -245,24 +299,34 @@ export function Trials() {
   // Мемоизируем список заданий
   const tasksList = useMemo(() => tasks.filter(task => task.status !== 'completed' && !hiddenTaskIds.has(task.id)), [tasks, hiddenTaskIds]);
 
-  // Обновляем данные при загрузке страницы
+  // Fix memory leaks and ensure proper cleanup
   useEffect(() => {
     if (!isInitializedRef.current) {
-      console.log('🔄 Trials.tsx: Инициализация и обновление данных пользователя');
+      console.log('🔄 Trials: Initializing and updating user data');
       void forceUpdateUser();
       isInitializedRef.current = true;
     }
-  }, []);
+  }, [forceUpdateUser]);
 
-  // Периодическое обновление каждые 10 секунд
+  // Periodic updates with proper cleanup to prevent memory leaks
   useEffect(() => {
     const interval = setInterval(() => {
-      console.log('🔄 Trials.tsx: Периодическое обновление данных пользователя');
+      console.log('🔄 Trials: Periodic user data update');
       void forceUpdateUser();
-    }, 10000);
+    }, PERIODIC_UPDATE_INTERVAL_MS);
     
-    return () => { clearInterval(interval); };
-  }, []);
+    // Cleanup function to prevent memory leaks
+    return () => {
+      console.log('🔄 Trials: Cleaning up periodic update interval');
+      clearInterval(interval);
+      
+      // Clear any pending debounced updates
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+        updateTimeoutRef.current = null;
+      }
+    };
+  }, [forceUpdateUser]);
 
   return (
     <Grid className="p-0">
@@ -303,17 +367,17 @@ export function Trials() {
         {/* Модальные окна */}
         <Box type="red" isOpen={redBoxModalOpen} onClose={() => { 
           setRedBoxModalOpen(false);
-          void forceUpdateUser();
+          debouncedForceUpdateUser();
         }} />
         
         <Box type="green" isOpen={greenBoxModalOpen} onClose={() => { 
           setGreenBoxModalOpen(false);
-          void forceUpdateUser();
+          debouncedForceUpdateUser();
         }} />
         
         <Box type="x" isOpen={xBoxModalOpen} onClose={() => { 
           setXBoxModalOpen(false);
-          void forceUpdateUser();
+          debouncedForceUpdateUser();
         }} />
         
         {/* Рулетка */}

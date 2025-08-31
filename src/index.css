@@ -130,6 +130,10 @@ input, textarea, [contenteditable="true"] {
   animation: shake 0.3s ease-in-out infinite;
 }
 
+.animate-shake {
+  animation: shake 0.3s ease-in-out infinite;
+}
+
 /* Slider styles for coin exchange modal */
 .slider {
   -webkit-appearance: none;

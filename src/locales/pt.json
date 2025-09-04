@@ -873,6 +873,60 @@
       "addArrow": "Adicionar seta"
     }
   },
+  "tasks": {
+    "videoWheel": {
+      "title": "Vídeo pela Roleta",
+      "description": "Assista a um anúncio e ganhe uma rodada grátis na roleta da fortuna"
+    },
+    "videoMoney": {
+      "title": "Vídeo por Moeda",
+      "description": "Assista a um vídeo e receba moeda de trading"
+    },
+    "videoCoins": {
+      "title": "Vídeo por Moedas",
+      "description": "Assista a um anúncio e recarregue seu saldo de moedas"
+    },
+    "videoEnergy": {
+      "title": "Vídeo por Energia",
+      "description": "Restaure energia assistindo a um anúncio publicitário"
+    },
+    "videoMega": {
+      "title": "Mega Bônus de Vídeo",
+      "description": "Assista a um vídeo por uma recompensa generosa"
+    },
+    "dailyBonus": {
+      "title": "Bônus Diário",
+      "description": "Colete seu bônus diário por atividade no app"
+    },
+    "dailyTrader": {
+      "title": "Trader Ativo do Dia",
+      "description": "Obtenha uma recompensa por atividade de trading diária"
+    },
+    "tradeFirstProfit": {
+      "title": "Primeiro Lucro",
+      "description": "Ganhe seus primeiros $100 de lucro no trading"
+    },
+    "tradeLucky": {
+      "title": "Negociação de Sorte",
+      "description": "Ganhe $500 de lucro com operações de trading"
+    },
+    "tradeClose": {
+      "title": "Fechar Negócio",
+      "description": "Feche qualquer posição de trading ativa"
+    },
+    "tradeMaster": {
+      "title": "Mestre dos Lucros",
+      "description": "Demonstre maestria ganhando $1000 de lucro"
+    },
+    "premiumLogin": {
+      "title": "Entrada Premium",
+      "description": "Recompensa exclusiva pelo status de usuário Premium"
+    },
+    "premiumVip": {
+      "title": "Bônus VIP",
+      "description": "Bônus especial para membros VIP da plataforma"
+    }
+  },
   "ui": {
     "trials": {
       "noTasks": "Nenhuma tarefa ativa",

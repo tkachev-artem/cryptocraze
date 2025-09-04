@@ -18,302 +18,246 @@ export interface TaskTemplate {
 }
 
 export const TASK_TEMPLATES: TaskTemplate[] = [
-  // === ЛЕГКИЕ ЗАДАНИЯ (частые, короткие кулдауны) ===
+  // === РЕКЛАМНЫЕ ВИДЕО ЗАДАНИЯ (30 минут кулдаун) ===
   
-  // 1. Ежедневный бонус
+  // 1. Видео за рулетку
   {
-    id: 'daily_bonus',
-    taskType: 'daily_bonus',
-    title: 'Ежедневный бонус',
-    description: 'Получите ежедневный бонус за вход в приложение',
-    rewardType: 'money',
-    rewardAmount: '500',
-    progressTotal: 1,
-    icon: '/trials/energy.svg',
-    category: 'daily',
-    rarity: 'common',
-    expiresInHours: 6,
-    cooldownMinutes: 30, // 30 минут
-    maxPerDay: 3,
-    weight: 30
-  },
-
-  // 2. Просмотр рекламы
-  {
-    id: 'watch_ad',
-    taskType: 'watch_ad',
-    title: 'Просмотр рекламы',
-    description: 'Просмотрите рекламное видео для получения награды',
-    rewardType: 'mixed',
-    rewardAmount: '10_energy_800_money',
+    id: 'video_wheel',
+    taskType: 'video_wheel',
+    title: 'tasks.videoWheel.title',
+    description: 'tasks.videoWheel.description',
+    rewardType: 'wheel',
+    rewardAmount: 'random',
     progressTotal: 1,
     icon: '/trials/video.svg',
     category: 'video',
     rarity: 'common',
     expiresInHours: 12,
-    cooldownMinutes: 20, // 20 минут
-    maxPerDay: 10,
-    weight: 25
+    cooldownMinutes: 30,
+    maxPerDay: null,
+    weight: 35
   },
 
-  // 3. Получить энергию
+  // 2. Видео за валюту
   {
-    id: 'collect_energy',
-    taskType: 'collect_energy',
-    title: 'Пополнить энергию',
-    description: 'Получите бесплатную энергию для торговли',
-    rewardType: 'energy',
-    rewardAmount: '20',
+    id: 'video_money',
+    taskType: 'video_money',
+    title: 'tasks.videoMoney.title',
+    description: 'tasks.videoMoney.description',
+    rewardType: 'money',
+    rewardAmount: '1000',
     progressTotal: 1,
-    icon: '/trials/energy.svg',
-    category: 'energy',
+    icon: '/trials/video.svg',
+    category: 'video',
     rarity: 'common',
-    expiresInHours: 8,
-    cooldownMinutes: 45, // 45 минут
-    maxPerDay: 5,
-    weight: 25
+    expiresInHours: 12,
+    cooldownMinutes: 30,
+    maxPerDay: null,
+    weight: 35
   },
 
-  // === СРЕДНИЕ ЗАДАНИЯ (умеренные кулдауны) ===
-
-  // 4. Совершить сделки
+  // 3. Видео за монеты
   {
-    id: 'complete_trades',
-    taskType: 'complete_trades',
-    title: 'Активный трейдер',
-    description: 'Совершите 3 торговые сделки',
+    id: 'video_coins',
+    taskType: 'video_coins',
+    title: 'tasks.videoCoins.title',
+    description: 'tasks.videoCoins.description',
+    rewardType: 'coins',
+    rewardAmount: '30',
+    progressTotal: 1,
+    icon: '/trials/video.svg',
+    category: 'video',
+    rarity: 'common',
+    expiresInHours: 12,
+    cooldownMinutes: 30,
+    maxPerDay: null,
+    weight: 35
+  },
+
+  // 4. Видео за энергию
+  {
+    id: 'video_energy',
+    taskType: 'video_energy',
+    title: 'tasks.videoEnergy.title',
+    description: 'tasks.videoEnergy.description',
+    rewardType: 'energy',
+    rewardAmount: '18',
+    progressTotal: 1,
+    icon: '/trials/video.svg',
+    category: 'video',
+    rarity: 'common',
+    expiresInHours: 12,
+    cooldownMinutes: 30,
+    maxPerDay: null,
+    weight: 35
+  },
+
+  // 5. Мега видео-бонус
+  {
+    id: 'video_mega',
+    taskType: 'video_mega',
+    title: 'tasks.videoMega.title',
+    description: 'tasks.videoMega.description',
     rewardType: 'mixed',
-    rewardAmount: '15_energy_1200_money',
-    progressTotal: 3,
-    icon: '/trials/trade.svg',
-    category: 'trade',
+    rewardAmount: '12_energy_1500_money',
+    progressTotal: 1,
+    icon: '/trials/video.svg',
+    category: 'video',
     rarity: 'rare',
     expiresInHours: 12,
-    cooldownMinutes: 60, // 1 час
-    maxPerDay: 2,
-    weight: 15
+    cooldownMinutes: 30,
+    maxPerDay: null,
+    weight: 35
   },
 
-  // 5. Проверить профиль
+  // === ЕЖЕДНЕВНЫЕ ЗАДАНИЯ (3 часа кулдаун, с уведомлениями) ===
+
+  // 6. Ежедневный бонус
   {
-    id: 'check_profile',
-    taskType: 'check_profile',
-    title: 'Обновить профиль',
-    description: 'Посетите свой профиль и проверьте статистику',
-    rewardType: 'coins',
-    rewardAmount: '75',
-    progressTotal: 1,
-    icon: '/trials/social.svg',
-    category: 'social',
-    rarity: 'rare',
-    expiresInHours: 18,
-    cooldownMinutes: 90, // 1.5 часа
-    maxPerDay: 3,
-    weight: 12
-  },
-
-  // 6. Испытать удачу
-  {
-    id: 'lucky_spin',
-    taskType: 'lucky_spin',
-    title: 'Испытать удачу',
-    description: 'Крутите рулетку фортуны для получения случайного приза',
-    rewardType: 'wheel',
-    rewardAmount: 'random',
-    progressTotal: 1,
-    icon: '/wheel/coins.svg',
-    category: 'daily',
-    rarity: 'rare',
-    expiresInHours: 8,
-    cooldownMinutes: 45, // 45 минут
-    maxPerDay: 3,
-    weight: 18
-  },
-
-  // === РЕДКИЕ ЗАДАНИЯ (долгие кулдауны, большие награды) ===
-
-  // 7. Прибыльный день
-  {
-    id: 'profitable_day',
-    taskType: 'profitable_day',
-    title: 'Прибыльный день',
-    description: 'Заработайте $1000 прибыли за день',
-    rewardType: 'mixed',
-    rewardAmount: '25_energy_2500_money',
-    progressTotal: 1000,
-    icon: '/trials/crypto.svg',
-    category: 'trade',
-    rarity: 'epic',
-    expiresInHours: 24,
-    cooldownMinutes: 240, // 4 часа
-    maxPerDay: 1,
-    weight: 8
-  },
-
-  // 8. Мастер торговли
-  {
-    id: 'trading_master',
-    taskType: 'trading_master',
-    title: 'Мастер торговли',
-    description: 'Совершите 10 сделок подряд',
-    rewardType: 'mixed',
-    rewardAmount: '30_energy_3000_money',
-    progressTotal: 10,
-    icon: '/trials/crypto.svg',
-    category: 'trade',
-    rarity: 'epic',
-    expiresInHours: 24,
-    cooldownMinutes: 180, // 3 часа
-    maxPerDay: 1,
-    weight: 6
-  },
-
-  // 9. Большая удача (премиум рулетка)
-  {
-    id: 'big_luck',
-    taskType: 'big_luck',
-    title: 'Большая удача',
-    description: 'Просмотрите 5 видео для шанса на большой выигрыш',
-    rewardType: 'wheel',
-    rewardAmount: 'premium_random',
-    progressTotal: 5,
-    icon: '/wheel/coins.svg',
-    category: 'premium',
-    rarity: 'legendary',
-    expiresInHours: 12,
-    cooldownMinutes: 300, // 5 часов
-    maxPerDay: 1,
-    weight: 3
-  },
-
-  // === ДОПОЛНИТЕЛЬНЫЕ ЛЕГКИЕ ЗАДАНИЯ ===
-
-  // 10. Получить бонус монеты
-  {
-    id: 'bonus_coins',
-    taskType: 'bonus_coins',
-    title: 'Бонус монеты',
-    description: 'Получите бонусные монеты за активность',
-    rewardType: 'coins',
-    rewardAmount: '35',
-    progressTotal: 1,
-    icon: '/money.svg',
-    category: 'daily',
-    rarity: 'common',
-    expiresInHours: 4,
-    cooldownMinutes: 25, // 25 минут
-    maxPerDay: 5,
-    weight: 28
-  },
-
-  // 11. Малая энергия
-  {
-    id: 'small_energy',
-    taskType: 'small_energy',
-    title: 'Малый заряд энергии',
-    description: 'Восстановите немного энергии для торговли',
-    rewardType: 'energy',
-    rewardAmount: '12',
-    progressTotal: 1,
-    icon: '/trials/energy.svg',
-    category: 'energy',
-    rarity: 'common',
-    expiresInHours: 6,
-    cooldownMinutes: 30, // 30 минут
-    maxPerDay: 8,
-    weight: 26
-  },
-
-  // 12. Стартовый капитал
-  {
-    id: 'starter_cash',
-    taskType: 'starter_cash',
-    title: 'Стартовый капитал',
-    description: 'Получите стартовые средства для торговли',
+    id: 'daily_bonus',
+    taskType: 'daily_bonus',
+    title: 'tasks.dailyBonus.title',
+    description: 'tasks.dailyBonus.description',
     rewardType: 'money',
     rewardAmount: '750',
     progressTotal: 1,
-    icon: '/trials/dollars.svg',
+    icon: '/trials/energy.svg',
     category: 'daily',
     rarity: 'common',
-    expiresInHours: 5,
-    cooldownMinutes: 40, // 40 минут
-    maxPerDay: 4,
-    weight: 24
+    expiresInHours: 24,
+    cooldownMinutes: 180, // 3 часа
+    maxPerDay: 3,
+    weight: 25
   },
 
-  // === ДОПОЛНИТЕЛЬНЫЕ ЗАДАНИЯ С РУЛЕТКОЙ ===
-
-  // 13. Колесо удачи
+  // 7. Активный трейдер дня
   {
-    id: 'luck_wheel',
-    taskType: 'luck_wheel',
-    title: 'Колесо удачи',
-    description: 'Крутите колесо для получения случайного приза',
-    rewardType: 'wheel',
-    rewardAmount: 'random',
+    id: 'daily_trader',
+    taskType: 'daily_trader',
+    title: 'tasks.dailyTrader.title',
+    description: 'tasks.dailyTrader.description',
+    rewardType: 'coins',
+    rewardAmount: '40',
     progressTotal: 1,
-    icon: '/wheel/coins.svg',
+    icon: '/trials/trade.svg',
     category: 'daily',
     rarity: 'common',
-    expiresInHours: 8,
-    cooldownMinutes: 30,
-    maxPerDay: 5,
+    expiresInHours: 24,
+    cooldownMinutes: 180, // 3 часа
+    maxPerDay: 3,
+    weight: 25
+  },
+
+  // === ТОРГОВЫЕ ЗАДАНИЯ (60-90 минут кулдаун) ===
+
+  // 8. Первая прибыль
+  {
+    id: 'trade_first_profit',
+    taskType: 'trade_first_profit',
+    title: 'tasks.tradeFirstProfit.title',
+    description: 'tasks.tradeFirstProfit.description',
+    rewardType: 'coins',
+    rewardAmount: '25',
+    progressTotal: 100, // $100 прибыли
+    icon: '/trials/trade.svg',
+    category: 'trade',
+    rarity: 'common',
+    expiresInHours: 24,
+    cooldownMinutes: 60,
+    maxPerDay: 2,
     weight: 20
   },
 
-  // 14. Большое колесо
+  // 9. Удачная сделка
   {
-    id: 'big_wheel',
-    taskType: 'big_wheel',
-    title: 'Большое колесо',
-    description: 'Крутите премиум рулетку с увеличенными призами',
-    rewardType: 'wheel',
-    rewardAmount: 'premium_random',
-    progressTotal: 1,
-    icon: '/wheel/coins.svg',
-    category: 'premium',
+    id: 'trade_lucky',
+    taskType: 'trade_lucky',
+    title: 'tasks.tradeLucky.title',
+    description: 'tasks.tradeLucky.description',
+    rewardType: 'mixed',
+    rewardAmount: '8_energy_800_money',
+    progressTotal: 500, // $500 прибыли
+    icon: '/trials/trade.svg',
+    category: 'trade',
     rarity: 'rare',
-    expiresInHours: 6,
+    expiresInHours: 24,
+    cooldownMinutes: 75,
+    maxPerDay: 2,
+    weight: 18
+  },
+
+  // 10. Закройте сделку
+  {
+    id: 'trade_close',
+    taskType: 'trade_close',
+    title: 'tasks.tradeClose.title',
+    description: 'tasks.tradeClose.description',
+    rewardType: 'money',
+    rewardAmount: '600',
+    progressTotal: 1, // Закрыть 1 сделку
+    icon: '/trials/trade.svg',
+    category: 'trade',
+    rarity: 'common',
+    expiresInHours: 24,
     cooldownMinutes: 60,
     maxPerDay: 3,
+    weight: 17
+  },
+
+  // 11. Мастер прибыли
+  {
+    id: 'trade_master',
+    taskType: 'trade_master',
+    title: 'tasks.tradeMaster.title',
+    description: 'tasks.tradeMaster.description',
+    rewardType: 'mixed',
+    rewardAmount: '15_energy_2000_money',
+    progressTotal: 1000, // $1000 прибыли
+    icon: '/trials/trade.svg',
+    category: 'trade',
+    rarity: 'epic',
+    expiresInHours: 24,
+    cooldownMinutes: 90,
+    maxPerDay: 1,
     weight: 15
   },
 
-  // 15. Быстрое колесо
+  // === ПРЕМИУМ ЗАДАНИЯ (3 часа кулдаун, с уведомлениями) ===
+
+  // 12. Premium вход
   {
-    id: 'quick_wheel',
-    taskType: 'quick_wheel',
-    title: 'Быстрое колесо',
-    description: 'Получите быстрый приз от рулетки',
-    rewardType: 'wheel',
-    rewardAmount: 'random',
+    id: 'premium_login',
+    taskType: 'premium_login',
+    title: 'tasks.premiumLogin.title',
+    description: 'tasks.premiumLogin.description',
+    rewardType: 'coins',
+    rewardAmount: '35',
     progressTotal: 1,
-    icon: '/wheel/coins.svg',
-    category: 'daily',
-    rarity: 'common',
-    expiresInHours: 4,
-    cooldownMinutes: 20,
-    maxPerDay: 6,
-    weight: 22
+    icon: '/trials/premium.svg',
+    category: 'premium',
+    rarity: 'rare',
+    expiresInHours: 24,
+    cooldownMinutes: 180, // 3 часа
+    maxPerDay: 3,
+    weight: 5
   },
 
-  // 16. Джекпот рулетка
+  // 13. VIP бонус
   {
-    id: 'jackpot_spin',
-    taskType: 'jackpot_spin',
-    title: 'Джекпот рулетка',
-    description: 'Шанс выиграть крупный приз в премиум рулетке',
-    rewardType: 'wheel',
-    rewardAmount: 'premium_random',
+    id: 'premium_vip',
+    taskType: 'premium_vip',
+    title: 'tasks.premiumVip.title',
+    description: 'tasks.premiumVip.description',
+    rewardType: 'mixed',
+    rewardAmount: '5_energy_20_coins',
     progressTotal: 1,
-    icon: '/wheel/coins.svg',
+    icon: '/trials/premium.svg',
     category: 'premium',
-    rarity: 'epic',
-    expiresInHours: 12,
-    cooldownMinutes: 120, // 2 часа
-    maxPerDay: 2,
-    weight: 8
+    rarity: 'rare',
+    expiresInHours: 24,
+    cooldownMinutes: 180, // 3 часа
+    maxPerDay: 3,
+    weight: 3
   }
 ];
 

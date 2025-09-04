@@ -54,8 +54,8 @@ export class TaskService {
     // First, expire old tasks
     await this.expireOldTasks(userId);
     
-    // Auto-fill tasks to maintain 3 active tasks (temporarily disabled to debug)
-    // await this.autoFillTasks(userId);
+    // Auto-fill tasks to maintain 3 active tasks
+    await this.autoFillTasks(userId);
     
     let tasks = await db.select()
       .from(userTasks)
@@ -73,9 +73,6 @@ export class TaskService {
     if (tasks.length === 0) {
       console.log(`[TaskService] No tasks found, creating initial tasks`);
       await this.createInitialTasks(userId);
-    } else if (tasks.length < 3) {
-      console.log(`[TaskService] Only ${tasks.length} tasks found, adding more test tasks`);
-      await this.createTestWheelTask(userId);
     }
 
     // Re-fetch tasks after potential creation
@@ -127,51 +124,17 @@ export class TaskService {
   private static async createInitialTasks(userId: string): Promise<void> {
     console.log(`[TaskService] Creating initial tasks for user: ${userId}`);
     
-    // Create 3 tasks including wheel tasks for testing
-    const initialTasks = [
-      {
-        taskType: 'quick_bonus',
-        title: 'Быстрый бонус',
-        description: 'Получите быструю награду',
-        rewardType: 'money' as const,
-        rewardAmount: '500',
-        progressTotal: 1,
-        icon: '/trials/energy.svg',
-        expiresInHours: 6,
-        cooldownMinutes: 0, // No cooldown for initial tasks
-        maxPerDay: null
-      },
-      {
-        taskType: 'lucky_wheel_test',
-        title: 'Тест рулетки',
-        description: 'Нажмите и испытайте удачу в рулетке!',
-        rewardType: 'wheel' as const,
-        rewardAmount: 'random',
-        progressTotal: 1,
-        icon: '/wheel/coins.svg',
-        expiresInHours: 12,
-        cooldownMinutes: 0,
-        maxPerDay: null
-      },
-      {
-        taskType: 'mega_wheel_test',
-        title: 'Мега рулетка',
-        description: 'Выполните 2 действия для большого шанса выигрыша!',
-        rewardType: 'wheel' as const,
-        rewardAmount: 'premium_random',
-        progressTotal: 2,
-        icon: '/wheel/coins.svg',
-        expiresInHours: 8,
-        cooldownMinutes: 0,
-        maxPerDay: null
-      }
-    ];
-
-    for (const taskOptions of initialTasks) {
+    // Create 3 random tasks using the template system
+    for (let i = 0; i < this.MAX_ACTIVE_TASKS; i++) {
       try {
-        await this.createTask(userId, taskOptions);
+        const newTask = await this.createRandomTask(userId);
+        if (!newTask) {
+          console.log(`[TaskService] Could not create initial task ${i + 1}`);
+        } else {
+          console.log(`[TaskService] Created initial task: ${newTask.title}`);
+        }
       } catch (error) {
-        console.error(`[TaskService] Error creating initial task: ${taskOptions.taskType}`, error);
+        console.error(`[TaskService] Error creating initial task ${i + 1}:`, error);
       }
     }
   }
@@ -296,18 +259,16 @@ export class TaskService {
 
     console.log(`[TaskService] Created task with ID: ${newTask.id}, expires: ${expiresAt?.toISOString()}`);
 
-    // Create notification for new daily task (only for certain task types)
+    // Create notification for new daily and premium tasks (with 3-hour cooldown)
     const notifiableTaskTypes = [
-      'daily_bonus', 'watch_ad', 'collect_energy', 'complete_trades', 
-      'check_profile', 'profitable_day', 'trading_master', 'luck_wheel', 
-      'big_wheel', 'jackpot_spin', 'daily_trade'
+      'daily_bonus', 'daily_trader', 'premium_login', 'premium_vip'
     ];
     if (notifiableTaskTypes.includes(options.taskType)) {
       try {
         await notificationService.createDailyTaskNotification(userId, options.title, options.description);
-        console.log(`[TaskService] Created notification for new daily task: ${options.title}`);
+        console.log(`[TaskService] Created notification for new task: ${options.title}`);
       } catch (error) {
-        console.error(`[TaskService] Failed to create notification for daily task:`, error);
+        console.error(`[TaskService] Failed to create notification for task:`, error);
         // Don't fail the task creation, just log the error
       }
     }
@@ -596,24 +557,24 @@ export class TaskService {
   /**
    * Auto-fill tasks to maximum
    */
-  static async autoFillTasks(userId: string): Promise<TaskData[]> {
+  static async autoFillTasks(userId: string): Promise<void> {
     console.log(`[TaskService] Auto-filling tasks for user: ${userId}`);
 
-    const currentTasks = await this.getUserTasks(userId);
-    const tasksToCreate = this.MAX_ACTIVE_TASKS - currentTasks.length;
+    const activeCount = await this.getActiveTasksCount(userId);
+    const tasksToCreate = this.MAX_ACTIVE_TASKS - activeCount;
 
-    console.log(`[TaskService] Current tasks: ${currentTasks.length}, need to create: ${tasksToCreate}`);
+    console.log(`[TaskService] Current tasks: ${activeCount}, need to create: ${tasksToCreate}`);
 
-    const newTasks: TaskData[] = [];
-    for (let i = 0; i < tasksToCreate; i++) {
-      const newTask = await this.createRandomTask(userId);
-      if (newTask) {
-        newTasks.push(newTask);
+    if (tasksToCreate > 0) {
+      for (let i = 0; i < tasksToCreate; i++) {
+        const newTask = await this.createRandomTask(userId);
+        if (newTask) {
+          console.log(`[TaskService] Auto-created task: ${newTask.title}`);
+        } else {
+          console.log(`[TaskService] Could not auto-create task ${i + 1} (cooldowns or limits)`);
+        }
       }
     }
-
-    console.log(`[TaskService] Created ${newTasks.length} new tasks`);
-    return [...currentTasks, ...newTasks];
   }
 
   /**

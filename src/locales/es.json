@@ -888,6 +888,60 @@
       "addArrow": "Añadir flecha"
     }
   },
+  "tasks": {
+    "videoWheel": {
+      "title": "Video por Ruleta",
+      "description": "Ve un anuncio y obtén un giro gratis en la ruleta de la fortuna"
+    },
+    "videoMoney": {
+      "title": "Video por Moneda",
+      "description": "Ve un video y recibe moneda de trading"
+    },
+    "videoCoins": {
+      "title": "Video por Monedas",
+      "description": "Ve un anuncio y recarga tu balance de monedas"
+    },
+    "videoEnergy": {
+      "title": "Video por Energía",
+      "description": "Restaura energía viendo un anuncio publicitario"
+    },
+    "videoMega": {
+      "title": "Mega Bono de Video",
+      "description": "Ve un video por una recompensa generosa"
+    },
+    "dailyBonus": {
+      "title": "Bono Diario",
+      "description": "Recoge tu bono diario por actividad en la app"
+    },
+    "dailyTrader": {
+      "title": "Trader Activo del Día",
+      "description": "Obtén una recompensa por actividad de trading diaria"
+    },
+    "tradeFirstProfit": {
+      "title": "Primera Ganancia",
+      "description": "Gana tus primeros $100 de beneficio en trading"
+    },
+    "tradeLucky": {
+      "title": "Operación Afortunada",
+      "description": "Gana $500 de beneficio con operaciones de trading"
+    },
+    "tradeClose": {
+      "title": "Cerrar Operación",
+      "description": "Cierra cualquier posición de trading activa"
+    },
+    "tradeMaster": {
+      "title": "Maestro de Ganancias",
+      "description": "Demuestra maestría ganando $1000 de beneficio"
+    },
+    "premiumLogin": {
+      "title": "Entrada Premium",
+      "description": "Recompensa exclusiva por estatus de usuario Premium"
+    },
+    "premiumVip": {
+      "title": "Bono VIP",
+      "description": "Bono especial para miembros VIP de la plataforma"
+    }
+  },
   "ui": {
     "trials": {
       "noTasks": "Sin tareas activas",

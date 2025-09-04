@@ -900,6 +900,60 @@
     "timeToPractice": "Time to apply knowledge in practice!",
     "tradeCompete": "Trade, compete and level up your skills."
   },
+  "tasks": {
+    "videoWheel": {
+      "title": "Video for Wheel",
+      "description": "Watch an ad and get a free spin on the wheel of fortune"
+    },
+    "videoMoney": {
+      "title": "Video for Currency",
+      "description": "Watch a video and receive trading currency"
+    },
+    "videoCoins": {
+      "title": "Video for Coins",
+      "description": "Watch an ad and top up your coin balance"
+    },
+    "videoEnergy": {
+      "title": "Video for Energy",
+      "description": "Restore energy by watching an advertisement"
+    },
+    "videoMega": {
+      "title": "Mega Video Bonus",
+      "description": "Watch a video for a generous reward"
+    },
+    "dailyBonus": {
+      "title": "Daily Bonus",
+      "description": "Collect your daily bonus for app activity"
+    },
+    "dailyTrader": {
+      "title": "Active Trader of the Day",
+      "description": "Get a reward for daily trading activity"
+    },
+    "tradeFirstProfit": {
+      "title": "First Profit",
+      "description": "Earn your first $100 profit in trading"
+    },
+    "tradeLucky": {
+      "title": "Lucky Trade",
+      "description": "Earn $500 profit from trading operations"
+    },
+    "tradeClose": {
+      "title": "Close Deal",
+      "description": "Close any active trading position"
+    },
+    "tradeMaster": {
+      "title": "Profit Master",
+      "description": "Demonstrate mastery by earning $1000 profit"
+    },
+    "premiumLogin": {
+      "title": "Premium Entry",
+      "description": "Exclusive reward for Premium user status"
+    },
+    "premiumVip": {
+      "title": "VIP Bonus",
+      "description": "Special bonus for VIP platform members"
+    }
+  },
   "ui": {
     "trials": {
       "noTasks": "No active tasks",

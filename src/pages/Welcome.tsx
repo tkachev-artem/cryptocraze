@@ -63,49 +63,6 @@ export function Welcome() {
             </Button> 
         </div>
 
-        {/* Кнопки */}
-        <div className="space-y-4">
-
-          <Button 
-            variant="outline" 
-            className="w-full h-12 text-lg font-semibold text-black border-1"
-            onClick={
-              () => {
-                setShowErrorModal(true);
-              }
-            }
-          >
-            <img src="/facebook.svg" alt="Facebook" className="w-6 h-6 mr-2 select-none pointer-events-none" />
-            {t('welcome.login.facebook')}
-          </Button>
-
-          <Button 
-            variant="outline" 
-            className="w-full h-12 text-lg font-semibold text-black border-1"
-            onClick={
-              () => {
-                setShowErrorModal(true);
-              }
-            }
-          >
-            <img src="/apple.svg" alt="Apple" className="w-6 h-6 mr-2 select-none pointer-events-none" />
-            {t('welcome.login.apple')}
-          </Button>
-
-          <Button 
-            variant="outline" 
-            className="w-full h-12 text-lg font-semibold text-gray-800 border-1 rounded-full"
-            onClick={
-              () => {
-                setShowErrorModal(true);
-              }
-            }
-          >
-            <img src="/github.svg" alt="GitHub" className="w-6 h-6 mr-2 select-none pointer-events-none" />
-            {t('welcome.login.github')}
-          </Button>
-        </div>
-
         {/* Terms */}
         <p className="w-full mt-8 text-sm text-black text-center">
           {t('welcome.terms.agree')} {' '}

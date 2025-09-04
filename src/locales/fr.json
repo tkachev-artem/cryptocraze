@@ -888,6 +888,60 @@
       "addArrow": "Ajouter une flèche"
     }
   },
+  "tasks": {
+    "videoWheel": {
+      "title": "Vidéo pour Roue",
+      "description": "Regardez une pub et obtenez un tour gratuit à la roue de fortune"
+    },
+    "videoMoney": {
+      "title": "Vidéo pour Devise",
+      "description": "Regardez une vidéo et recevez de la devise de trading"
+    },
+    "videoCoins": {
+      "title": "Vidéo pour Pièces",
+      "description": "Regardez une pub et rechargez votre solde de pièces"
+    },
+    "videoEnergy": {
+      "title": "Vidéo pour Énergie",
+      "description": "Restaurez l'énergie en regardant une publicité"
+    },
+    "videoMega": {
+      "title": "Méga Bonus Vidéo",
+      "description": "Regardez une vidéo pour une récompense généreuse"
+    },
+    "dailyBonus": {
+      "title": "Bonus Quotidien",
+      "description": "Récupérez votre bonus quotidien pour l'activité dans l'app"
+    },
+    "dailyTrader": {
+      "title": "Trader Actif du Jour",
+      "description": "Obtenez une récompense pour l'activité de trading quotidienne"
+    },
+    "tradeFirstProfit": {
+      "title": "Premier Profit",
+      "description": "Gagnez vos premiers $100 de profit en trading"
+    },
+    "tradeLucky": {
+      "title": "Trade Chanceux",
+      "description": "Gagnez $500 de profit avec les opérations de trading"
+    },
+    "tradeClose": {
+      "title": "Fermer Transaction",
+      "description": "Fermez n'importe quelle position de trading active"
+    },
+    "tradeMaster": {
+      "title": "Maître des Profits",
+      "description": "Démontrez la maîtrise en gagnant $1000 de profit"
+    },
+    "premiumLogin": {
+      "title": "Entrée Premium",
+      "description": "Récompense exclusive pour le statut utilisateur Premium"
+    },
+    "premiumVip": {
+      "title": "Bonus VIP",
+      "description": "Bonus spécial pour les membres VIP de la plateforme"
+    }
+  },
   "ui": {
     "trials": {
       "noTasks": "Aucune tâche active",

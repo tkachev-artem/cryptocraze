@@ -53,7 +53,14 @@ export class NotificationService {
         )
         .orderBy(desc(userNotifications.createdAt));
 
-      return notifications;
+      // Фильтруем системные уведомления, оставляем только ежедневные награды и уведомления о сделках
+      const filteredNotifications = notifications.filter(notification => 
+        notification.type === 'daily_reward' || 
+        notification.type === 'trade_opened' || 
+        notification.type === 'trade_closed'
+      );
+
+      return filteredNotifications;
     } catch (error) {
       console.error('❌ Ошибка получения уведомлений:', error);
       throw error;
@@ -66,7 +73,7 @@ export class NotificationService {
   static async getUnreadCount(userId: string) {
     try {
       const result = await db
-        .select({ count: userNotifications.id })
+        .select()
         .from(userNotifications)
         .where(
           and(
@@ -76,7 +83,14 @@ export class NotificationService {
           )
         );
 
-      return result.length;
+      // Фильтруем системные уведомления, оставляем только ежедневные награды и уведомления о сделках
+      const filteredNotifications = result.filter(notification => 
+        notification.type === 'daily_reward' || 
+        notification.type === 'trade_opened' || 
+        notification.type === 'trade_closed'
+      );
+
+      return filteredNotifications.length;
     } catch (error) {
       console.error('❌ Ошибка получения количества непрочитанных уведомлений:', error);
       throw error;
@@ -196,13 +210,14 @@ export class NotificationService {
   }
 
   /**
-   * Автоматическая очистка старых уведомлений (оставляем только 9 самых новых)
+   * Автоматическая очистка старых уведомлений (оставляем только 10 самых новых отфильтрованных уведомлений)
    */
   static async cleanupOldNotifications(userId: string) {
     try {
       // Get all active notifications for user, ordered by creation date (newest first)
+      // Only consider filtered notification types when determining cleanup
       const notifications = await db
-        .select({ id: userNotifications.id })
+        .select({ id: userNotifications.id, type: userNotifications.type })
         .from(userNotifications)
         .where(
           and(
@@ -212,9 +227,16 @@ export class NotificationService {
         )
         .orderBy(desc(userNotifications.createdAt));
 
-      // If we have 9 or more notifications, delete the oldest ones
-      if (notifications.length >= 9) {
-        const notificationsToDelete = notifications.slice(8); // Keep only first 8, delete the rest
+      // Filter to only count allowed notification types
+      const filteredNotifications = notifications.filter(notification => 
+        notification.type === 'daily_reward' || 
+        notification.type === 'trade_opened' || 
+        notification.type === 'trade_closed'
+      );
+
+      // If we have 10 or more filtered notifications, delete the oldest ones
+      if (filteredNotifications.length >= 10) {
+        const notificationsToDelete = filteredNotifications.slice(9); // Keep only first 9, delete the rest
         const idsToDelete = notificationsToDelete.map(n => n.id);
         
         if (idsToDelete.length > 0) {
@@ -229,7 +251,7 @@ export class NotificationService {
               )
             );
           
-          console.log(`[NotificationService] Auto-cleanup: deactivated ${idsToDelete.length} old notifications for user ${userId}`);
+          console.log(`[NotificationService] Auto-cleanup: deactivated ${idsToDelete.length} old filtered notifications for user ${userId}`);
         }
       }
     } catch (error) {

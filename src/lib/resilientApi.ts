@@ -237,7 +237,7 @@ export async function getCachedCandlestickData(
   const cached = apiCache.get(cacheKey);
   
   if (cached) {
-    console.log('Используем кешированные данные свечей');
+    console.log('Using cached candlestick data');
     return cached as CandlestickData[];
   }
 
@@ -251,7 +251,7 @@ export async function getCachedBinanceStats(symbol: string): Promise<BinanceStat
   const cached = apiCache.get(cacheKey);
   
   if (cached) {
-    console.log('Используем кешированную статистику');
+    console.log('Using cached statistics');
     return cached as BinanceStats;
   }
 

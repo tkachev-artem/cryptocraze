@@ -416,7 +416,7 @@ export const EditDealModal = ({ bottomOffset = 0 }: EditDealModalProps) => {
                                         <div className={`w-3 h-3 ${deal.direction === 'up' ? 'text-green-500' : 'text-red-500'}`}>
                                             <img
                                                 src={deal.direction === 'up' ? '/deal/up.svg' : '/deal/down.svg'}
-                                                alt={deal.direction === 'up' ? 'Вверх' : 'Вниз'}
+                                                alt={deal.direction === 'up' ? (t('trading.up') || 'Up') : (t('trading.down') || 'Down')}
                                                 className="w-full h-full"
                                             />
                                         </div>
@@ -494,10 +494,10 @@ export const EditDealModal = ({ bottomOffset = 0 }: EditDealModalProps) => {
                                     onClick={handleEditClick}
                                     role="button"
                                     tabIndex={0}
-                                    aria-label={t('deal.edit') || 'Редактировать TP/SL'}
+                                    aria-label={t('deal.editTpSl') || 'Edit TP/SL'}
                                     onKeyDown={handleEditKeyDown}
                                 >
-                                    <img src="/deal/edit.svg" alt={t('deal.edit') || 'Редактировать'} className="w-4 h-4" />
+                                    <img src="/deal/edit.svg" alt={t('deal.edit') || 'Edit'} className="w-4 h-4" />
                                 </div>
                             </div>
                             

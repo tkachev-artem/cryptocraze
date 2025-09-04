@@ -60,7 +60,7 @@ export const Profile: React.FC = () => {
         <button
           onClick={() => navigate('/edit-profile')}
           className="p-2 hover:bg-gray-50 transition-colors"
-          aria-label="Редактировать профиль"
+          aria-label={t('profile.editTitle') || 'Edit Profile'}
         >
           <img src="/top-menu/edit.svg" alt="edit" className="w-5 h-5" />
         </button>
@@ -93,7 +93,7 @@ export const Profile: React.FC = () => {
             </div>
             
             {/* User Name */}
-            <h1 className="text-xl font-bold text-black mt-2">{user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.name || user.username || user.email?.split('@')[0] || 'Пользователь'}</h1>
+            <h1 className="text-xl font-bold text-black mt-2">{user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.name || user.username || user.email?.split('@')[0] || t('profile.defaultUsername') || 'User'}</h1>
             
             {/* Contact Info */}
             <div className="flex flex-col items-center gap-3 opacity-50 mt-2">

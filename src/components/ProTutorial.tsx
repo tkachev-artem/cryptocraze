@@ -388,16 +388,16 @@ const ProTutorial: React.FC<ProTutorialProps> = ({
         containerClassName="items-center justify-center"
       >
         <div className="bg-white rounded-2xl p-6 max-w-sm mx-auto">
-          <h2 className="text-lg font-bold text-red-600 mb-4">Tutorial Error</h2>
+          <h2 className="text-lg font-bold text-red-600 mb-4">{t('tutorial.error.title') || 'Tutorial Error'}</h2>
           <p className="text-gray-700 mb-4">
-            An error occurred in the tutorial. Please restart or skip.
+            {t('tutorial.error.message') || 'An error occurred in the tutorial. Please restart or skip.'}
           </p>
           <div className="flex gap-2">
             <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-600 text-white rounded">
-              Restart
+              {t('tutorial.error.restart') || 'Restart'}
             </button>
             <button onClick={onSkip} className="px-4 py-2 bg-gray-400 text-white rounded">
-              Skip
+              {t('tutorial.error.skip') || 'Skip'}
             </button>
           </div>
         </div>
@@ -648,7 +648,7 @@ const FinalModalContent: React.FC<{
       <div className="relative">
         <img 
           src="/protraining/bear.svg" 
-          alt="Bear character" 
+          alt={t('tutorial.bearCharacter') || 'Bear character'} 
           className="w-[210px] h-[268px]" 
         />
       </div>
@@ -658,7 +658,7 @@ const FinalModalContent: React.FC<{
       <p className="text-base text-black leading-relaxed max-w-sm">
         {t('proTutorial.timeToPractice')}<br />
         {t('proTutorial.tradeCompete')}<br />
-        свои навыки.
+        {t('proTutorial.skills') || 'свои навыки.'}
       </p>
     </div>
     <div className="w-full pb-8">

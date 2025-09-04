@@ -5,6 +5,7 @@ import type { ISeriesApi, Time, IChartApi } from 'lightweight-charts';
 import { useAppSelector } from '@/app/hooks';
 import { getCachedCandlestickData } from '@/lib/resilientApi';
 import { useTranslation } from '@/lib/i18n';
+import { getPreferredLanguage } from '@/lib/languageUtils';
 import useLivePrices, { type PriceData } from '@/hooks/useLivePrices';
 // NOTE: avoid binding chart height to dynamic viewport height to prevent flicker on mobile toolbars
 
@@ -134,6 +135,17 @@ const Chart: React.FC<ChartProps> = ({ onProModeClick, onCryptoChange, forcedCry
     const isDealModalOpen = useAppSelector((state) => state.dealModal.isDealModalOpen) || Boolean(isDealOpenOverride);
     const isEditDealOpen = useAppSelector((state) => state.dealModal.isEditDealOpen);
     const { t }: { t: (key: string, params?: Record<string, string | number>) => string } = useTranslation();
+    const currentLocale = getPreferredLanguage();
+    
+    // Mapping for locale codes used in date formatting
+    const localeMap: Record<string, string> = {
+        'ru': 'ru-RU',
+        'en': 'en-US', 
+        'es': 'es-ES',
+        'fr': 'fr-FR',
+        'pt': 'pt-PT'
+    };
+    const dateLocale = localeMap[currentLocale] || 'en-US';
     // Stable base height computed from window.innerHeight to avoid frequent resizes on mobile
 
     // Адаптивная высота графика: 40% от высоты экрана, но не меньше 220px и не больше 600px
@@ -231,8 +243,8 @@ const Chart: React.FC<ChartProps> = ({ onProModeClick, onCryptoChange, forcedCry
                 setHistoryVersion(v => v + 1);
                 setLoading(false);
             } catch (e: unknown) {
-                console.error('Ошибка загрузки данных графика:', e);
-                setError(e instanceof Error ? e.message : 'Ошибка');
+                console.error('Failed to load chart data:', e);
+                setError(e instanceof Error ? e.message : 'Error');
                 setLoading(false);
             }
         };
@@ -271,7 +283,7 @@ const Chart: React.FC<ChartProps> = ({ onProModeClick, onCryptoChange, forcedCry
                 // Обработка BusinessDay для дневных таймфреймов
                 const t = time as { year: number; month: number; day: number };
                 const d = new Date(t.year, t.month - 1, t.day);
-                return d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' });
+                return d.toLocaleDateString(dateLocale, { day: '2-digit', month: 'short' });
             }
             
             const ts = typeof time === 'string' ? parseInt(time, 10) : (time as number);
@@ -284,19 +296,19 @@ const Chart: React.FC<ChartProps> = ({ onProModeClick, onCryptoChange, forcedCry
                 case '5m':
                 case '15m':
                     // Показываем время в формате HH:MM
-                    return d.toLocaleTimeString('ru-RU', { 
+                    return d.toLocaleTimeString(dateLocale, { 
                         hour: '2-digit', 
                         minute: '2-digit', 
                         hour12: false 
                     });
                 case '1h': {
                     // Показываем дату и время для 1h
-                    const hours = d.toLocaleTimeString('ru-RU', { 
+                    const hours = d.toLocaleTimeString(dateLocale, { 
                         hour: '2-digit', 
                         minute: '2-digit', 
                         hour12: false 
                     });
-                    const date = d.toLocaleDateString('ru-RU', { 
+                    const date = d.toLocaleDateString(dateLocale, { 
                         day: '2-digit', 
                         month: '2-digit' 
                     });
@@ -305,12 +317,12 @@ const Chart: React.FC<ChartProps> = ({ onProModeClick, onCryptoChange, forcedCry
                 case '4h':
                 case '1d':
                     // Показываем только дату для больших интервалов
-                    return d.toLocaleDateString('ru-RU', { 
+                    return d.toLocaleDateString(dateLocale, { 
                         day: '2-digit', 
                         month: 'short' 
                     });
                 default:
-                    return d.toLocaleTimeString('ru-RU', { 
+                    return d.toLocaleTimeString(dateLocale, { 
                         hour: '2-digit', 
                         minute: '2-digit', 
                         hour12: false 
@@ -350,7 +362,7 @@ const Chart: React.FC<ChartProps> = ({ onProModeClick, onCryptoChange, forcedCry
                 rightBarStaysOnScroll: true, // Последний бар остается видимым при прокрутке
             },
             localization: {
-                locale: 'ru-RU',
+                locale: dateLocale,
                 timeFormatter: (t: unknown) => formatTick(t as Time),
                 priceFormatter: (price: number) => {
                     // Форматируем цену в crosshair с правильным количеством знаков
@@ -464,7 +476,7 @@ const Chart: React.FC<ChartProps> = ({ onProModeClick, onCryptoChange, forcedCry
                 tickMarkFormatter: (t: unknown) => formatTick(t as Time),
             },
             localization: {
-                locale: 'ru-RU',
+                locale: dateLocale,
                 timeFormatter: (t: unknown) => formatTick(t as Time),
             },
         });

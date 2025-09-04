@@ -1034,5 +1034,42 @@
       },
       "pandaMessage": "Ne vous inquiétez pas ! Même les traders expérimentés se perdent parfois. Remettons-vous sur la bonne voie !"
     }
+  },
+  "tutorial": {
+    "error": {
+      "title": "Erreur du Tutoriel",
+      "message": "Une erreur s'est produite dans le tutoriel. Veuillez redémarrer ou ignorer.",
+      "restart": "Redémarrer",
+      "skip": "Ignorer"
+    },
+    "bearCharacter": "Personnage ours",
+    "skills": "vos compétences",
+    "stepsTitle": "Étapes du Tutoriel"
+  },
+  "textMarker": {
+    "title": "Ajouter Marqueur de Texte",
+    "label": {
+      "text": "Texte",
+      "fontSize": "Taille de Police",
+      "color": "Couleur",
+      "customColor": "Couleur personnalisée"
+    },
+    "placeholder": "Entrez votre texte ici...",
+    "pixels": "px",
+    "selectColor": "Sélectionner couleur",
+    "preview": {
+      "empty": "L'aperçu apparaîtra ici..."
+    },
+    "save": "Ajouter Texte",
+    "error": {
+      "emptyText": "Le texte ne peut pas être vide",
+      "tooLong": "Le texte ne peut pas dépasser 100 caractères"
+    }
+  },
+  "share": {
+    "chartAnalysis": "Regardez cette analyse graphique sur CryptoCraze !",
+    "chartPreview": "Aperçu du graphique",
+    "shareImage": "Partager image du graphique",
+    "saveImage": "Enregistrer image du graphique"
   }
 }

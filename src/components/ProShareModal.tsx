@@ -24,7 +24,7 @@ const ProShareModal: React.FC<ProShareModalProps> = ({
   const { t } = useTranslation();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
 
-  const shareText = `Check out this ${symbol} chart analysis on CryptoCraze!`;
+  const shareText = t('share.chartAnalysis', { symbol }) || `Check out this ${symbol} chart analysis on CryptoCraze!`;
   const shareUrl = 'https://cryptocraze.app';
 
   // Create share utilities
@@ -104,7 +104,7 @@ const ProShareModal: React.FC<ProShareModalProps> = ({
                 <div className="w-full">
                   <img 
                     src={imageUrl} 
-                    alt="Chart preview" 
+                    alt={t('share.chartPreview') || 'Chart preview'} 
                     className="w-full h-auto rounded-lg shadow-md max-h-[300px] object-contain mx-auto"
                   />
                 </div>
@@ -123,7 +123,7 @@ const ProShareModal: React.FC<ProShareModalProps> = ({
                   <button
                     onClick={() => void shareUtils.handleNativeShare()}
                     className="w-full bg-white text-black py-3 px-4 rounded-xl font-medium text-base border border-gray-200 hover:bg-gray-50 transition-colors flex items-center justify-center gap-3"
-                    aria-label="Share chart image"
+                    aria-label={t('share.shareImage') || 'Share chart image'}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
                       <circle cx="18" cy="5" r="3"></circle>
@@ -138,7 +138,7 @@ const ProShareModal: React.FC<ProShareModalProps> = ({
                 <button
                   onClick={() => { shareUtils.handleSaveImage(capturedImage.file); }}
                   className="w-full bg-[#0C54EA] text-white py-3 px-4 rounded-xl font-medium text-base hover:bg-blue-700 transition-colors flex items-center justify-center gap-3"
-                  aria-label="Save chart image"
+                  aria-label={t('share.saveImage') || 'Save chart image'}
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {

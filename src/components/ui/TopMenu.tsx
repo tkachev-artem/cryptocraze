@@ -28,7 +28,7 @@ const TopMenu = ({ variant = 'home' }: TopMenuProps) => {
           onClick={() => {
             void navigate('/edit-profile');
           }}
-          aria-label={t('profile.editTitle') || 'Редактировать профиль'}
+          aria-label={t('profile.editTitle') || 'Edit Profile'}
         >
           <img src="/top-menu/edit.svg" alt="edit" className='w-5 h-5' />
         </button>
@@ -44,7 +44,7 @@ const TopMenu = ({ variant = 'home' }: TopMenuProps) => {
           onClick={() => {
             void navigate('/profile');
           }}
-          aria-label={t('profile.title') || 'Профиль'}
+          aria-label={t('profile.title') || 'Profile'}
         >
           <img src={avatarUrl} alt="avatar" className='w-10 h-10 rounded-full object-cover' />
         </button>

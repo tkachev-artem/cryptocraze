@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect } from 'react';\nimport { useTranslation } from '@/lib/i18n';
 
 type ModalProps = {
   isOpen: boolean;
@@ -16,6 +16,7 @@ type ModalProps = {
 };
 
 export function Modal({ isOpen, onClose, children, zIndexClass = 'z-50', backdropClassName = 'bg-black/70', hideClose = false, containerClassName = 'items-center justify-center', contentClassName, containerStyle, contentRef, contentStyle, disableBackdropClose = false }: ModalProps) {
+  const { t } = useTranslation();
   // Закрытие по Escape
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -49,7 +50,7 @@ export function Modal({ isOpen, onClose, children, zIndexClass = 'z-50', backdro
         <div ref={contentRef} className={`${contentClassName ?? 'relative z-[80] bg-white rounded-2xl p-6 max-w-md w-full shadow-xl'} ${disableBackdropClose ? 'pointer-events-auto' : ''}`} style={contentStyle}>
           {!hideClose && (
             <div onClick={onClose} className='w-full flex justify-end mb-4'>
-              <img src="/close.svg" alt="Close" className="w-6 h-6" />
+              <img src="/close.svg" alt={t('common.close') || 'Close'} className="w-6 h-6" />
             </div>
           )}
           

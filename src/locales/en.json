@@ -88,7 +88,9 @@
     "tradesShort": "Trades",
     "crypto": "Crypto",
     "gain": "Gain",
-    "loss": "Loss"
+    "loss": "Loss",
+    "up": "Up",
+    "down": "Down"
   },
   "chart": {
     "candlestick": "Candlestick",
@@ -201,11 +203,13 @@
     "notAvailable": "N/A",
     "rating30Days": "30-day rating",
     "top": "Top",
-    "allDeals": "Deals"
+    "allDeals": "Deals",
+    "defaultUsername": "User"
   },
   "deal": {
     "commission": "Commission",
     "edit": "Edit",
+    "editTpSl": "Edit TP/SL",
     "updated": "TP/SL updated",
     "updateFail": "Failed to update deal",
     "closeFail": "Failed to close deal",
@@ -1027,5 +1031,42 @@
     "symbol": "BTCUSDT",
     "amount": "$0.00",
     "number": "0"
+  },
+  "tutorial": {
+    "error": {
+      "title": "Tutorial Error",
+      "message": "An error occurred in the tutorial. Please restart or skip.",
+      "restart": "Restart",
+      "skip": "Skip"
+    },
+    "bearCharacter": "Bear character",
+    "skills": "your skills",
+    "stepsTitle": "Tutorial Steps"
+  },
+  "textMarker": {
+    "title": "Add Text Marker",
+    "label": {
+      "text": "Text",
+      "fontSize": "Font Size",
+      "color": "Color",
+      "customColor": "Custom color"
+    },
+    "placeholder": "Enter your text here...",
+    "pixels": "px",
+    "selectColor": "Select color",
+    "preview": {
+      "empty": "Preview will appear here..."
+    },
+    "save": "Add Text",
+    "error": {
+      "emptyText": "Text cannot be empty",
+      "tooLong": "Text cannot exceed 100 characters"
+    }
+  },
+  "share": {
+    "chartAnalysis": "Check out this chart analysis on CryptoCraze!",
+    "chartPreview": "Chart preview",
+    "shareImage": "Share chart image",
+    "saveImage": "Save chart image"
   }
 }

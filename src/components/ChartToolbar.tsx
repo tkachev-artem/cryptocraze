@@ -16,16 +16,16 @@ const intervals: Interval[] = ['1m', '5m', '15m', '1h']
 const ChartToolbar: React.FC<ChartToolbarProps> = ({ symbol, interval, onChangeSymbol, onChangeInterval, className }) => {
   const { t } = useTranslation();
   return (
-    <div className={`flex items-center gap-3 ${className ?? ''}`} role="toolbar" aria-label="Панель управления графиком">
+    <div className={`flex items-center gap-3 ${className ?? ''}`} role="toolbar" aria-label={t('chart.controlPanel')}>
       <input
-        aria-label="Символ"
+        aria-label={t('chart.symbol')}
         tabIndex={0}
         value={symbol}
         onChange={(e) => { onChangeSymbol(e.target.value.toUpperCase()); }}
         className="h-9 px-3 rounded border border-gray-300 outline-none focus:ring-2 focus:ring-[#0C54EA]"
         placeholder={t('placeholders.symbol')}
       />
-      <div className="flex items-center gap-1" role="group" aria-label="Выбор таймфрейма">
+      <div className="flex items-center gap-1" role="group" aria-label={t('chart.timeframeSelection')}>
         {intervals.map((it) => (
           <button
             key={it}

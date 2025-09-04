@@ -1,10 +1,9 @@
 import type React from 'react';
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { useTranslation } from '../lib/i18n';
 import { useUser } from '../hooks/useUser';
 import { formatMoneyShort } from '../lib/numberUtils';
-import { Grid } from './ui/grid';
 import { ErrorBoundary } from './ErrorBoundary';
+import { useTranslation } from '../lib/i18n';
 
 // Configuration constants
 const WHEEL_CONFIG = {
@@ -167,13 +166,13 @@ export const WheelFortune: React.FC<WheelFortuneProps> = ({
   // Show result screen
   if (showResult) {
     return (
-      <div className="fixed inset-0 z-50">
-        <Grid className="p-0">
+      <div className="absolute inset-0 z-50">
+        <div className="w-full h-full">
           <ErrorBoundary>
-            <div className="h-dvh bg-[#0C54EA] flex flex-col items-center justify-center p-4">
+            <div className="h-full bg-[#0C54EA] flex flex-col items-center justify-center p-4">
           {/* Title */}
           <h2 className="text-white text-2xl font-bold mb-6">
-            Ваш выигрыш
+            {t('wheel.yourWin')}
           </h2>
 
           {/* Coins image */}
@@ -202,36 +201,36 @@ export const WheelFortune: React.FC<WheelFortuneProps> = ({
             onClick={handleClose}
             className="w-full max-w-xs bg-white text-[#0C54EA] py-4 px-6 rounded-full font-bold text-lg hover:bg-gray-100 transition-colors"
           >
-            Забрать
+            {t('wheel.collect')}
           </button>
             </div>
           </ErrorBoundary>
-        </Grid>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50">
-      <Grid className="p-0">
+    <div className="absolute inset-0 z-50">
+      <div className="w-full h-full">
         <ErrorBoundary>
-          <div className="h-dvh bg-[#0C54EA] flex flex-col overflow-hidden">
+          <div className="h-full bg-[#0C54EA] flex flex-col overflow-hidden">
         {/* Top Navigation */}
         <div className="flex items-center justify-between px-4 py-4 bg-white">
           <button
             onClick={handleClose}
             className="flex items-center gap-2"
           >
-            <img src="/top-menu/back.svg" alt="Назад" className="w-6 h-6" />
-            <span className="text-xl font-bold text-black">Назад</span>
+            <img src="/top-menu/back.svg" alt={t('wheel.back')} className="w-6 h-6" />
+            <span className="text-xl font-bold text-black">{t('wheel.back')}</span>
           </button>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">
-              <img src="/trials/dollars.svg" alt="Баланс" className="w-6 h-6" />
+              <img src="/trials/dollars.svg" alt={t('common.balance')} className="w-6 h-6" />
               <span className="text-sm font-bold text-black">{fmt(userData.balance ?? 0)}</span>
             </div>
             <div className="flex items-center gap-1">
-              <img src="/money.svg" alt="Монеты" className="w-6 h-6" />
+              <img src="/money.svg" alt={t('common.coins')} className="w-6 h-6" />
               <span className="text-sm font-bold text-black">{userData.coins ?? 0}</span>
             </div>
           </div>
@@ -241,7 +240,7 @@ export const WheelFortune: React.FC<WheelFortuneProps> = ({
         <div className="flex-1 flex flex-col items-center justify-center p-4">
           {/* Title */}
           <h2 className="text-white text-[29px] font-bold mb-4">
-            {showLoadingState ? 'Вращается...' : 'Испытай удачу!'}
+            {showLoadingState ? t('wheel.spinning') : t('wheel.tryLuck')}
           </h2>
 
         {/* Bear image */}
@@ -455,13 +454,13 @@ export const WheelFortune: React.FC<WheelFortuneProps> = ({
         {showError && (
           <div className="mb-4 text-center">
             <div className="bg-red-100 border border-red-400 rounded-lg p-4">
-              <h3 className="text-red-700 font-bold mb-2">Ошибка</h3>
+              <h3 className="text-red-700 font-bold mb-2">{t('common.error')}</h3>
               <p className="text-red-600 mb-3">{error}</p>
               <button
                 onClick={handleRetry}
                 className="bg-red-600 text-white px-4 py-2 rounded font-medium hover:bg-red-700 transition-colors"
               >
-                Повторить
+                {t('common.retry')}
               </button>
             </div>
           </div>
@@ -474,14 +473,14 @@ export const WheelFortune: React.FC<WheelFortuneProps> = ({
                 onClick={handleSpin}
                 className="w-full bg-white text-[#0C54EA] py-3 px-6 rounded-full font-bold text-lg hover:bg-gray-100 transition-colors"
               >
-                Крутить
+                {t('wheel.spin')}
               </button>
             )}
           </div>
         </div>
           </div>
         </ErrorBoundary>
-      </Grid>
+      </div>
     </div>
   );
 };

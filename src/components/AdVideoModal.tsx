@@ -100,14 +100,14 @@ export const AdVideoModal: React.FC<AdVideoModalProps> = ({ isOpen, onClose, onA
 
 	return (
 		<div className="fixed inset-0 z-50">
-			<div className="w-full h-full relative p-4 bg-black/50" role="dialog" aria-modal="true" aria-label="Видео реклама">
+			<div className="w-full h-full relative p-4 bg-black/50" role="dialog" aria-modal="true" aria-label={t('ui.ads.videoAd')}>
 				<div className="absolute left-1/2 top-12 -translate-x-1/2 w-[min(640px,92vw)] bg-white rounded-2xl p-4 shadow-xl">
 					<div className="flex items-center justify-between mb-2">
 						        <h3 className="text-lg font-bold text-black">{t('ui.ads.title')}</h3>
 						<button
 							className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center"
 							onClick={handleClose}
-							aria-label="Закрыть"
+							aria-label={t('common.close')}
 						>
 							<span className="text-xl leading-none">×</span>
 						</button>
@@ -142,7 +142,7 @@ export const AdVideoModal: React.FC<AdVideoModalProps> = ({ isOpen, onClose, onA
 							className="flex-1 h-[44px] bg-[#0C54EA] hover:bg-[#0A4BC8] text-white font-bold rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
 							disabled={!adLoaded || showProgressBar}
 							onClick={handleComplete}
-							aria-label="Получить награду"
+							aria-label={t('ui.ads.getReward')}
 						>
 							            {t('ui.ads.getReward')}
 						</button>

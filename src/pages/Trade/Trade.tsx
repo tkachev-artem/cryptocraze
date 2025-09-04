@@ -1,6 +1,5 @@
 import { Card } from '../../components/ui/card';
 import BottomNavigation from '../../components/ui/BottomNavigation';
-import { Grid } from '../../components/ui/grid';
 import { lazy, Suspense } from 'react';
 const Chart = lazy(() => import('../../components/Chart'));
 import { formatMoneyShort, formatNumberShort } from '../../lib/numberUtils';
@@ -222,8 +221,8 @@ useEffect(() => {
 
 
   return (
-    <div id='trade-root'>
-    <Grid className={`p-2 ${isDealOpen ? 'pb-[calc(8px+env(safe-area-inset-bottom))]' : 'pb-[calc(56px+env(safe-area-inset-bottom))]'}`}>
+    <div id='trade-root' className="h-full bg-white relative">
+    <div className={`p-2 ${isDealOpen ? 'pb-[calc(8px+env(safe-area-inset-bottom))]' : 'pb-[calc(56px+env(safe-area-inset-bottom))]'}`}>
 
         {/* Информация */}
       <div className="flex items-center gap-2 py-3">
@@ -420,7 +419,7 @@ useEffect(() => {
 
       {/* Trade Tutorial */}
       <TradeTutorial isActive={tutorial.isTradeTutorialActive} stepIndex={tutorial.currentStepIndex} />
-    </Grid>
+    </div>
     </div>
   );
 };

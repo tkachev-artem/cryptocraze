@@ -5,6 +5,7 @@ import { Home, Tutorial, Profile, EditProfile, Landing, Welcome, Trade, ListCryp
 import UserAnalytics from './pages/UserAnalytics';
 import GlobalLoading from './components/GlobalLoading';
 import { ScrollLock } from './components/ui/ScrollLock';
+import { AppContainer } from './components/ui/AppContainer';
 import DealInfo from './components/DealInfo';
 import CoinExchangeModal from './components/CoinExchangeModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -112,17 +113,16 @@ export const App: React.FC = () => {
     <ErrorBoundary>
       <GlobalLoading initialLoadingTime={3000}>
         <ScrollLock enabled={true} allowScrollWithinRef={appScrollRef as unknown as React.RefObject<HTMLElement>} />
-        <div className="h-dvh flex justify-center bg-white">
-          <div className="w-full max-w-[100vw] sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto relative bg-[#F1F7FF] shadow-lg">
-            <div
-              ref={appScrollRef}
-              data-app-scroll="true"
-              className="h-dvh overflow-y-auto overscroll-y-contain allow-pan-y"
-            >
-              <div className="w-full h-full">
-            <BrowserRouter>
-              <Suspense fallback={<RouteLoading />}>
-                <Routes>
+        <AppContainer>
+          <div
+            ref={appScrollRef}
+            data-app-scroll="true"
+            className="h-dvh overflow-y-auto overscroll-y-contain allow-pan-y"
+          >
+            <div className="w-full h-full">
+          <BrowserRouter>
+            <Suspense fallback={<RouteLoading />}>
+              <Routes>
                   {/* Главная точка входа: авторизованных ведем сразу на /home, неавторизованным показываем Welcome */}
                   <Route path="/" element={
                     isAuthenticated ? <Navigate to="/home" replace /> : 
@@ -155,13 +155,12 @@ export const App: React.FC = () => {
 
                   {/* 404 страница для неизвестных маршрутов */}
                   <Route path="*" element={<RouteErrorBoundary routeName="NotFound"><NotFound /></RouteErrorBoundary>} />
-                </Routes>
-              </Suspense>
-              </BrowserRouter>
-              </div>
+              </Routes>
+            </Suspense>
+            </BrowserRouter>
             </div>
           </div>
-        </div>
+        </AppContainer>
         
         {/* Global modals that need to overlay everything */}
         <ErrorBoundary>

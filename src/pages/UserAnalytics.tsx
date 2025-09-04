@@ -1,7 +1,13 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createChart, LineSeries } from 'lightweight-charts';
-import type { ISeriesApi, Time, IChartApi } from 'lightweight-charts';
+import { Group } from '@visx/group';
+import { curveMonotoneX } from '@visx/curve';
+import { LinePath, AreaClosed } from '@visx/shape';
+import { scaleLinear, scalePoint } from '@visx/scale';
+import { AxisLeft } from '@visx/axis';
+import { GridRows } from '@visx/grid';
+import { localPoint } from '@visx/event';
+import { Tooltip, useTooltip, defaultStyles } from '@visx/tooltip';
 import { useTranslation } from '../lib/i18n';
 import { useUser } from '../hooks/useUser';
 import { formatMoneyShort } from '../lib/numberUtils';
@@ -34,6 +40,7 @@ interface TopTrade {
   duration: number;
 }
 
+
 const UserAnalytics: React.FC = () => {
   const navigate = useNavigate();
   const { user, isLoading } = useUser();
@@ -43,9 +50,16 @@ const UserAnalytics: React.FC = () => {
   const [realTotalPL, setRealTotalPL] = useState<number | null>(null);
   const [dailyPnL, setDailyPnL] = useState<Array<{date: string, pnl: number, isProfit: boolean}>>([]);
   const [isLoadingChart, setIsLoadingChart] = useState(false);
-  const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
-  const seriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  
+  // Tooltip hook
+  const {
+    tooltipData,
+    tooltipLeft,
+    tooltipTop,
+    tooltipOpen,
+    showTooltip,
+    hideTooltip,
+  } = useTooltip();
 
   const handleBack = () => {
     navigate(-1);
@@ -197,126 +211,124 @@ const UserAnalytics: React.FC = () => {
   }, [user]);
 
 
-  // Initialize lightweight-charts when data is available
+  // For chart, use individual trade data instead of daily P&L
+  const [tradeResults, setTradeResults] = useState<Array<{profit: number, symbol: string, id: string}>>([]);
+  
+  // Prepare chart data from closed deals
   useEffect(() => {
-    if (!chartContainerRef.current || !dailyPnL.length || isLoadingChart) return;
-
-    // Clear previous chart
-    if (chartRef.current) {
-      chartRef.current.remove();
-      chartRef.current = null;
-      seriesRef.current = null;
-    }
-
-    // Create chart with professional styling similar to Chart.tsx
-    const chart = createChart(chartContainerRef.current, {
-      width: chartContainerRef.current.clientWidth,
-      height: 128,
-      layout: { 
-        background: { color: '#FFFFFF' }, 
-        textColor: '#6B7280' 
-      },
-      grid: { 
-        vertLines: { color: '#F3F4F6' }, 
-        horzLines: { color: '#F3F4F6' } 
-      },
-      timeScale: {
-        visible: true,
-        timeVisible: false,
-        secondsVisible: false,
-        borderVisible: false,
-        rightOffset: 10,
-        tickMarkFormatter: (time: Time) => {
-          // Simple day formatting for daily P/L
-          const index = typeof time === 'number' ? time : 0;
-          return dailyPnL[index]?.date || '';
-        },
-      },
-      rightPriceScale: { 
-        borderColor: '#E5E7EB',
-        scaleMargins: {
-          top: 0.1,
-          bottom: 0.1,
-        },
-      },
-      crosshair: {
-        mode: 1, // Normal crosshair
-        vertLine: {
-          color: '#9CA3AF',
-          width: 1,
-          style: 1,
-        },
-        horzLine: {
-          color: '#9CA3AF', 
-          width: 1,
-          style: 1,
-        },
-      },
-      handleScroll: {
-        mouseWheel: false,
-        pressedMouseMove: false,
-      },
-      handleScale: {
-        mouseWheel: false,
-        pinch: false,
-      },
-    });
-
-    chartRef.current = chart;
-
-    // Determine line color based on overall trend
-    const totalTrend = dailyPnL[dailyPnL.length - 1].pnl - dailyPnL[0].pnl;
-    const lineColor = totalTrend >= 0 ? '#2EBD85' : '#F6465D';
-
-    // Create line series with professional styling
-    const series = chart.addSeries(LineSeries, {
-      color: lineColor,
-      lineWidth: 2,
-      lineStyle: 0,
-      crosshairMarkerVisible: true,
-      crosshairMarkerRadius: 4,
-      crosshairMarkerBorderColor: lineColor,
-      crosshairMarkerBackgroundColor: lineColor,
-      priceFormat: {
-        type: 'custom',
-        formatter: (price: number) => {
-          return price >= 0 ? `+$${Math.abs(price).toFixed(2)}` : `-$${Math.abs(price).toFixed(2)}`;
-        },
-      },
-    });
-
-    seriesRef.current = series;
-
-    // Transform data for lightweight-charts format
-    const chartData = dailyPnL.map((day, index) => ({
-      time: index as Time, // Use index as time for simple day sequence
-      value: day.pnl,
+    const fetchTradeResults = async () => {
+      if (!user) return;
+      
+      try {
+        const response = await fetch(`${config.api.baseUrl}/deals/user`, {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          
+          if (Array.isArray(result)) {
+            console.log('🔍 All deals from API:', result);
+            const closedDeals = result
+              .filter(deal => {
+                const isClosed = deal.status === 'closed';
+                const hasProfit = deal.profit !== undefined && deal.profit !== null;
+                console.log(`Deal ${deal.id}: closed=${isClosed}, profit=${deal.profit}, hasProfit=${hasProfit}`);
+                return isClosed;
+              })
+              .map(deal => ({
+                profit: Number(deal.profit || 0),
+                symbol: deal.symbol,
+                id: deal.id
+              }));
+            
+            console.log('📈 Trade Results after filter:', closedDeals);
+            setTradeResults(closedDeals);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching trade results:', error);
+      }
+    };
+    
+    fetchTradeResults();
+  }, [user]);
+  
+  // Create daily P/L chart data
+  let chartDataSource = [];
+  
+  console.log('📅 Daily P/L Data:', dailyPnL);
+  
+  if (dailyPnL.length > 0) {
+    // Use actual daily P/L data from API
+    chartDataSource = dailyPnL.map(day => ({
+      date: new Date(day.date).toLocaleDateString('ru-RU', { 
+        day: '2-digit', 
+        month: '2-digit' 
+      }),
+      pnl: day.pnl,
+      isProfit: day.isProfit,
+      symbol: '',
+      tradeProfit: day.pnl
     }));
-
-    // Set data
-    series.setData(chartData);
-
-    // Auto-fit content
-    chart.timeScale().fitContent();
-
-    // Handle resize
-    const handleResize = () => {
-      if (chartContainerRef.current && chartRef.current) {
-        chartRef.current.resize(chartContainerRef.current.clientWidth, 128);
+  } else if (tradeResults.length > 0) {
+    // Fallback: group trades by day
+    const tradesByDay = new Map();
+    
+    tradeResults.forEach(trade => {
+      // Assume trades are from today if no date info
+      const date = new Date().toISOString().split('T')[0];
+      if (!tradesByDay.has(date)) {
+        tradesByDay.set(date, 0);
       }
-    };
+      tradesByDay.set(date, tradesByDay.get(date) + trade.profit);
+    });
+    
+    chartDataSource = Array.from(tradesByDay.entries()).map(([date, pnl]) => ({
+      date: new Date(date).toLocaleDateString('ru-RU', { 
+        day: '2-digit', 
+        month: '2-digit' 
+      }),
+      pnl,
+      isProfit: pnl >= 0,
+      symbol: '',
+      tradeProfit: pnl
+    }));
+  }
+  
+  const chartData = chartDataSource.map((day, index) => ({
+    name: day.date,
+    pnl: day.pnl,
+    index
+  }));
 
-    window.addEventListener('resize', handleResize);
+  // Debug logging
+  console.log('📊 Chart Debug:', {
+    dailyPnLLength: dailyPnL.length,
+    dailyPnL,
+    chartData,
+    chartDataSource,
+    isLoadingChart
+  });
+  
+  console.log('💰 User Stats Debug:', {
+    totalTrades,
+    maxTradeAmount,
+    maxProfit, 
+    maxLoss,
+    successRate,
+    avgTradeAmount,
+    userTradesCount: user?.tradesCount,
+    userTotalVolume: user?.totalTradesVolume,
+    userMaxProfit: user?.maxProfit,
+    userMaxLoss: user?.maxLoss,
+    userSuccessRate: user?.successfulTradesPercentage,
+    userAvgAmount: user?.averageTradeAmount
+  });
 
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      if (chartRef.current) {
-        chartRef.current.remove();
-        chartRef.current = null;
-        seriesRef.current = null;
-      }
-    };
-  }, [dailyPnL, isLoadingChart]);
+  // Determine line color based on final cumulative P/L value
+  const finalValue = chartDataSource.length > 0 ? chartDataSource[chartDataSource.length - 1].pnl : 0;
+  const lineColor = finalValue >= 0 ? '#2EBD85' : '#F6465D';
 
   if (isLoading || !user) {
     return (
@@ -549,110 +561,52 @@ const UserAnalytics: React.FC = () => {
           )}
         </div>
 
-        {/* Performance Charts */}
+        {/* Daily Performance Stats */}
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
             <div className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center">
               <TrendingUpDown className="w-4 h-4 text-[#0C54EA]" />
             </div>
-            {t('analytics.performanceTrends')}
+{t('analytics.performanceTrends')}
           </h2>
           
-          <div className="grid grid-cols-1 gap-4">
-            {/* Average Performance Indicators */}
+          {chartDataSource.length > 0 ? (
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-gray-50 rounded-lg text-center">
                 <div className="flex items-center justify-center mb-2">
-                  <div className="w-8 h-8 bg-[#F59E0B] rounded-full flex items-center justify-center">
-                    <ChevronsLeftRight className="w-4 h-4 text-white" />
+                  <div className="w-8 h-8 bg-[#2EBD85] rounded-full flex items-center justify-center">
+                    <TrendingUp className="w-4 h-4 text-white" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600">{t('analytics.avgTradeSize')}</p>
-                <p className="text-xl font-bold text-gray-900">{avgTradeAmount}</p>
+                <p className="text-sm text-gray-600">{t('analytics.bestDay')}</p>
+                <p className={`text-xl font-bold ${
+                  Math.max(...chartDataSource.map(d => d.pnl)) >= 0 ? 'text-[#2EBD85]' : 'text-[#F6465D]'
+                }`}>
+                  {(() => {
+                    const best = Math.max(...chartDataSource.map(d => d.pnl));
+                    return best >= 0 ? `+${formatMoneyShort(best)}` : formatMoneyShort(best);
+                  })()}
+                </p>
               </div>
               
               <div className="p-4 bg-gray-50 rounded-lg text-center">
                 <div className="flex items-center justify-center mb-2">
-                  <div className="w-8 h-8 bg-[#10B981] rounded-full flex items-center justify-center">
-                    <DiamondPlus className="w-4 h-4 text-white" />
+                  <div className="w-8 h-8 bg-[#F6465D] rounded-full flex items-center justify-center">
+                    <TrendingDown className="w-4 h-4 text-white" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600">{t('analytics.successRate')}</p>
-                <p className="text-xl font-bold text-gray-900">{successRate}</p>
+                <p className="text-sm text-gray-600">{t('analytics.worstDay')}</p>
+                <p className="text-xl font-bold text-[#F6465D]">
+                  {formatMoneyShort(Math.min(...chartDataSource.map(d => d.pnl)))}
+                </p>
               </div>
             </div>
-            
-            {/* Daily P/L Chart */}
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-sm text-gray-600">{t('analytics.dailyPL')}</p>
-                {dailyPnL.length > 0 && !isLoadingChart && (
-                  <div className="text-xs text-gray-500">
-                    {dailyPnL.filter(d => d.isProfit).length}/{dailyPnL.length} {t('analytics.profitableDays')}
-                  </div>
-                )}
-              </div>
-              
-              {isLoadingChart ? (
-                <div className="flex items-center justify-center h-40">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0C54EA]"></div>
-                </div>
-              ) : dailyPnL.length === 0 ? (
-                // No data state
-                <div className="flex flex-col items-center justify-center h-40 text-gray-400">
-                  <LineChart className="w-12 h-12 mb-3 text-gray-300" />
-                  <p className="text-sm font-medium">{t('analytics.noTradingActivity')}</p>
-                  <p className="text-xs text-gray-400 mt-1">{t('analytics.startTrading')}</p>
-                </div>
-              ) : (
-                // Professional Line Chart Implementation using lightweight-charts
-                <div className="relative">
-                  {/* Chart Container */}
-                  <div className="relative bg-white rounded-lg border border-gray-200">
-                    <div
-                      ref={chartContainerRef}
-                      className="w-full"
-                      style={{ height: 128 }}
-                    />
-                  </div>
-                  
-                  {/* Chart summary stats */}
-                  <div className="mt-4 pt-3 border-t border-gray-200">
-                    <div className="grid grid-cols-3 gap-4 text-center">
-                      <div>
-                        <div className="text-xs text-gray-500 mb-1">{t('analytics.bestDay')}</div>
-                        <div className={`text-sm font-semibold ${
-                          Math.max(...dailyPnL.map(d => d.pnl)) >= 0 ? 'text-[#2EBD85]' : 'text-[#F6465D]'
-                        }`}>
-                          {(() => {
-                            const best = Math.max(...dailyPnL.map(d => d.pnl));
-                            return best >= 0 ? `+${formatMoneyShort(best)}` : formatMoneyShort(best);
-                          })()}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-gray-500 mb-1">{t('analytics.worstDay')}</div>
-                        <div className="text-sm font-semibold text-[#F6465D]">
-                          {formatMoneyShort(Math.min(...dailyPnL.map(d => d.pnl)))}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-gray-500 mb-1">{t('analytics.avgDaily')}</div>
-                        <div className={`text-sm font-semibold ${
-                          dailyPnL.reduce((sum, d) => sum + d.pnl, 0) >= 0 ? 'text-[#2EBD85]' : 'text-[#F6465D]'
-                        }`}>
-                          {(() => {
-                            const avg = dailyPnL.reduce((sum, d) => sum + d.pnl, 0) / dailyPnL.length;
-                            return avg >= 0 ? `+${formatMoneyShort(avg)}` : formatMoneyShort(avg);
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <TrendingUpDown className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p>{t('analytics.noTradingActivity')}</p>
             </div>
-          </div>
+          )}
         </div>
         </div>
       </div>

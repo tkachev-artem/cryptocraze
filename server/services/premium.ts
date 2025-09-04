@@ -2,6 +2,7 @@ import { db } from '../db.js';
 import { premiumSubscriptions, premiumPlans, users } from '../../shared/schema';
 import { eq, and, gte, lte, desc } from 'drizzle-orm';
 import crypto from 'crypto';
+import AnalyticsLogger from '../middleware/analyticsLogger.js';
 
 export interface CreatePaymentData {
   userId: string;
@@ -52,7 +53,7 @@ export class PremiumService {
         paymentId: `payment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         planType: data.planType,
         amount: data.amount.toString(),
-        currency: data.currency || 'RUB',
+        currency: data.currency || 'USD',
         status: 'pending',
         metadata: data.metadata || {}
       }).returning();
@@ -77,8 +78,28 @@ export class PremiumService {
    */
   static async createDirectSubscription(data: CreateDirectSubscriptionData) {
     try {
-      // Вычисляем дату истечения
-      const expiresAt = new Date();
+      // Получаем текущие данные пользователя
+      const [currentUser] = await db
+        .select({
+          isPremium: users.isPremium,
+          premiumExpiresAt: users.premiumExpiresAt
+        })
+        .from(users)
+        .where(eq(users.id, data.userId));
+
+      // Вычисляем дату истечения с учетом существующего премиума
+      const now = new Date();
+      let baseDate = now;
+      
+      // Если у пользователя уже есть активный премиум, добавляем время к нему
+      if (currentUser && currentUser.premiumExpiresAt) {
+        const existingExpiration = new Date(currentUser.premiumExpiresAt as unknown as string);
+        if (existingExpiration > now) {
+          baseDate = existingExpiration;
+        }
+      }
+
+      const expiresAt = new Date(baseDate);
       if (data.planType === 'month') {
         expiresAt.setMonth(expiresAt.getMonth() + 1);
       } else if (data.planType === 'year') {
@@ -92,7 +113,7 @@ export class PremiumService {
         paymentId: `direct_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         planType: data.planType,
         amount: data.amount.toString(),
-        currency: data.currency || 'RUB',
+        currency: data.currency || 'USD',
         status: 'succeeded',
         isActive: true,
         expiresAt,
@@ -108,6 +129,21 @@ export class PremiumService {
           updatedAt: new Date()
         })
         .where(eq(users.id, data.userId));
+
+      // Log revenue from premium subscription
+      try {
+        const userIdNumber = Number(BigInt(data.userId));
+        await AnalyticsLogger.logRevenue(
+          userIdNumber,
+          'premium',
+          data.amount,
+          data.currency || 'USD'
+        );
+        console.log(`[Premium] Logged premium revenue: ${data.amount} ${data.currency || 'USD'} for user ${data.userId}`);
+      } catch (analyticsError) {
+        console.error('[Premium] Failed to log premium revenue analytics:', analyticsError);
+        // Don't fail the whole process due to analytics error
+      }
 
       console.log(`✅ Прямая подписка создана для пользователя ${data.userId}: ${data.planType}`);
       return subscription;
@@ -164,8 +200,28 @@ export class PremiumService {
         return;
       }
 
-      // Вычисляем дату истечения
-      const expiresAt = new Date();
+      // Получаем текущие данные пользователя
+      const [currentUser] = await db
+        .select({
+          isPremium: users.isPremium,
+          premiumExpiresAt: users.premiumExpiresAt
+        })
+        .from(users)
+        .where(eq(users.id, subscription.userId));
+
+      // Вычисляем дату истечения с учетом существующего премиума
+      const now = new Date();
+      let baseDate = now;
+      
+      // Если у пользователя уже есть активный премиум, добавляем время к нему
+      if (currentUser && currentUser.premiumExpiresAt) {
+        const existingExpiration = new Date(currentUser.premiumExpiresAt as unknown as string);
+        if (existingExpiration > now) {
+          baseDate = existingExpiration;
+        }
+      }
+
+      const expiresAt = new Date(baseDate);
       if (subscription.planType === 'month') {
         expiresAt.setMonth(expiresAt.getMonth() + 1);
       } else if (subscription.planType === 'year') {
@@ -192,6 +248,22 @@ export class PremiumService {
           updatedAt: new Date()
         })
         .where(eq(users.id, subscription.userId));
+
+      // Log revenue from premium payment
+      try {
+        const userIdNumber = Number(BigInt(subscription.userId));
+        const revenueAmount = parseFloat(subscription.amount);
+        await AnalyticsLogger.logRevenue(
+          userIdNumber,
+          'premium',
+          revenueAmount,
+          subscription.currency || 'USD'
+        );
+        console.log(`[Premium] Logged premium payment revenue: ${revenueAmount} ${subscription.currency} for user ${subscription.userId}`);
+      } catch (analyticsError) {
+        console.error('[Premium] Failed to log premium payment revenue analytics:', analyticsError);
+        // Don't fail the whole process due to analytics error
+      }
 
       console.log(`✅ Платеж ${paymentId} обработан успешно`);
     } catch (error) {

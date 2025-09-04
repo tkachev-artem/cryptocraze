@@ -132,6 +132,7 @@ const Chart: React.FC<ChartProps> = ({ onProModeClick, onCryptoChange, forcedCry
     const { prices } = useLivePrices([selectedCrypto.value]);
 
     const isDealModalOpen = useAppSelector((state) => state.dealModal.isDealModalOpen) || Boolean(isDealOpenOverride);
+    const isEditDealOpen = useAppSelector((state) => state.dealModal.isEditDealOpen);
     const { t }: { t: (key: string, params?: Record<string, string | number>) => string } = useTranslation();
     // Stable base height computed from window.innerHeight to avoid frequent resizes on mobile
 
@@ -144,13 +145,13 @@ const Chart: React.FC<ChartProps> = ({ onProModeClick, onCryptoChange, forcedCry
         const computeBase = () => clamp((window.innerHeight || 0) * 0.4);
         // initial compute
         baseHeightRef.current = computeBase();
-        const next = isDealModalOpen ? 220 : baseHeightRef.current;
+        const next = isDealModalOpen ? 220 : (isEditDealOpen ? 320 : baseHeightRef.current);
         chartHeightRef.current = next;
         setChartHeight(next);
 
         const onOrientation = () => {
             baseHeightRef.current = computeBase();
-            if (!isDealModalOpen) {
+            if (!isDealModalOpen && !isEditDealOpen) {
                 const n = baseHeightRef.current;
                 if (Math.abs(n - chartHeightRef.current) >= 24) {
                     chartHeightRef.current = n;
@@ -160,16 +161,8 @@ const Chart: React.FC<ChartProps> = ({ onProModeClick, onCryptoChange, forcedCry
         };
         window.addEventListener('orientationchange', onOrientation);
         return () => { window.removeEventListener('orientationchange', onOrientation); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [isDealModalOpen, isEditDealOpen]);
 
-    useEffect(() => {
-        const next = isDealModalOpen ? 220 : baseHeightRef.current;
-        if (next !== chartHeightRef.current) {
-            chartHeightRef.current = next;
-            setChartHeight(next);
-        }
-    }, [isDealModalOpen]);
     const currentTimeframeRef = useRef<string>(selectedTimeframe.value);
     useEffect(() => { currentTimeframeRef.current = selectedTimeframe.value; }, [selectedTimeframe.value]);
     // const containerHeightClass = isDealModalOpen ? 'h-40' : 'h-92';

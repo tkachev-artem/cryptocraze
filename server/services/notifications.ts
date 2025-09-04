@@ -1,6 +1,6 @@
 import { db } from '../db.js';
 import { userNotifications, notificationTypeEnum } from '../../shared/schema';
-import { eq, and, desc, lt } from 'drizzle-orm';
+import { eq, and, desc, lt, sql } from 'drizzle-orm';
 
 export type NotificationType = typeof notificationTypeEnum.enumValues[number];
 
@@ -17,6 +17,9 @@ export class NotificationService {
    */
   static async createNotification(data: CreateNotificationData) {
     try {
+      // Auto-cleanup: remove old notifications if we have 9 or more
+      await this.cleanupOldNotifications(data.userId);
+
       const [notification] = await db.insert(userNotifications).values({
         userId: data.userId,
         type: data.type,
@@ -193,6 +196,65 @@ export class NotificationService {
   }
 
   /**
+   * Автоматическая очистка старых уведомлений (оставляем только 9 самых новых)
+   */
+  static async cleanupOldNotifications(userId: string) {
+    try {
+      // Get all active notifications for user, ordered by creation date (newest first)
+      const notifications = await db
+        .select({ id: userNotifications.id })
+        .from(userNotifications)
+        .where(
+          and(
+            eq(userNotifications.userId, userId),
+            eq(userNotifications.isActive, true)
+          )
+        )
+        .orderBy(desc(userNotifications.createdAt));
+
+      // If we have 9 or more notifications, delete the oldest ones
+      if (notifications.length >= 9) {
+        const notificationsToDelete = notifications.slice(8); // Keep only first 8, delete the rest
+        const idsToDelete = notificationsToDelete.map(n => n.id);
+        
+        if (idsToDelete.length > 0) {
+          await db
+            .update(userNotifications)
+            .set({ isActive: false, updatedAt: new Date() })
+            .where(
+              and(
+                eq(userNotifications.userId, userId),
+                // Use drizzle's inArray function for multiple IDs
+                sql`${userNotifications.id} = ANY(ARRAY[${idsToDelete.join(',')}])`
+              )
+            );
+          
+          console.log(`[NotificationService] Auto-cleanup: deactivated ${idsToDelete.length} old notifications for user ${userId}`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Ошибка автоматической очистки уведомлений:', error);
+      // Don't throw error to avoid blocking notification creation
+    }
+  }
+
+  /**
+   * Создать уведомление об открытии сделки
+   */
+  static async createTradeOpenedNotification(userId: string, tradeId: number, symbol: string, amount: number, direction: 'up' | 'down') {
+    const directionText = direction === 'up' ? 'LONG' : 'SHORT';
+    const title = 'Сделка открыта';
+    const message = `Открыта новая позиция ${directionText} по ${symbol} на $${amount.toFixed(2)}`;
+
+    return this.createNotification({
+      userId,
+      type: 'trade_opened',
+      title,
+      message
+    });
+  }
+
+  /**
    * Создать уведомление о закрытии сделки
    */
   static async createTradeClosedNotification(userId: string, tradeId: number, symbol: string, profit: number) {
@@ -228,6 +290,18 @@ export class NotificationService {
       type: 'achievement_unlocked',
       title: 'Новое достижение!',
       message: `Поздравляем! Вы получили достижение "${achievementName}".`
+    });
+  }
+
+  /**
+   * Создать уведомление о появлении новой ежедневной задачи
+   */
+  static async createDailyTaskNotification(userId: string, taskTitle: string, taskDescription: string) {
+    return this.createNotification({
+      userId,
+      type: 'daily_reward',
+      title: 'Новая ежедневная задача!',
+      message: `Доступна новая задача: "${taskTitle}" - ${taskDescription}`
     });
   }
 

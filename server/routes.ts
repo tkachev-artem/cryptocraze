@@ -1,6 +1,9 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { Server as IOServer } from 'socket.io';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { createClient } from 'redis';
 import { WebSocketServer, WebSocket } from 'ws';
@@ -30,7 +33,38 @@ import { clickhouseAnalyticsService } from './services/clickhouseAnalyticsServic
 import AnalyticsLogger from './middleware/analyticsLogger.js';
 import { registerAdRoutes } from './adRoutes';
 import { adminRoutes as workerAdminRoutes, getWorkerSystemHealth } from './services/workers/index.js';
-import { and, eq, gte, lte, inArray, sql, desc, asc, count, sum, lt } from 'drizzle-orm';
+import { and, eq, gte, lte, inArray, sql, desc, asc, count, sum, lt, isNull, isNotNull, gt } from 'drizzle-orm';
+
+// Configure multer for avatar uploads
+const uploadDir = path.join(process.cwd(), 'uploads', 'avatars');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage_multer = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const filename = `${Date.now()}-${Math.round(Math.random() * 1E9)}${ext}`;
+    cb(null, filename);
+  }
+});
+
+const upload = multer({
+  storage: storage_multer,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 // Types for authenticated requests  
 type AuthenticatedRequest = Request & {
@@ -225,6 +259,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Auth: upload user avatar
+  app.post('/api/auth/user/upload-avatar', isAuthenticated, upload.single('avatar'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ success: false, error: 'No file uploaded' });
+      }
+
+      // Create public URL for the uploaded file
+      const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+      
+      // Update user's profileImageUrl in database
+      await db.update(users)
+        .set({ profileImageUrl: avatarUrl })
+        .where(eq(users.id, userId));
+
+      // Get updated user data
+      const [updatedUser] = await db.select().from(users).where(eq(users.id, userId));
+      
+      if (!updatedUser) {
+        return res.status(404).json({ success: false, error: 'User not found' });
+      }
+
+      res.json({
+        success: true,
+        id: updatedUser.id,
+        email: updatedUser.email,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        phone: updatedUser.phone,
+        profileImageUrl: updatedUser.profileImageUrl,
+        balance: updatedUser.balance,
+        coins: updatedUser.coins,
+        energy: updatedUser.energy,
+        rewardsCount: updatedUser.rewardsCount,
+        tradesCount: updatedUser.tradesCount,
+        maxLoss: updatedUser.maxLoss
+      });
+
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      
+      // Clean up uploaded file on error
+      if (req.file) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (cleanupError) {
+          console.error('Error cleaning up uploaded file:', cleanupError);
+        }
+      }
+      
+      res.status(500).json({ success: false, error: 'Failed to upload avatar' });
+    }
+  });
 
   /**
    * @swagger
@@ -3166,7 +3258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         telegramId,
         planType,
          amount: amount || parseFloat(plan.price as unknown as string),
-         currency: plan.currency || 'RUB'
+         currency: plan.currency || 'USD'
       });
 
       res.json({
@@ -3192,6 +3284,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         message: "Failed to create premium subscription"
       });
+    }
+  });
+
+  // Удалить премиум у пользователя (для разработки)
+  app.delete('/api/dev/remove-premium/:userId', async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.params;
+      
+      console.log(`[DevAdmin] Removing premium for user: ${userId}`);
+
+      // Деактивируем все подписки пользователя
+      await db.update(premiumSubscriptions)
+        .set({
+          isActive: false,
+          status: 'cancelled',
+          updatedAt: new Date()
+        })
+        .where(eq(premiumSubscriptions.userId, userId));
+
+      // Убираем премиум статус у пользователя
+      await db.update(users)
+        .set({
+          isPremium: false,
+          premiumExpiresAt: null,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, userId));
+
+      console.log(`[DevAdmin] Premium removed successfully for user: ${userId}`);
+
+      res.json({ 
+        success: true, 
+        message: 'Premium successfully removed' 
+      });
+    } catch (error) {
+      console.error('Error removing premium:', error);
+      res.status(500).json({ error: 'Failed to remove premium' });
     }
   });
 
@@ -5636,6 +5765,426 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   /**
    * @swagger
+   * /api/admin/premium-purchased:
+   *   get:
+   *     summary: Получить список пользователей с купленным премиумом
+   *     tags: [Admin Premium]
+   *     security:
+   *       - sessionAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: page
+   *         schema:
+   *           type: integer
+   *           default: 1
+   *         description: Номер страницы
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           default: 10
+   *         description: Количество записей на страницу
+   *     responses:
+   *       200:
+   *         description: Список пользователей с купленным премиумом
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 users:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *                     properties:
+   *                       id:
+   *                         type: string
+   *                       firstName:
+   *                         type: string
+   *                       lastName:
+   *                         type: string
+   *                       profileImageUrl:
+   *                         type: string
+   *                       premiumExpiresAt:
+   *                         type: string
+   *                       planType:
+   *                         type: string
+   *                       amount:
+   *                         type: string
+   *                 totalCount:
+   *                   type: number
+   *                 totalPages:
+   *                   type: number
+   *       401:
+   *         description: Не авторизован
+   */
+  app.get('/api/admin/premium-purchased', async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      console.log('[AdminPremium] Fetching purchased premium users...');
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 10));
+      const offset = (page - 1) * limit;
+
+      // Получаем пользователей с активными купленными подписками
+      const usersWithPurchasedPremium = await db
+        .select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          premiumExpiresAt: users.premiumExpiresAt,
+          planType: premiumSubscriptions.planType,
+          amount: premiumSubscriptions.amount,
+        })
+        .from(users)
+        .innerJoin(premiumSubscriptions, eq(users.id, premiumSubscriptions.userId))
+        .where(
+          and(
+            eq(premiumSubscriptions.status, 'succeeded'),
+            eq(premiumSubscriptions.isActive, true),
+            gte(premiumSubscriptions.expiresAt, new Date())
+          )
+        )
+        .orderBy(desc(users.premiumExpiresAt))
+        .limit(limit)
+        .offset(offset);
+
+      // Получаем общее количество
+      const [{ count }] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(users)
+        .innerJoin(premiumSubscriptions, eq(users.id, premiumSubscriptions.userId))
+        .where(
+          and(
+            eq(premiumSubscriptions.status, 'succeeded'),
+            eq(premiumSubscriptions.isActive, true),
+            gte(premiumSubscriptions.expiresAt, new Date())
+          )
+        );
+
+      const totalCount = Number(count);
+      const totalPages = Math.ceil(totalCount / limit);
+
+      console.log(`[AdminPremium] Found ${usersWithPurchasedPremium.length} purchased premium users (total: ${totalCount})`);
+      if (usersWithPurchasedPremium.length > 0) {
+        console.log(`[AdminPremium] Sample user:`, JSON.stringify(usersWithPurchasedPremium[0], null, 2));
+      }
+
+      res.json({
+        users: usersWithPurchasedPremium,
+        totalCount,
+        totalPages,
+        currentPage: page,
+      });
+    } catch (error: any) {
+      console.error("Error fetching purchased premium users:", error);
+      res.status(500).json({ error: 'Ошибка получения пользователей с купленным премиумом' });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/admin/premium-rewards:
+   *   get:
+   *     summary: Получить список пользователей с премиумом по наградам
+   *     tags: [Admin Premium]
+   *     security:
+   *       - sessionAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: page
+   *         schema:
+   *           type: integer
+   *           default: 1
+   *         description: Номер страницы
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           default: 10
+   *         description: Количество записей на страницу
+   *     responses:
+   *       200:
+   *         description: Список пользователей с премиумом по наградам
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 users:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *                     properties:
+   *                       id:
+   *                         type: string
+   *                       firstName:
+   *                         type: string
+   *                       lastName:
+   *                         type: string  
+   *                       profileImageUrl:
+   *                         type: string
+   *                       premiumExpiresAt:
+   *                         type: string
+   *                       rewardsCount:
+   *                         type: number
+   *                       lastRewardLevel:
+   *                         type: number
+   *                       proDaysGranted:
+   *                         type: number
+   *                 totalCount:
+   *                   type: number
+   *                 totalPages:
+   *                   type: number
+   *       401:
+   *         description: Не авторизован
+   */
+  app.get('/api/admin/premium-rewards', async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      console.log('[AdminPremium] Fetching rewards premium users...');
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 10));
+      const offset = (page - 1) * limit;
+
+      // Получаем пользователей с премиумом, у которых НЕТ активных купленных подписок
+      // Это означает, что их премиум получен через награды
+      const usersWithRewardsPremium = await db
+        .select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          premiumExpiresAt: users.premiumExpiresAt,
+          rewardsCount: users.rewardsCount,
+        })
+        .from(users)
+        .leftJoin(
+          premiumSubscriptions,
+          and(
+            eq(users.id, premiumSubscriptions.userId),
+            eq(premiumSubscriptions.status, 'succeeded'),
+            eq(premiumSubscriptions.isActive, true),
+            gte(premiumSubscriptions.expiresAt, new Date())
+          )
+        )
+        .where(
+          and(
+            eq(users.isPremium, true),
+            gte(users.premiumExpiresAt, new Date()),
+            isNull(premiumSubscriptions.id) // Нет активных купленных подписок
+          )
+        )
+        .orderBy(desc(users.premiumExpiresAt))
+        .limit(limit)
+        .offset(offset);
+
+      // Для каждого пользователя определяем последний уровень с proDays и сколько дней было начислено
+      const usersWithRewardDetails = await Promise.all(
+        usersWithRewardsPremium.map(async (user) => {
+          const rewardLevel = user.rewardsCount || 0;
+          
+          // Находим все уровни с proDays, которые пользователь достиг
+          const rewardTiersWithPro = await db
+            .select({
+              level: rewardTiers.level,
+              proDays: rewardTiers.proDays,
+            })
+            .from(rewardTiers)
+            .where(
+              and(
+                lte(rewardTiers.level, rewardLevel),
+                isNotNull(rewardTiers.proDays),
+                gt(rewardTiers.proDays, 0),
+                eq(rewardTiers.isActive, true)
+              )
+            )
+            .orderBy(desc(rewardTiers.level));
+
+          const lastRewardLevel = rewardTiersWithPro[0]?.level || 0;
+          const totalProDaysGranted = rewardTiersWithPro.reduce((sum, tier) => sum + (tier.proDays || 0), 0);
+
+          return {
+            ...user,
+            lastRewardLevel,
+            proDaysGranted: totalProDaysGranted,
+          };
+        })
+      );
+
+      // Получаем общее количество
+      const [{ count }] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(users)
+        .leftJoin(
+          premiumSubscriptions,
+          and(
+            eq(users.id, premiumSubscriptions.userId),
+            eq(premiumSubscriptions.status, 'succeeded'),
+            eq(premiumSubscriptions.isActive, true),
+            gte(premiumSubscriptions.expiresAt, new Date())
+          )
+        )
+        .where(
+          and(
+            eq(users.isPremium, true),
+            gte(users.premiumExpiresAt, new Date()),
+            isNull(premiumSubscriptions.id)
+          )
+        );
+
+      const totalCount = Number(count);
+      const totalPages = Math.ceil(totalCount / limit);
+
+      console.log(`[AdminPremium] Found ${usersWithRewardDetails.length} rewards premium users (total: ${totalCount})`);
+
+      res.json({
+        users: usersWithRewardDetails,
+        totalCount,
+        totalPages,
+        currentPage: page,
+      });
+    } catch (error: any) {
+      console.error("Error fetching rewards premium users:", error);
+      res.status(500).json({ error: 'Ошибка получения пользователей с премиумом по наградам' });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/admin/premium-stats:
+   *   get:
+   *     summary: Получить общую статистику по премиум пользователям
+   *     tags: [Admin Premium]
+   *     security:
+   *       - sessionAuth: []
+   *     responses:
+   *       200:
+   *         description: Статистика премиум пользователей
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 purchased:
+   *                   type: object
+   *                   properties:
+   *                     total:
+   *                       type: number
+   *                     monthly:
+   *                       type: number
+   *                     yearly:
+   *                       type: number
+   *                 rewards:
+   *                   type: object
+   *                   properties:
+   *                     total:
+   *                       type: number
+   *                     totalProDaysGranted:
+   *                       type: number
+   *       401:
+   *         description: Не авторизован
+   */
+  app.get('/api/admin/premium-stats', async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      // 1. Количество пользователей с купленными подписками
+      const [purchasedCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(premiumSubscriptions)
+        .where(
+          and(
+            eq(premiumSubscriptions.status, 'succeeded'),
+            eq(premiumSubscriptions.isActive, true),
+            gte(premiumSubscriptions.expiresAt, new Date())
+          )
+        );
+
+      // 2. Разбивка по типам подписок
+      const [monthlyCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(premiumSubscriptions)
+        .where(
+          and(
+            eq(premiumSubscriptions.status, 'succeeded'),
+            eq(premiumSubscriptions.isActive, true),
+            gte(premiumSubscriptions.expiresAt, new Date()),
+            eq(premiumSubscriptions.planType, 'month')
+          )
+        );
+
+      const [yearlyCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(premiumSubscriptions)
+        .where(
+          and(
+            eq(premiumSubscriptions.status, 'succeeded'),
+            eq(premiumSubscriptions.isActive, true),
+            gte(premiumSubscriptions.expiresAt, new Date()),
+            eq(premiumSubscriptions.planType, 'year')
+          )
+        );
+
+      // 3. Общее количество премиум пользователей
+      const [totalPremiumCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(users)
+        .where(
+          and(
+            eq(users.isPremium, true),
+            gte(users.premiumExpiresAt, new Date())
+          )
+        );
+
+      // 4. Количество премиум пользователей без подписки (награды)
+      const rewardsCount = Math.max(0, (totalPremiumCount.count || 0) - (purchasedCount.count || 0));
+
+      // 5. Подсчитываем реальное количество PRO дней из reward_tiers
+      const [proDaysResult] = await db
+        .select({ 
+          totalDays: sql<number>`
+            COALESCE(SUM(
+              CASE 
+                WHEN ${users.rewardsCount} >= ${rewardTiers.level} AND ${rewardTiers.proDays} IS NOT NULL 
+                THEN ${rewardTiers.proDays}
+                ELSE 0 
+              END
+            ), 0)
+          ` 
+        })
+        .from(users)
+        .crossJoin(rewardTiers)
+        .where(
+          and(
+            eq(users.isPremium, true),
+            gte(users.premiumExpiresAt, new Date()),
+            isNotNull(rewardTiers.proDays),
+            gt(rewardTiers.proDays, 0)
+          )
+        );
+      
+      const totalProDays = Number(proDaysResult?.totalDays || 0);
+
+      res.json({
+        purchased: {
+          total: Number(purchasedCount.count || 0),
+          monthly: Number(monthlyCount.count || 0),
+          yearly: Number(yearlyCount.count || 0),
+        },
+        rewards: {
+          total: rewardsCount,
+          totalProDaysGranted: totalProDays,
+        },
+      });
+    } catch (error: any) {
+      console.error('Error fetching premium stats:', error);
+      res.status(500).json({ 
+        error: 'Failed to fetch premium statistics',
+        details: error.message 
+      });
+    }
+  });
+
+  /**
+   * @swagger
    * /api/funds/ensure-free:
    *   post:
    *     summary: Обеспечить 30% средств в свободном балансе при нехватке
@@ -6098,18 +6647,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     pingInterval: 25000,
   });
 
-  // Redis адаптер для кластеризации Socket.io
-  try {
+  // Redis adapter для кластеризации Socket.io с устойчивой обработкой ошибок
+  const setupRedisAdapter = async (): Promise<boolean> => {
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-    const pubClient = createClient({ url: redisUrl });
-    const subClient = pubClient.duplicate();
+    console.log('🔌 Подключаемся к Redis для Socket.io адаптера...');
     
-    await Promise.all([pubClient.connect(), subClient.connect()]);
-    io.adapter(createAdapter(pubClient, subClient));
-    console.log('✅ Socket.io Redis адаптер подключен');
-  } catch (error) {
-    console.warn('⚠️ Redis недоступен, Socket.io работает без кластеризации:', error);
-  }
+    // Флаги для отслеживания состояния подключения
+    let connectionAttempted = false;
+    let pubClient: any = null;
+    let subClient: any = null;
+    
+    try {
+      // Создаем клиентов с улучшенными настройками
+      pubClient = createClient({
+        url: redisUrl,
+        socket: {
+          connectTimeout: 3000,    // Короткий таймаут подключения
+          lazyConnect: false,      // Немедленное подключение
+          reconnectStrategy: false, // Отключаем автоподключение для точного контроля
+        }
+      });
+
+      subClient = createClient({
+        url: redisUrl,
+        socket: {
+          connectTimeout: 3000,
+          lazyConnect: false,
+          reconnectStrategy: false,
+        }
+      });
+
+      // Критические обработчики ошибок - НЕ позволяем падать серверу
+      pubClient.on('error', (error: any) => {
+        console.warn('⚠️ Redis pub client error:', error.message);
+      });
+
+      subClient.on('error', (error: any) => {
+        console.warn('⚠️ Redis sub client error:', error.message);
+      });
+
+      // Создаем Promise с жестким таймаутом
+      connectionAttempted = true;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Redis connection timed out after 4 seconds'));
+        }, 4000);
+      });
+
+      const connectPromise = Promise.all([
+        pubClient.connect(),
+        subClient.connect()
+      ]);
+
+      // Ждем либо подключения, либо таймаута
+      await Promise.race([connectPromise, timeoutPromise]);
+
+      // Проверяем, что соединения действительно готовы
+      if (!pubClient.isReady || !subClient.isReady) {
+        throw new Error('Redis clients not ready after connection');
+      }
+
+      // Успешное подключение - настраиваем адаптер
+      const redisAdapter = createAdapter(pubClient, subClient);
+      io.adapter(redisAdapter);
+
+      console.log('✅ Socket.io Redis адаптер успешно подключен');
+      console.log('🌐 Socket.io готов к кластеризации');
+
+      // Мониторинг здоровья (тихий, раз в минуту)
+      const healthCheckInterval = setInterval(() => {
+        if (pubClient?.isReady && subClient?.isReady) {
+          // Тихий success - не засоряем логи
+        } else {
+          console.warn('💛 Redis adapter health check: соединение нестабильно');
+        }
+      }, 60000);
+
+      // Graceful shutdown
+      process.on('SIGTERM', async () => {
+        console.log('🔌 Закрываем Redis соединения для Socket.io...');
+        clearInterval(healthCheckInterval);
+        await Promise.allSettled([
+          pubClient?.disconnect(),
+          subClient?.disconnect()
+        ]);
+      });
+
+      return true;
+
+    } catch (error: any) {
+      console.warn('⚠️ Не удалось подключить Redis адаптер:', error.message);
+      console.warn('📡 Socket.io работает в standalone режиме');
+      
+      // Очистка клиентов при ошибке
+      try {
+        if (connectionAttempted) {
+          await Promise.allSettled([
+            pubClient?.disconnect?.(),
+            subClient?.disconnect?.()
+          ]);
+        }
+      } catch (cleanupError) {
+        // Тихо игнорируем ошибки очистки
+      }
+      
+      return false;
+    }
+  };
+
+  // ВАЖНО: Запускаем асинхронно, НЕ блокируя запуск сервера
+  setupRedisAdapter()
+    .then((success) => {
+      if (success) {
+        console.log('🚀 Redis адаптер готов к продакшену и кластеризации');
+      } else {
+        console.log('🔧 Сервер работает в standalone режиме (без Redis кластеризации)');
+      }
+    })
+    .catch((error) => {
+      console.error('❌ Критическая ошибка настройки Redis адаптера:', error.message);
+      console.log('📡 Fallback: Socket.io работает в standalone режиме');
+    });
 
   type ClientSubs = { symbols: Set<string> };
   const socketSubs = new Map<string, ClientSubs>();

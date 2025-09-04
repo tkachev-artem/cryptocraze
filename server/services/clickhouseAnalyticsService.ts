@@ -76,9 +76,9 @@ export class ClickHouseAnalyticsService {
         closed_at Nullable(DateTime64(3)),
         date Date MATERIALIZED toDate(created_at),
         is_profitable UInt8 MATERIALIZED if(pnl > 0, 1, 0)
-      ) ENGINE = MergeTree()
+      ) ENGINE = ReplacingMergeTree(updated_at)
       PARTITION BY toYYYYMM(date)
-      ORDER BY (date, user_id, symbol, created_at)
+      ORDER BY (deal_id, user_id)
       TTL date + INTERVAL 5 YEAR`,
 
       // Ежедневные метрики
@@ -231,17 +231,13 @@ export class ClickHouseAnalyticsService {
 
   /**
    * Синхронизация сделки с ClickHouse
+   * ReplacingMergeTree автоматически заменит дубликаты по (deal_id, user_id)
    */
   async syncDeal(deal: any): Promise<void> {
     try {
       console.log(`[ClickHouse] Syncing deal ${deal.id}, openedAt: ${deal.openedAt}, createdAt: ${deal.createdAt}, closedAt: ${deal.closedAt}`);
       
-      // Сначала удаляем существующие записи для этой сделки
-      await this.client.exec({
-        query: `DELETE FROM deals_analytics WHERE deal_id = ${deal.id}`
-      });
-      
-      // Затем вставляем новую запись
+      // Вставляем запись - ReplacingMergeTree автоматически заменит дубликаты
       await this.client.insert({
         table: 'deals_analytics',
         values: [{
@@ -260,11 +256,13 @@ export class ClickHouseAnalyticsService {
           stop_loss: deal.stopLoss ? parseFloat(deal.stopLoss) : null,
           commission: parseFloat(deal.commission || '0'),
           created_at: new Date(deal.openedAt || deal.createdAt).toISOString().slice(0, 19).replace('T', ' '),
-          updated_at: new Date(deal.updatedAt || deal.createdAt || deal.openedAt).toISOString().slice(0, 19).replace('T', ' '),
+          updated_at: new Date(deal.updatedAt || Date.now()).toISOString().slice(0, 19).replace('T', ' '),
           closed_at: deal.closedAt ? new Date(deal.closedAt).toISOString().slice(0, 19).replace('T', ' ') : null
         }],
         format: 'JSONEachRow'
       });
+      
+      console.log(`[ClickHouse] Successfully synced deal ${deal.id} with ReplacingMergeTree`);
     } catch (error) {
       console.error('[ClickHouse] Failed to sync deal:', error);
     }

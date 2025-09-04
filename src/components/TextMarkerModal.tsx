@@ -100,7 +100,7 @@ const TextMarkerModal: React.FC<TextMarkerModalProps> = ({
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/50 z-[9998]" 
+        className="absolute inset-0 bg-black/50 z-[9998]" 
         onClick={handleCancel}
         role="button"
         tabIndex={-1}
@@ -108,7 +108,7 @@ const TextMarkerModal: React.FC<TextMarkerModalProps> = ({
       />
       
       {/* Modal */}
-      <div className="fixed inset-0 flex items-center justify-center z-[9999] p-4">
+      <div className="absolute inset-0 flex items-center justify-center z-[9999] p-4">
         <div 
           className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-hidden touch-none flex flex-col"
           role="dialog"

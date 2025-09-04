@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Modal } from '../components/ui/modal';
-import { Grid } from '../components/ui/grid';
 import { useUser } from '../hooks/useUser';
 import { API_BASE_URL } from '@/lib/api';
 import { useTranslation } from '@/lib/i18n';
@@ -47,7 +46,7 @@ export function Welcome() {
 
   return (
     <>
-      <Grid className='items-center p-2'>
+      <div className='items-center p-2'>
         {/* Panda Mascot */}
         <img 
           src="/panda.png" 
@@ -114,7 +113,7 @@ export function Welcome() {
           {' '}{t('welcome.terms.and')}{' '}
           <a href="#" className="text-gray-600 underline hover:text-gray-700">{t('welcome.terms.privacy')}</a>
         </p>
-      </Grid>
+      </div>
 
     {/* Error Modal */}
     <Modal

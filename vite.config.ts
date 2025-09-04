@@ -77,14 +77,14 @@ export default defineConfig(({ mode }) => {
             'vendor-query': ['@tanstack/react-query'],
             'vendor-socket': ['socket.io-client'],
             'vendor-redux': ['@reduxjs/toolkit', 'react-redux'],
-            // Locales
-            'locales': [
-              './src/locales/ru.json',
-              './src/locales/en.json', 
-              './src/locales/es.json',
-              './src/locales/fr.json',
-              './src/locales/pt.json'
-            ],
+            // Locales - commented out to fix dynamic import issues
+            // 'locales': [
+            //   './src/locales/ru.json',
+            //   './src/locales/en.json', 
+            //   './src/locales/es.json',
+            //   './src/locales/fr.json',
+            //   './src/locales/pt.json'
+            // ],
             // Trading features
             'trading': [
               './src/pages/Trade/Trade',

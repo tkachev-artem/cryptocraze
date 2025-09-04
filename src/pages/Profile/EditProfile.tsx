@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,7 +8,6 @@ import { useUser } from '../../hooks/useUser';
 import { useAppDispatch } from '../../app/hooks';
 import { updateUserData, type User } from '../../app/userSlice';
 import BottomNavigation from '../../components/ui/BottomNavigation';
-import { Grid } from '@/components/ui/grid';
 import { Modal } from '@/components/ui/modal';
 import { z } from 'zod';
 import { API_BASE_URL } from '@/lib/api';
@@ -43,6 +42,10 @@ const EditProfile: React.FC = () => {
   const { user, isLoading, isAuthenticated } = useUser();
 
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -108,7 +111,7 @@ const EditProfile: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Ошибка при обновлении профиля');
+        throw new Error(t('profile.updateError'));
       }
 
       const updatedUser = await response.json() as User;
@@ -119,12 +122,78 @@ const EditProfile: React.FC = () => {
       // Показываем модальное окно успеха
       setShowSuccessModal(true);
     } catch (error) {
-      console.error('Ошибка при обновлении профиля:', error);
+      console.error(t('profile.updateError'), error);
     }
   };
 
   const handleBack = () => {
     void navigate('/profile');
+  };
+
+  const handlePhotoClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Проверяем размер файла (максимум 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert(t('profile.fileTooLarge'));
+        return;
+      }
+
+      // Проверяем тип файла
+      if (!file.type.startsWith('image/')) {
+        alert(t('profile.imagesOnly'));
+        return;
+      }
+
+      setSelectedPhoto(file);
+      
+      // Создаем превью
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPhotoPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePhotoUpload = async () => {
+    if (!selectedPhoto) return;
+
+    try {
+      setIsUploadingPhoto(true);
+      
+      const formData = new FormData();
+      formData.append('avatar', selectedPhoto);
+
+      const response = await fetch(`${API_BASE_URL}/auth/user/upload-avatar`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(t('profile.updateError'));
+      }
+
+      const updatedUser = await response.json() as User;
+      
+      // Обновляем данные в Redux store
+      void dispatch(updateUserData(updatedUser));
+      
+      // Очищаем состояние
+      setSelectedPhoto(null);
+      setPhotoPreview(null);
+      
+    } catch (error) {
+      console.error(t('profile.uploadError'), error);
+      alert(t('profile.uploadError'));
+    } finally {
+      setIsUploadingPhoto(false);
+    }
   };
 
 
@@ -146,7 +215,7 @@ const EditProfile: React.FC = () => {
   }
 
   return (
-    <Grid className='py-2'>
+    <div className='py-2'>
       <div className="min-h-screen bg-[#F1F7FF] pb-[calc(70px+env(safe-area-inset-bottom))]">
         {/* Top App Bar */}
         <div className="bg-white px-2 py-2">
@@ -168,7 +237,13 @@ const EditProfile: React.FC = () => {
             {/* Avatar Section */}
             <div className="relative">
               <div className="w-[110px] h-[110px] bg-[#F1F7FF] rounded-[55px] flex items-center justify-center overflow-hidden">
-                {user.profileImageUrl ? (
+                {photoPreview ? (
+                  <img 
+                    src={photoPreview} 
+                    alt="Photo Preview" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : user.profileImageUrl ? (
                   <img 
                     src={user.profileImageUrl} 
                     alt={t('profile.avatar') || 'Profile'} 
@@ -184,30 +259,73 @@ const EditProfile: React.FC = () => {
                 <img 
                   src="/panda.png" 
                   alt={t('profile.avatarDefault') || 'Default Avatar'} 
-                  className={`w-[72px] h-[74px] ${user.profileImageUrl ? 'hidden' : ''}`}
+                  className={`w-[72px] h-[74px] ${photoPreview || user.profileImageUrl ? 'hidden' : ''}`}
                 />
               </div>
               
               {/* Edit Avatar Button */}
               <button 
                 type="button"
-                className="absolute bottom-0 right-0 flex items-center justify-center hover:opacity-100 transition-opacity flex-shrink-0"
+                onClick={handlePhotoClick}
+                disabled={isUploadingPhoto}
+                className="absolute bottom-0 right-0 flex items-center justify-center hover:opacity-80 transition-opacity flex-shrink-0"
               >
                 <div className="relative">
                   <img src="/ellipse.svg" alt={t('profile.editBg') || 'Edit background'} className="w-[110px] h-[54px]" />
-                  <img 
-                    src="/top-menu/edit-light.svg" 
-                    alt={t('profile.editIcon') || 'Edit'} 
-                    className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-5 h-5" 
-                  />
+                  {isUploadingPhoto ? (
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-5 h-5 animate-spin border-2 border-white border-t-transparent rounded-full" />
+                  ) : (
+                    <img 
+                      src="/top-menu/edit-light.svg" 
+                      alt={t('profile.editIcon') || 'Edit'} 
+                      className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-5 h-5" 
+                    />
+                  )}
                 </div>
               </button>
+              
+              {/* Hidden File Input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoChange}
+                className="hidden"
+              />
             </div>
+
+            {/* Photo Upload Actions */}
+            {selectedPhoto && (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handlePhotoUpload}
+                  disabled={isUploadingPhoto}
+                  className="px-4 py-2 bg-[#0C54EA] text-white text-sm rounded-lg hover:bg-[#0a4bc7] transition-colors disabled:opacity-50"
+                >
+                  {isUploadingPhoto ? t('profile.uploading') : t('profile.uploadPhoto')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedPhoto(null);
+                    setPhotoPreview(null);
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = '';
+                    }
+                  }}
+                  className="w-10 h-10 bg-gray-300 rounded-full hover:bg-gray-400 transition-colors flex items-center justify-center"
+                  aria-label={t('profile.cancel')}
+                >
+                  <img src="/close.svg" alt="close" className="w-4 h-4" />
+                </button>
+              </div>
+            )}
 
             {/* User Name Display */}
             <div className="text-center">
               <h2 className="text-xl font-bold text-black">
-                {watch('name') || 'James Foster'}
+                {watch('name') || t('profile.defaultName')}
               </h2>
             </div>
           </div>
@@ -313,7 +431,7 @@ const EditProfile: React.FC = () => {
       </Modal>
       
       <BottomNavigation />
-    </Grid>
+    </div>
   );
 };
 

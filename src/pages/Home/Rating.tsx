@@ -77,7 +77,7 @@ const Row = ({ leader }: { leader: Leader }) => {
           <img
             src={leader.avatarUrl ?? '/avatar.png'}
             alt={leader.username}
-            className="w-12 h-12 rounded-full"
+            className="w-12 h-12 rounded-full object-cover"
             onError={(e) => { e.currentTarget.src = '/avatar.png'; }}
           />
           <div className="flex flex-col min-w-0">

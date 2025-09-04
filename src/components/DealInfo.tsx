@@ -23,6 +23,12 @@ const DealInfo = () => {
     dispatch(closeDealInfo());
   };
 
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      handleClose();
+    }
+  };
+
   // Блокируем закрытие по клику на фон полностью, закрываем только по кнопке
 
   const getContent = () => {
@@ -54,33 +60,30 @@ const DealInfo = () => {
       {/* Модальное окно DealInfo */}
       {isDealInfoOpen && (
         <div 
-          className="fixed inset-0 bg-white z-[100] flex items-center justify-center"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40"
           data-modal="deal-info"
           role="dialog"
           aria-modal="true"
-          style={{ 
-            height: '100vh', 
-            width: '100vw',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            paddingBottom: 'env(safe-area-inset-bottom)',
-            position: 'fixed'
-          }}
+          onClick={handleBackdropClick}
         >
-          <div className="w-full h-full flex flex-col items-center p-6 pb-0" style={{ minHeight: '100vh', paddingBottom: '0' }}>
+          <div 
+            className="w-full max-w-[90%] sm:max-w-md bg-white rounded-2xl shadow-lg mx-4 max-h-[80vh] overflow-hidden"
+            style={{ 
+              paddingBottom: 'env(safe-area-inset-bottom)'
+            }}
+          >
+          <div className="w-full flex flex-col items-center p-6 pb-6 relative min-h-[400px]">
             {/* Крестик для закрытия */}
               <button
               onClick={handleClose}
-              className="absolute top-6 right-6 w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors duration-200"
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors duration-200 z-10"
               aria-label={t('common.close')}
             >
               <img src="/close.svg" alt="close" className="w-6 h-6" />
             </button>
 
             {/* Центральный контейнер с иконкой, заголовком и суммой */}
-            <div className="flex flex-col items-center justify-center mt-20">
+            <div className="flex flex-col items-center justify-center flex-1 mt-4">
               {/* Иконка */}
               <div className="flex justify-center mb-8">
                 <div className="items-center justify-center">
@@ -90,7 +93,7 @@ const DealInfo = () => {
                       <img 
                         src="/about/profit.svg" 
                         alt={t('dealInfo.profit')}
-                        className="w-[216px] h-[290px]" 
+                        className="w-32 h-40 sm:w-[180px] sm:h-[240px]" 
                       />
                     </div>
                   ) : (
@@ -99,7 +102,7 @@ const DealInfo = () => {
                       <img 
                         src="/about/loss.svg" 
                         alt={t('dealInfo.loss')}
-                        className="w-[216px] h-[290px]" 
+                        className="w-32 h-40 sm:w-[180px] sm:h-[240px]" 
                       />
                     </div>
                   )}
@@ -107,24 +110,25 @@ const DealInfo = () => {
               </div>
 
               {/* Заголовок */}
-              <h3 className="text-3xl font-bold text-gray-900 text-center mb-6">{content.title}</h3>
+              <h3 className="text-xl sm:text-3xl font-bold text-gray-900 text-center mb-4 sm:mb-6">{content.title}</h3>
 
               {/* Сумма */}
-              <p className={`text-4xl font-bold text-center ${content.isProfit ? 'text-[#2EBD85]' : 'text-[#F6465D]'}`}>
+              <p className={`text-2xl sm:text-4xl font-bold text-center ${content.isProfit ? 'text-[#2EBD85]' : 'text-[#F6465D]'}`}>
                 {content.profitText}
               </p>
             </div>
 
-            {/* Кнопка Забрать */}
-            <div className="mt-auto flex items-end pb-8">
+            {/* Кнопка */}
+            <div className="mt-4 w-full">
               <button
                 onClick={handleClose}
-                className="w-64 bg-[#0C54EA] text-white py-4 px-8 rounded-2xl font-bold text-lg hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                className="w-full max-w-xs mx-auto block bg-[#0C54EA] text-white py-3 px-6 rounded-2xl font-bold text-base sm:text-lg hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
-                {t('dealInfo.take')}
+{t('dealInfo.take')}
               </button>
             </div>
           </div>
+        </div>
         </div>
       )}
     </>

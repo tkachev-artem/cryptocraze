@@ -55,7 +55,7 @@ const ProBottomMenu: React.FC<ProBottomMenuProps> = ({ onExit, onOpenModal, offs
       ref={containerRef}
       role="navigation"
       aria-label={t('proMenu.aria')}
-      className="fixed left-0 right-0 z-[70] bg-white border-t border-gray-200 flex justify-between items-center gap-3 px-4 pt-2 pb-[calc(8px+env(safe-area-inset-bottom))]"
+      className="absolute left-0 right-0 z-[70] bg-white border-t border-gray-200 flex justify-between items-center gap-3 px-4 pt-2 pb-[calc(8px+env(safe-area-inset-bottom))]"
       style={{ bottom: offsetBottomPx }}
       onTouchMove={(e) => { e.preventDefault(); }}
     >

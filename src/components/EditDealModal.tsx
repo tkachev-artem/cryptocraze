@@ -116,8 +116,8 @@ export const EditDealModal = ({ bottomOffset = 0 }: EditDealModalProps) => {
     const [isSwiping, setIsSwiping] = useState<boolean>(false);
     const [isHorizontalSwipe, setIsHorizontalSwipe] = useState<boolean>(false);
 
-    const SWIPE_ACTIVATE_THRESHOLD_PX = 12;
-    const SWIPE_CLOSE_THRESHOLD_PX = 100;
+    const SWIPE_ACTIVATE_THRESHOLD_PX = 8;
+    const SWIPE_CLOSE_THRESHOLD_PX = 50;
 
     // Live PnL через сокет
     // Данные активной сделки (объявляем раньше использования в зависимостях)
@@ -332,6 +332,7 @@ export const EditDealModal = ({ bottomOffset = 0 }: EditDealModalProps) => {
 
         // Для свайпа закрытия учитываем только движение влево (deltaX < 0)
         if (deltaX < 0) {
+            console.log('Swiping left:', deltaX);
             setTranslateX(deltaX);
         } else {
             setTranslateX(0);
@@ -339,15 +340,14 @@ export const EditDealModal = ({ bottomOffset = 0 }: EditDealModalProps) => {
     }, [touchStartX, touchStartY, isHorizontalSwipe]);
 
     const handleTouchEnd = useCallback(() => {
+        console.log('TouchEnd:', { isHorizontalSwipe, translateX, threshold: SWIPE_CLOSE_THRESHOLD_PX, shouldClose: isHorizontalSwipe && Math.abs(translateX) > SWIPE_CLOSE_THRESHOLD_PX });
         if (isHorizontalSwipe && Math.abs(translateX) > SWIPE_CLOSE_THRESHOLD_PX) {
-            // Закрываем как ручное действие пользователя
-            // handleCloseByUser зависит от deal/dispatch и создаёт предупреждение зависимостей
-            // вызываем действия напрямую
-            if (currentDealId) {
-                dispatch(setLastDismissedEditDealId(currentDealId));
-            }
+            console.log('Closing deal modal via swipe');
+            // Скрываем модалку свайпом без запоминания как "отклоненную"
+            // Это позволит пользователю открыть новую сделку
             dispatch(closeEditDeal());
         } else {
+            console.log('Returning to place:', { isHorizontalSwipe, translateX });
             // Возвращаем на место
             setIsSwiping(false);
             setTranslateX(0);
@@ -355,24 +355,26 @@ export const EditDealModal = ({ bottomOffset = 0 }: EditDealModalProps) => {
         setTouchStartX(null);
         setTouchStartY(null);
         setIsHorizontalSwipe(false);
-    }, [isHorizontalSwipe, translateX, dispatch, currentDealId]);
+    }, [isHorizontalSwipe, translateX, dispatch, SWIPE_CLOSE_THRESHOLD_PX]);
 
+    // Проверяем открытые модалки Deal (AlertDeal)
+    const isDealModalOpen = useAppSelector((state: RootState) => state.dealModal.isDealModalOpen);
+    
     // Рендерим только при наличии данных, чтобы избежать состояния "Crypto" без инфо
-    // Не показываем, если открыт DealInfo, даже если модалка редактирования была открыта
-    if (!isEditDealOpen || !deal || isDealInfoOpen) {
+    // Не показываем, если открыт DealInfo или Deal модалка (AlertDeal)
+    if (!isEditDealOpen || !deal || isDealInfoOpen || isDealModalOpen) {
         return null;
     }
 
     return (
         <div 
-            className="fixed inset-x-0 flex items-end justify-center z-50 pointer-events-none" 
+            className="absolute inset-x-0 bottom-0 flex items-end justify-center z-50 pointer-events-none" 
             style={{ bottom: `${String(safeBottomOffset)}px` }}
             data-modal="edit-deal"
         >
             {showEditFields && (
                 <div
                     className="fixed inset-0 bg-black/40 pointer-events-auto z-10"
-                    style={{ bottom: `${String(safeBottomOffset)}px` }}
                     aria-hidden="true"
                 />
             )}
@@ -474,7 +476,7 @@ export const EditDealModal = ({ bottomOffset = 0 }: EditDealModalProps) => {
                         </div>
 
                         {/* TP/SL + Close Deal Button Section */}
-                        <div className="flex flex-row gap-3 items-center justify-center">
+                        <div className="flex flex-col gap-3 items-center justify-center w-full sm:flex-row sm:max-w-none max-w-xs mx-auto">
                             {/* TP/SL Container with background */}
                             <div className="bg-white border border-gray-200 rounded-[20px] p-1 flex items-center gap-2">
                                 <div className="flex items-center gap-1 opacity-50">
@@ -503,7 +505,7 @@ export const EditDealModal = ({ bottomOffset = 0 }: EditDealModalProps) => {
                             <Button
                                 onClick={() => { void handleCloseDeal(); }}
                                 disabled={isLoading}
-                                className="h-9 bg-[#0C54EA] text-white !font-bold text-base rounded-full hover:bg-blue-700 disabled:bg-gray-400 px-6"
+                                className="min-h-[35px] bg-[#0C54EA] text-white !font-bold text-xs rounded-[20px] hover:bg-blue-700 disabled:bg-gray-400 px-8 py-2 w-full sm:w-auto"
                             >
                                 {isLoading ? t('deal.closing') : t('deal.closeTrade')}
                             </Button>

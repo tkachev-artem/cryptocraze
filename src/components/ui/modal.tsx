@@ -38,7 +38,7 @@ export function Modal({ isOpen, onClose, children, zIndexClass = 'z-50', backdro
   if (!isOpen) return null;
 
   return (
-    <div className={`fixed inset-0 ${zIndexClass} flex ${containerClassName} px-[14px] py-4 ${disableBackdropClose ? 'pointer-events-none' : ''}`} style={containerStyle}>
+    <div className={`absolute inset-0 ${zIndexClass} flex ${containerClassName} px-[14px] py-4 ${disableBackdropClose ? 'pointer-events-none' : ''}`} style={containerStyle}>
       {/* Backdrop */}
       <div 
         className={`absolute inset-0 ${backdropClassName} ${disableBackdropClose ? 'pointer-events-none' : ''}`}

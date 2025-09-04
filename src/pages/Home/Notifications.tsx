@@ -1,4 +1,5 @@
 import type { FC } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useTranslation } from '@/lib/i18n';
@@ -10,8 +11,14 @@ const Notifications: FC = () => {
     activeNotifications,
     handleMarkAsRead,
     handleDeleteNotification,
+    handleMarkAllAsRead,
   } = useNotifications();
   const { t } = useTranslation();
+
+  // Отмечаем все уведомления как прочитанные при заходе на страницу
+  useEffect(() => {
+    handleMarkAllAsRead();
+  }, [handleMarkAllAsRead]);
 
   // Переводим уведомления, сохраняя все поля
   const translatedNotifications = activeNotifications.map(notification => ({

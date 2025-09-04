@@ -3,6 +3,7 @@ import { useAppSelector } from '../../app/hooks';
 import { selectUser } from '../../app/userSlice';
 import { usePremium } from '../../hooks/usePremium';
 import { useTranslation } from '@/lib/i18n';
+import { useNotifications } from '../../hooks/useNotifications';
 
 type TopMenuProps = {
   variant?: 'home' | 'profile';
@@ -13,6 +14,7 @@ const TopMenu = ({ variant = 'home' }: TopMenuProps) => {
   const user = useAppSelector(selectUser);
   const { isPremium } = usePremium();
   const { t } = useTranslation();
+  const { unreadCount } = useNotifications();
 
   // Получаем URL аватарки из Redux или используем дефолтную
   const avatarUrl = user?.profileImageUrl ?? '/avatar.png';
@@ -44,7 +46,7 @@ const TopMenu = ({ variant = 'home' }: TopMenuProps) => {
           }}
           aria-label={t('profile.title') || 'Профиль'}
         >
-          <img src={avatarUrl} alt="avatar" className='w-10 h-10 rounded-full' />
+          <img src={avatarUrl} alt="avatar" className='w-10 h-10 rounded-full object-cover' />
         </button>
 
         <button className="flex h-8 items-center gap-2 px-1 py-0 rounded-2xl mr-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0C54EA]/50 whitespace-nowrap bg-[#F5A600]"
@@ -61,13 +63,16 @@ const TopMenu = ({ variant = 'home' }: TopMenuProps) => {
       </div>
 
       <button
-        className='p-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0C54EA]/50'
+        className='p-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0C54EA]/50 relative'
         onClick={() => {
           void navigate('/home/settings');
         }}
         aria-label={t('settings.title')}
       >
         <img src="/settings.svg" alt="settings" className='w-6 h-6' />
+        {unreadCount > 0 && (
+          <div className="absolute top-0 right-0 bg-red-500 rounded-full w-3 h-3"></div>
+        )}
       </button>
     </div>
   );

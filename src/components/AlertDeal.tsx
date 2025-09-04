@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from './ui/button';
 import { useTranslation } from '../lib/i18n';
+import { formatMoneyShort } from '../lib/numberUtils';
 
 type AlertDealProps = {
   onClose: () => void;
@@ -32,15 +34,15 @@ const AlertDeal = ({
     return () => { document.removeEventListener('keydown', handleKeyDown); };
   }, [onClose]);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+  const modalContent = (
+    <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 99999 }}>
       {/* Overlay */}
       <div
         className="absolute inset-0 bg-black/60 z-40"
         onClick={onClose}
         aria-label={t('common.close')}
       />
-      <div className="relative z-50 w-full max-w-none sm:max-w-md bg-white rounded-3xl shadow-xl flex flex-col min-h-[80vh] p-[16px] px-4 mx-4 sm:mx-[24px] pb-[calc(16px+env(safe-area-inset-bottom))]">
+      <div className="relative z-50 w-full max-w-[90%] sm:max-w-sm bg-white rounded-2xl shadow-xl flex flex-col p-4 mx-4">
         {/* Top bar */}
         <div className="flex items-center justify-end">
           <button
@@ -52,57 +54,57 @@ const AlertDeal = ({
           </button>
         </div>
         {/* Content */}
-        <div className="flex-1 flex flex-col items-center justify-center pb-4 gap-6">
+        <div className="flex flex-col items-center space-y-4">
           {/* Direction & Time */}
-          <div className="flex flex-col items-center gap-4">
-            <img src="/deal/deal-bear.svg" alt="Deal Bear" className="w-[122px] h-[180px]" />
-            <span className="text-[22px] font-bold text-black">{t('dealAlert.opened')}</span>
+          <div className="flex flex-col items-center gap-2">
+            <img src="/deal/deal-bear.svg" alt="Deal Bear" className="w-24 h-32 sm:w-[100px] sm:h-[140px]" />
+            <span className="text-lg font-bold text-black text-center">{t('dealAlert.opened')}</span>
           </div>
           {/* Details */}
-          <div className="w-full space-y-3">
-            <div className="flex justify-between text-base">
+          <div className="w-full space-y-1">
+            <div className="flex justify-between items-center py-1.5">
               <span className="text-xs font-medium opacity-50">{t('dealAlert.openDate')}</span>
-              <span className="text-xs font-medium">{dealStartTime ? dealStartTime.toLocaleString() : ''}</span>
+              <span className="text-xs font-medium text-right">{dealStartTime ? dealStartTime.toLocaleString() : ''}</span>
             </div>
-            <div className="h-px self-stretch bg-[var(--Color-Grey,_#E0E0E0)]" />
-            <div className="flex justify-between text-base">
+            <div className="h-px bg-gray-200" />
+            <div className="flex justify-between items-center py-1.5">
               <span className="text-xs font-medium opacity-50">{t('dealAlert.openPrice')}</span>
-              <span className="text-xs font-medium">${openPrice}</span>
+              <span className="text-xs font-medium">{formatMoneyShort(openPrice)}</span>
             </div>
-            <div className="h-px self-stretch bg-[var(--Color-Grey,_#E0E0E0)]" />
-            <div className="flex justify-between text-base">
+            <div className="h-px bg-gray-200" />
+            <div className="flex justify-between items-center py-1.5">
               <span className="text-xs font-medium opacity-50">{t('dealAlert.amount')}</span>
-              <span className="text-xs font-medium">${amount}</span>
+              <span className="text-xs font-medium">{formatMoneyShort(amount)}</span>
             </div>
-            <div className="h-px self-stretch bg-[var(--Color-Grey,_#E0E0E0)]" />
-            <div className="flex justify-between text-base">
+            <div className="h-px bg-gray-200" />
+            <div className="flex justify-between items-center py-1.5">
               <span className="text-xs font-medium opacity-50">{t('trading.leverage')}</span>
               <span className="text-xs font-medium">X{multiplier}</span>
             </div>
-            <div className="h-px self-stretch bg-[var(--Color-Grey,_#E0E0E0)]" />
-            <div className="flex justify-between text-base">
+            <div className="h-px bg-gray-200" />
+            <div className="flex justify-between items-center py-1.5">
               <span className="text-xs font-medium opacity-50">{t('dealAlert.volume', { tp: takeProfit, mult: multiplier })}</span>
-              <span className="text-xs font-medium">${volume}</span>
+              <span className="text-xs font-medium">{formatMoneyShort(volume)}</span>
             </div>
-            <div className="h-px self-stretch bg-[var(--Color-Grey,_#E0E0E0)]" />
+            <div className="h-px bg-gray-200" />
           </div>
-          <div className="w-[256px] text-center text-[14px] font-medium tracking-[0px]">
-            {t('dealAlert.autoClose')}
+          
+          {/* Bottom action */}
+          <div className="pt-4">
+            <Button
+              onClick={onClose}
+              className="w-full max-w-xs mx-auto block bg-[#0C54EA] text-white font-bold text-base sm:text-lg py-3 px-6 rounded-2xl shadow-lg transition hover:bg-blue-600"
+              aria-label={t('common.ok')}
+            >
+              {t('common.ok')}
+            </Button>
           </div>
-        </div>
-        {/* Bottom action */}
-        <div className="px-8">
-          <Button
-            onClick={onClose}
-            className="w-full sm:w-[140px] h-[40px] bg-[#0C54EA] text-white font-bold text-lg py-4 rounded-2xl shadow-lg transition hover:bg-blue-600"
-            aria-label={t('common.ok')}
-          >
-            {t('common.ok')}
-          </Button>
         </div>
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default AlertDeal;

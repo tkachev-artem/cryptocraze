@@ -4,13 +4,10 @@ import { useUser } from '../../hooks/useUser';
 import { useAppDispatch } from '../../app/hooks';
 import { fetchUserStats } from '../../app/userSlice';
 import { openCoinExchange } from '../../app/coinExchangeSlice';
-import { useEffect, useState, lazy, Suspense } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BottomNavigation from '../../components/ui/BottomNavigation';
-import TopMenu from '../../components/ui/TopMenu';
-import { Grid } from '@/components/ui/grid';
-const EnhancedProfileDashboard = lazy(() => import('../../components/dashboard/EnhancedProfileDashboard'));
-const ProfileCryptoData = lazy(() => import('../../components/ProfileCryptoData'));
+import ProfileCryptoData from '../../components/ProfileCryptoData';
 import { formatMoneyShort } from '../../lib/numberUtils';
 
 const fmtMoney = (v: string | number) => formatMoneyShort(v);
@@ -24,97 +21,61 @@ export const Profile: React.FC = () => {
     isLoading, 
     isAuthenticated
   } = useUser();
-  const [isDashboardVisible, setIsDashboardVisible] = useState(false);
-
 
   // Загружаем статистику пользователя при монтировании компонента
   useEffect(() => {
-    if (isAuthenticated && user) {
-      void dispatch(fetchUserStats());
+    if (isAuthenticated && user?.id) {
+      dispatch(fetchUserStats(user.id));
     }
-  }, [dispatch, isAuthenticated, user]);
-
-
+  }, [dispatch, user?.id, isAuthenticated]);
 
   if (isLoading) {
     return (
-      <Grid className='py-2'>
-        <div className="min-h-screen bg-[#F1F7FF] pb-[70px] overscroll-y-contain">
-          {/* Top App Bar */}
-          <div className="bg-white px-2 py-2">
-            <TopMenu variant="profile" />
-          </div>
-
-          {/* Personal Information Skeleton */}
-          <div className="bg-white pb-6">
-            <div className="flex flex-col items-center gap-2 px-4 animate-pulse">
-              {/* Avatar */}
-              <div className="w-[110px] h-[110px] bg-gray-200 rounded-[55px]" />
-
-              {/* Name */}
-              <div className="h-5 w-40 bg-gray-200 rounded mt-2" />
-
-              {/* Contacts */}
-              <div className="flex flex-col items-center gap-3 opacity-50 mt-2">
-                <div className="h-4 w-24 bg-gray-200 rounded" />
-                <div className="h-4 w-32 bg-gray-200 rounded" />
-              </div>
-            </div>
-
-            {/* Wallet summary skeleton */}
-            <div className="px-4 pt-4">
-              <div className="bg-[#EAF3FF] rounded-full p-1 flex items-center gap-2">
-                <div className="bg-white border border-gray-200 rounded-full px-3 py-2 flex items-center justify-center gap-2 h-12 min-w-[120px]">
-                  <div className="w-6 h-6 bg-gray-200 rounded-full" />
-                  <div className="h-4 w-16 bg-gray-200 rounded" />
-                </div>
-                <div className="bg-white border border-gray-200 rounded-full px-3 py-2 flex items-center justify-center gap-2 h-12 min-w-[100px]">
-                  <div className="w-6 h-6 bg-gray-200 rounded-full" />
-                  <div className="h-4 w-12 bg-gray-200 rounded" />
-                </div>
-                <div className="bg-white border border-gray-200 rounded-full px-3 py-2 flex items-center justify-center gap-2 h-12 min-w-[80px] flex-1">
-                  <div className="w-6 h-6 bg-gray-200 rounded-full" />
-                  <div className="h-4 w-10 bg-gray-200 rounded" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Children are lazy-loaded; their own skeletons will render */}
-          <div className="px-4 py-4">
-            <div className="h-28 bg-white rounded-xl border border-gray-200 animate-pulse" />
-          </div>
-        </div>
-        <BottomNavigation />
-      </Grid>
+      <div className="min-h-screen bg-[#F1F7FF] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0C54EA]"></div>
+      </div>
     );
   }
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-xl">{t('auth.loginRequired')}</div>
+      <div className="min-h-screen bg-[#F1F7FF] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500 mb-4">{t('auth.pleaseLogin')}</p>
+          <button
+            onClick={() => navigate('/login')}
+            className="bg-[#0C54EA] text-white px-4 py-2 rounded-lg"
+          >
+            {t('auth.login')}
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <Grid className='py-2'>
-      <div className="min-h-screen bg-[#F1F7FF] pb-[70px] overscroll-y-contain">
-        {/* Top App Bar */}
-        <div className="bg-white px-2 py-2">
-          <TopMenu variant="profile" />
-        </div>
+    <div className="min-h-screen bg-[#F1F7FF] pb-[70px] overscroll-y-contain">
+      {/* Edit Button */}
+      <div className="absolute top-4 right-4 z-10">
+        <button
+          onClick={() => navigate('/edit-profile')}
+          className="p-2 hover:bg-gray-50 transition-colors"
+          aria-label="Редактировать профиль"
+        >
+          <img src="/top-menu/edit.svg" alt="edit" className="w-5 h-5" />
+        </button>
+      </div>
 
-        {/* Personal Information */}
-        <div className="bg-white pb-6">
+      <div className="flex flex-col">
+        {/* Profile Header */}
+        <div className="bg-white pb-6 pt-12">
           <div className="flex flex-col items-center gap-2 px-4">
             {/* Avatar */}
-            <div className="w-[110px] h-[110px] bg-[#F1F7FF] rounded-[55px] flex items-center justify-center overflow-hidden">
+            <div className="relative w-[110px] h-[110px] rounded-[55px] overflow-hidden bg-gray-100 flex items-center justify-center">
               {user.profileImageUrl ? (
                 <img 
                   src={user.profileImageUrl} 
-                  alt="Profile" 
+                  alt="User Avatar" 
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
@@ -131,69 +92,60 @@ export const Profile: React.FC = () => {
               />
             </div>
             
-            {/* Name */}
-            <h1 className="text-xl font-bold text-center">
-              {user.firstName} {user.lastName}
-            </h1>
-
-
-
-            {/* Contacts */}
-            <div className="flex flex-col items-center gap-3 opacity-50">
-              {user.phone && (
+            {/* User Name */}
+            <h1 className="text-xl font-bold text-black mt-2">{user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.name || user.username || user.email?.split('@')[0] || 'Пользователь'}</h1>
+            
+            {/* Contact Info */}
+            <div className="flex flex-col items-center gap-3 opacity-50 mt-2">
+              {user.email && (
                 <div className="flex items-center gap-3">
-                  <img src="/phone-small.svg" alt="phone" className="w-4 h-4" />
-                  <span className="text-xs font-semibold">{user.phone}</span>
+                  <img src="/email.svg" alt="email" className="w-4 h-4" />
+                  <span className="text-sm text-black">{user.email}</span>
                 </div>
               )}
-              <div className="flex items-center gap-3">
-                <img src="/email.svg" alt="email" className="w-4 h-4" />
-                <span className="text-xs font-semibold">{user.email}</span>
-              </div>
+              {user.phone && (
+                <div className="flex items-center gap-3">
+                  <img src="/phone.svg" alt="phone" className="w-4 h-4" />
+                  <span className="text-sm text-black">{user.phone}</span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Wallet summary */}
+          {/* Wallet Summary */}
           <div className="px-4 pt-4">
             <div className="bg-[#EAF3FF] rounded-full p-1 flex items-center gap-2">
-              {/* Деньги */}
-              <div className="bg-white border border-gray-200 rounded-full px-3 py-2 flex items-center justify-center gap-2 h-12 min-w-[120px]">
-                <img src="/statistics/money.svg" alt="money" className="w-6 h-6" />
+              {/* Баланс */}
+              <div className="bg-white rounded-full px-3 py-2 flex items-center justify-center gap-2 h-12 min-w-[120px]">
+                <img src="/dollar.svg" alt="balance" className="w-6 h-6" />
                 <span className="text-base font-bold whitespace-nowrap">{fmtMoney(user.balance)}</span>
               </div>
               {/* Монеты */}
               <button 
                 onClick={() => dispatch(openCoinExchange())}
-                className="bg-white border border-gray-200 rounded-full px-3 py-2 flex items-center justify-center gap-2 h-12 min-w-[100px] hover:bg-gray-50 transition-colors cursor-pointer"
+                className="bg-white rounded-full px-3 py-2 flex items-center justify-center gap-2 h-12 min-w-[100px] hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 <img src="/money.svg" alt="coins" className="w-6 h-6" />
                 <span className="text-base font-bold whitespace-nowrap">{user.coins || 0}</span>
               </button>
               {/* Награды */}
-              <div className="bg-white border border-gray-200 rounded-full px-3 py-2 flex items-center justify-center gap-2 h-12 min-w-[80px] flex-1">
+              <button 
+                onClick={() => navigate('/rewards')}
+                className="bg-white rounded-full px-3 py-2 flex items-center justify-center gap-2 h-12 min-w-[80px] flex-1 hover:bg-gray-50 transition-colors cursor-pointer"
+              >
                 <img src="/awards.svg" alt="rewards" className="w-6 h-6" />
                 <span className="text-base font-bold whitespace-nowrap">{user.rewardsCount || 0}</span>
-              </div>
+              </button>
             </div>
           </div>
 
         </div>
 
-        {/* Crypto Data (ленивая загрузка) */}
-        <Suspense fallback={<div className="px-4 py-4"><div className="h-28 bg-white rounded-xl border border-gray-200 animate-pulse" /></div>}>
-          <ProfileCryptoData />
-        </Suspense>
-
-        {/* Dashboard (ленивая загрузка) */}
-        {isDashboardVisible && (
-          <Suspense fallback={<div className="px-4 py-4"><div className="h-40 bg-white rounded-xl border border-gray-200 animate-pulse" /></div>}>
-            <EnhancedProfileDashboard />
-          </Suspense>
-        )}
-
+        {/* Crypto Data */}
+        <ProfileCryptoData />
 
       </div>
       <BottomNavigation />
-    </Grid>
+    </div>
   );
 };

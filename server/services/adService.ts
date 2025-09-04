@@ -2,6 +2,7 @@ import { db } from '../db';
 import { users, adSessions, adRewards, adPerformanceMetrics } from '../../shared/schema';
 import { eq, sql, and, gte, lte, desc, count, sum } from 'drizzle-orm';
 import type { Request } from 'express';
+import AnalyticsLogger from '../middleware/analyticsLogger.js';
 
 // Types for ad system
 export type AdType = 'rewarded_video' | 'interstitial' | 'banner' | 'native';
@@ -448,6 +449,24 @@ export class AdService {
         })
         .where(eq(adRewards.id, rewardRecord.id));
 
+      // Log revenue from ad viewing
+      const revenueAmount = this.calculateAdRevenue(reward);
+      if (revenueAmount > 0) {
+        try {
+          const userIdNumber = Number(userId);
+          await AnalyticsLogger.logRevenue(
+            userIdNumber,
+            'ad',
+            revenueAmount,
+            'USD'
+          );
+          console.log(`[AdService] Logged ad revenue: $${revenueAmount} for user ${userId}`);
+        } catch (analyticsError) {
+          console.error('[AdService] Failed to log ad revenue analytics:', analyticsError);
+          // Don't fail the whole process due to analytics error
+        }
+      }
+
       return {
         rewardId: rewardRecord.id,
         type: reward.type,
@@ -472,6 +491,27 @@ export class AdService {
         'REWARD_PROCESS_ERROR',
         500
       );
+    }
+  }
+
+  // Calculate revenue from ad viewing (estimated)
+  private calculateAdRevenue(reward: AdReward): number {
+    // Estimate revenue based on reward type and industry standards
+    switch (reward.type) {
+      case 'money':
+        // If we give $100 (virtual money), we typically earn $0.05-0.10 from ad networks
+        return 0.08; // $0.08 revenue per money reward ad
+      case 'coins':
+        // Similar calculation for coins
+        return 0.06; // $0.06 revenue per coins reward ad
+      case 'energy':
+        // Energy rewards are typically for lighter engagement
+        return 0.04; // $0.04 revenue per energy reward ad
+      case 'trading_bonus':
+        // Trading bonus ads are valuable as they increase engagement
+        return 0.12; // $0.12 revenue per trading bonus ad
+      default:
+        return 0.05; // Default $0.05 revenue per ad view
     }
   }
 

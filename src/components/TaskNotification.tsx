@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from '../lib/i18n';
 
 type TaskNotificationProps = {
   message: string;
@@ -16,6 +17,7 @@ export const TaskNotification = ({
   duration = 3000 
 }: TaskNotificationProps) => {
   const [isVisible, setIsVisible] = useState(true);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (autoClose) {
@@ -70,7 +72,7 @@ export const TaskNotification = ({
               setTimeout(onClose, 300);
             }}
             className="text-gray-400 hover:text-gray-600 transition-colors"
-            aria-label="Закрыть уведомление"
+            aria-label={t('common.closeNotification')}
           >
             ✕
           </button>

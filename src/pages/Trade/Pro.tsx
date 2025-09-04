@@ -113,6 +113,9 @@ const Pro: React.FC = () => {
   // Состояние для EditDeal
   const isEditDealOpen = useAppSelector((state) => state.dealModal.isEditDealOpen);
   
+  // Состояние Deal modal из Redux для правильного определения сжатия графика
+  const isDealModalOpen = useAppSelector((state) => state.dealModal.isDealModalOpen);
+  
   // Состояние для инструментов рисования
   const [drawingMode, setDrawingMode] = useState<DrawingMode>('add');
   const [activeTool, setActiveTool] = useState<DrawingTool>('none');
@@ -383,7 +386,7 @@ const Pro: React.FC = () => {
       <div 
         className="flex-1 min-h-0"
         style={{ 
-          paddingBottom: isDealOpen ? '420px' : (isEditDealOpen ? '0px' : `${String(menuHeight)}px`)
+          paddingBottom: isDealOpen ? '420px' : (isEditDealOpen ? '320px' : `${String(menuHeight)}px`)
         }}
       >
         <Suspense fallback={<div className="w-full h-full"><div className="w-full h-[300px] bg-white border border-gray-200 rounded-md animate-pulse" /></div>}>

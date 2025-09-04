@@ -4,6 +4,7 @@ import { config } from '../../lib/config';
 import BottomNavigation from '../../components/ui/BottomNavigation';
 import { ArrowLeft, Users, TrendingUp, UserRoundCheck, DollarSign, Zap, UserPlus, Megaphone, AlertCircle } from 'lucide-react';
 import { useTranslation } from '../../lib/i18n';
+import PremiumStatsBlock from '../../components/admin/PremiumStatsBlock';
 
 interface AdminOverview {
   users: {
@@ -84,7 +85,18 @@ interface AdPerformanceMetrics {
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, language, isLoading: translationsLoading, translations } = useTranslation();
+  
+  // Helper function for translations with fallbacks
+  const tWithFallback = (key: string, fallback: string) => {
+    const translation = t(key);
+    if (translation === key) {
+      console.warn(`Translation missing for key: ${key}, using fallback: ${fallback}`);
+      return fallback;
+    }
+    return translation;
+  };
+  
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [engagementData, setEngagementData] = useState<EngagementMetrics[]>([]);
   const [revenueData, setRevenueData] = useState<RevenueMetrics[]>([]);
@@ -180,7 +192,7 @@ const AdminDashboard: React.FC = () => {
     loadData();
   }, []);
 
-  if (isLoading) {
+  if (isLoading || translationsLoading) {
     return (
       <div className="min-h-screen bg-[#F1F7FF] flex flex-col pb-[calc(56px+env(safe-area-inset-bottom))]">
         {/* Top Navigation + Analytics Banner - Fixed */}
@@ -198,7 +210,7 @@ const AdminDashboard: React.FC = () => {
           
           <div className="px-4 pb-4">
             <div className="w-full h-[50px] bg-[#0C54EA] rounded-xl flex items-center justify-center">
-              <h1 className="text-lg font-bold text-white">Dashboard</h1>
+              <h1 className="text-lg font-bold text-white">{t('admin.dashboard.title') || 'Dashboard'}</h1>
             </div>
           </div>
         </div>
@@ -238,15 +250,8 @@ const AdminDashboard: React.FC = () => {
         </div>
         
         <div className="px-4 pb-4">
-          <div className="w-full h-[50px] bg-[#0C54EA] rounded-xl flex items-center justify-center relative">
-            <h1 className="text-lg font-bold text-white">Dashboard</h1>
-            {overview && (
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                <div className="px-2 py-1 rounded text-xs font-medium bg-green-500 text-white">
-                  ClickHouse
-                </div>
-              </div>
-            )}
+          <div className="w-full h-[50px] bg-[#0C54EA] rounded-xl flex items-center justify-center">
+            <h1 className="text-lg font-bold text-white">{t('admin.dashboard.title') || 'Dashboard'}</h1>
           </div>
         </div>
       </div>
@@ -265,22 +270,6 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* ClickHouse Status Info */}
-        {overview && (
-          <div className="bg-green-50 border-green-200 border rounded-xl p-4 mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-green-500" />
-              <span className="text-sm font-medium">
-                Данные из ClickHouse (высокопроизводительная аналитика)
-              </span>
-              {overview.lastUpdated && (
-                <span className="text-xs text-gray-500 ml-auto">
-                  Обновлено: {new Date(overview.lastUpdated).toLocaleTimeString('ru-RU')}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Overview Stats */}
         <div className="grid grid-cols-2 gap-4 mb-4">
@@ -294,9 +283,9 @@ const AdminDashboard: React.FC = () => {
             <div className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
               {formatNumber(overview?.users?.total_users || 0)}
             </div>
-            <div className="text-sm text-gray-600 mb-1">Total Users</div>
+            <div className="text-sm text-gray-600 mb-1">{tWithFallback('admin.dashboard.totalUsers', 'Total Users')}</div>
             {overview?.users?.total_users && (
-              <div className="text-xs text-gray-500 font-medium">All registered users</div>
+              <div className="text-xs text-gray-500 font-medium">{t('admin.dashboard.allRegisteredUsers')}</div>
             )}
           </div>
 
@@ -310,9 +299,9 @@ const AdminDashboard: React.FC = () => {
             <div className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
               {formatNumber(overview?.trading?.activeDeals || 0)}
             </div>
-            <div className="text-sm text-gray-600 mb-1">Active Deals</div>
+            <div className="text-sm text-gray-600 mb-1">{t('admin.dashboard.activeDeals')}</div>
             {overview?.trading?.activeDeals !== undefined && (
-              <div className="text-xs text-gray-500 font-medium">Currently open positions</div>
+              <div className="text-xs text-gray-500 font-medium">{t('admin.dashboard.currentlyOpenPositions')}</div>
             )}
           </div>
 
@@ -326,9 +315,9 @@ const AdminDashboard: React.FC = () => {
             <div className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
               {formatNumber(overview?.users?.daily_active_users || 0)}
             </div>
-            <div className="text-sm text-gray-600 mb-1">Daily Active Users</div>
+            <div className="text-sm text-gray-600 mb-1">{t('admin.dashboard.dailyActiveUsers')}</div>
             {overview?.users?.daily_active_users !== undefined && (
-              <div className="text-xs text-gray-500 font-medium">Users active today</div>
+              <div className="text-xs text-gray-500 font-medium">{t('admin.dashboard.usersActiveToday')}</div>
             )}
           </div>
 
@@ -342,9 +331,9 @@ const AdminDashboard: React.FC = () => {
             <div className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
               {formatCurrency(overview?.revenue?.totalRevenue || '0')}
             </div>
-            <div className="text-sm text-gray-600 mb-1">Total Revenue</div>
+            <div className="text-sm text-gray-600 mb-1">{t('admin.dashboard.totalRevenue')}</div>
             {overview?.revenue?.totalRevenue !== undefined && (
-              <div className="text-xs text-gray-500 font-medium">All time revenue</div>
+              <div className="text-xs text-gray-500 font-medium">{t('admin.dashboard.allTimeRevenue')}</div>
             )}
           </div>
         </div>
@@ -358,7 +347,7 @@ const AdminDashboard: React.FC = () => {
               <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
                 <Zap className="w-5 h-5 text-[#0C54EA]" />
               </div>
-              <h2 className="text-lg font-bold text-gray-900">Engagement Metrics</h2>
+              <h2 className="text-lg font-bold text-gray-900">{t('admin.dashboard.engagementMetrics')}</h2>
             </div>
             
             <div className="grid grid-cols-2 gap-4 mb-6">
@@ -366,28 +355,28 @@ const AdminDashboard: React.FC = () => {
                 <div className="text-2xl font-bold text-gray-900 mb-1">
                   {formatNumber(overview?.users?.weekly_active_users || 0)}
                 </div>
-                <div className="text-sm text-gray-600">Weekly Active Users</div>
+                <div className="text-sm text-gray-600">{t('admin.dashboard.weeklyActiveUsers')}</div>
               </div>
               
               <div>
                 <div className="text-2xl font-bold text-gray-900 mb-1">
                   {formatNumber(overview?.users?.monthly_active_users || 0)}
                 </div>
-                <div className="text-sm text-gray-600">Monthly Active Users</div>
+                <div className="text-sm text-gray-600">{t('admin.dashboard.monthlyActiveUsers')}</div>
               </div>
               
               <div>
                 <div className="text-2xl font-bold text-gray-900 mb-1">
                   {formatDecimal(overview?.engagement?.avgSessionsPerUser || '0')}
                 </div>
-                <div className="text-sm text-gray-600">Avg Sessions Per User</div>
+                <div className="text-sm text-gray-600">{t('admin.dashboard.avgSessionsPerUser')}</div>
               </div>
               
               <div>
                 <div className="text-2xl font-bold text-gray-900 mb-1">
                   {formatNumber(overview?.trading?.totalTrades || 0)}
                 </div>
-                <div className="text-sm text-gray-600">Total Trades</div>
+                <div className="text-sm text-gray-600">{t('admin.dashboard.totalTrades')}</div>
               </div>
             </div>
 
@@ -399,7 +388,7 @@ const AdminDashboard: React.FC = () => {
               <div className="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center">
                 <DollarSign className="w-5 h-5 text-[#2EBD85]" />
               </div>
-              <h2 className="text-lg font-bold text-gray-900">Revenue & Monetization</h2>
+              <h2 className="text-lg font-bold text-gray-900">{t('admin.dashboard.revenueMonetization')}</h2>
             </div>
             
             <div className="grid grid-cols-2 gap-4 mb-6">
@@ -407,28 +396,28 @@ const AdminDashboard: React.FC = () => {
                 <div className="text-2xl font-bold text-gray-900 mb-1">
                   {formatCurrency(overview?.revenue?.arpu || '0')}
                 </div>
-                <div className="text-sm text-gray-600">ARPU</div>
+                <div className="text-sm text-gray-600">{t('admin.dashboard.arpu')}</div>
               </div>
               
               <div>
                 <div className="text-2xl font-bold text-gray-900 mb-1">
                   {formatCurrency(overview?.revenue?.arppu || '0')}
                 </div>
-                <div className="text-sm text-gray-600">ARPPU</div>
+                <div className="text-sm text-gray-600">{t('admin.dashboard.arppu')}</div>
               </div>
               
               <div>
                 <div className="text-2xl font-bold text-gray-900 mb-1">
                   {formatDecimal(Number(overview?.revenue?.conversionRate || 0) * 100, 1)}%
                 </div>
-                <div className="text-sm text-gray-600">Conversion Rate</div>
+                <div className="text-sm text-gray-600">{t('admin.dashboard.conversionRate')}</div>
               </div>
               
               <div>
                 <div className="text-2xl font-bold text-gray-900 mb-1">
                   {formatNumber(overview?.revenue?.payingUsers || 0)}
                 </div>
-                <div className="text-sm text-gray-600">Paying Users</div>
+                <div className="text-sm text-gray-600">{t('admin.dashboard.payingUsers')}</div>
               </div>
             </div>
 
@@ -441,7 +430,7 @@ const AdminDashboard: React.FC = () => {
                 <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center">
                   <TrendingUp className="w-5 h-5 text-purple-600" />
                 </div>
-                <h2 className="text-lg font-bold text-gray-900">Trading Performance</h2>
+                <h2 className="text-lg font-bold text-gray-900">{t('admin.dashboard.tradingPerformance')}</h2>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
@@ -449,32 +438,35 @@ const AdminDashboard: React.FC = () => {
                   <div className="text-2xl font-bold text-gray-900 mb-1">
                     {formatNumber(overview.trading.closedTrades)}
                   </div>
-                  <div className="text-sm text-gray-600">Closed Trades</div>
+                  <div className="text-sm text-gray-600">{t('admin.dashboard.closedTrades')}</div>
                 </div>
                 
                 <div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">
                     {formatNumber(overview.trading.profitableTrades)}
                   </div>
-                  <div className="text-sm text-gray-600">Profitable Trades</div>
+                  <div className="text-sm text-gray-600">{t('admin.dashboard.profitableTrades')}</div>
                 </div>
                 
                 <div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">
                     {overview.trading.successRate}%
                   </div>
-                  <div className="text-sm text-gray-600">Success Rate</div>
+                  <div className="text-sm text-gray-600">{t('admin.dashboard.successRate')}</div>
                 </div>
                 
                 <div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">
                     {formatCurrency(overview.trading.totalPnl)}
                   </div>
-                  <div className="text-sm text-gray-600">Total P&L</div>
+                  <div className="text-sm text-gray-600">{t('admin.dashboard.totalPnL')}</div>
                 </div>
               </div>
             </div>
           )}
+
+          {/* Premium Statistics */}
+          <PremiumStatsBlock />
 
           {/* New Users & Activity */}
           {overview?.users && (
@@ -483,7 +475,7 @@ const AdminDashboard: React.FC = () => {
                 <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
                   <UserPlus className="w-5 h-5 text-blue-600" />
                 </div>
-                <h2 className="text-lg font-bold text-gray-900">User Activity</h2>
+                <h2 className="text-lg font-bold text-gray-900">{t('admin.dashboard.userActivity')}</h2>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
@@ -491,28 +483,28 @@ const AdminDashboard: React.FC = () => {
                   <div className="text-2xl font-bold text-gray-900 mb-1">
                     {formatNumber(overview.users.new_users_today)}
                   </div>
-                  <div className="text-sm text-gray-600">New Users Today</div>
+                  <div className="text-sm text-gray-600">{t('admin.dashboard.newUsersToday')}</div>
                 </div>
                 
                 <div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">
                     {formatNumber(overview.engagement.totalSessions)}
                   </div>
-                  <div className="text-sm text-gray-600">Total Sessions</div>
+                  <div className="text-sm text-gray-600">{t('admin.dashboard.totalSessions')}</div>
                 </div>
                 
                 <div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">
                     {formatNumber(overview.engagement.logins)}
                   </div>
-                  <div className="text-sm text-gray-600">Logins (7d)</div>
+                  <div className="text-sm text-gray-600">{t('admin.dashboard.logins7d')}</div>
                 </div>
                 
                 <div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">
                     {formatNumber(overview.engagement.adsWatched)}
                   </div>
-                  <div className="text-sm text-gray-600">Ads Watched</div>
+                  <div className="text-sm text-gray-600">{t('admin.dashboard.adsWatched')}</div>
                 </div>
               </div>
             </div>
@@ -525,7 +517,7 @@ const AdminDashboard: React.FC = () => {
                 <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center">
                   <Megaphone className="w-5 h-5 text-red-600" />
                 </div>
-                <h2 className="text-lg font-bold text-gray-900">Ad Performance</h2>
+                <h2 className="text-lg font-bold text-gray-900">{t('admin.dashboard.adPerformance')}</h2>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
@@ -533,28 +525,28 @@ const AdminDashboard: React.FC = () => {
                   <div className="text-2xl font-bold text-gray-900 mb-1">
                     {formatCurrency(adPerformanceData.totalAdSpend)}
                   </div>
-                  <div className="text-sm text-gray-600">Total Ad Spend</div>
+                  <div className="text-sm text-gray-600">{t('admin.dashboard.totalAdSpend')}</div>
                 </div>
                 
                 <div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">
                     {formatCurrency(adPerformanceData.avgCPI)}
                   </div>
-                  <div className="text-sm text-gray-600">CPI (Cost Per Install)</div>
+                  <div className="text-sm text-gray-600">{t('admin.dashboard.cpi')}</div>
                 </div>
                 
                 <div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">
                     {formatCurrency(adPerformanceData.avgCPA)}
                   </div>
-                  <div className="text-sm text-gray-600">CPA (Cost Per Action)</div>
+                  <div className="text-sm text-gray-600">{t('admin.dashboard.cpa')}</div>
                 </div>
                 
                 <div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">
                     {formatDecimal(adPerformanceData.avgROAS, 2)}x
                   </div>
-                  <div className="text-sm text-gray-600">ROAS (Return On Ad Spend)</div>
+                  <div className="text-sm text-gray-600">{t('admin.dashboard.roas')}</div>
                 </div>
               </div>
             </div>

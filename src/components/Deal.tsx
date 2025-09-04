@@ -109,7 +109,7 @@ const Deal = ({ isOpen, onClose, cryptoData, userBalance, direction, bottomOffse
     const handleSliderChange = (percentage: number) => {
         const clamped = Math.max(0, Math.min(percentage, 100));
         if (clamped === 100) {
-            setAmount(String(sliderBaseBalance));
+            setAmount(String(Math.round(sliderBaseBalance * 100) / 100));
             return;
         }
         const newAmount = (sliderBaseBalance * clamped) / 100;
@@ -292,7 +292,9 @@ const Deal = ({ isOpen, onClose, cryptoData, userBalance, direction, bottomOffse
     if (!isOpen) return null;
 
     return (
-        <div ref={modalRef} className="fixed left-0 right-0 top-0 z-[60] flex items-end justify-center overflow-hidden" style={{ bottom: `calc(${String(bottomOffset)}px + env(safe-area-inset-bottom))` }}>
+        <>
+        {dealStatus === 'creating' && (
+        <div ref={modalRef} className="absolute inset-0 z-[60] flex items-end justify-center overflow-hidden" style={{ bottom: `calc(${String(bottomOffset)}px + env(safe-area-inset-bottom))` }}>
             {/* Overlay */}
             <div
                 className={"absolute inset-0 bg-black/40"}
@@ -303,7 +305,7 @@ const Deal = ({ isOpen, onClose, cryptoData, userBalance, direction, bottomOffse
             />
 
             {/* Deal Modal */}
-            <div className="relative w-full max-w-none mx-0 sm:max-w-md sm:mx-4 min-h-[350px] sm:min-h-[400px] bg-white rounded-t-xl sm:rounded-t-2xl pt-2 sm:pt-3 pb-[35px] sm:pb-[40px] px-3 sm:px-4 overflow-y-auto overscroll-contain touch-pan-y">
+            <div className="relative w-full max-w-none mx-0 sm:max-w-md min-h-[350px] sm:min-h-[400px] bg-white rounded-t-xl sm:rounded-t-2xl pt-2 sm:pt-3 pb-[35px] sm:pb-[40px] px-3 sm:px-4 overflow-y-auto overscroll-contain touch-pan-y">
                 
                 {dealStatus === 'creating' ? (
                     // Состояние создания сделки
@@ -551,23 +553,26 @@ const Deal = ({ isOpen, onClose, cryptoData, userBalance, direction, bottomOffse
                         </button>
                         </div>
                     </div>
-                ) : (
-                    // Состояние открытой сделки
-                    <AlertDeal
-                      onClose={() => { void handleAlertOk(); }}
-                      localDirection={localDirection}
-                      dealStartTime={dealStartTime}
-                      amount={amount}
-                      multiplier={multiplier}
-                      volume={volume}
-                      takeProfit={takeProfit}
-                      openPrice={openPrice}
-                    />
-                )}
+                ) : null}
             </div>
 
-        <MoreInfo />
+            <MoreInfo />
         </div>
+        )}
+        
+        {dealStatus !== 'creating' && (
+            <AlertDeal
+              onClose={() => { void handleAlertOk(); }}
+              localDirection={localDirection}
+              dealStartTime={dealStartTime}
+              amount={amount}
+              multiplier={multiplier}
+              volume={volume}
+              takeProfit={takeProfit}
+              openPrice={openPrice}
+            />
+        )}
+        </>
   );
 };
 

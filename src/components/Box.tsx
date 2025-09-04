@@ -5,7 +5,6 @@ import { forceUserUpdate } from '@/app/userSlice'
 import { fetchUserDataNoCache } from '@/lib/noCacheApi'
 import { useTranslation } from '../lib/i18n'
 import { ErrorBoundary } from './ErrorBoundary'
-import { Grid } from './ui/grid'
 import { Button } from './ui/button'
 
 // Enhanced TypeScript types
@@ -336,7 +335,7 @@ export const Box = ({ type, isOpen, onClose, onError }: BoxProps) => {
   if (isPrizeOpen && state.prize) {
     return (
       <div className="fixed inset-0 z-50">
-        <Grid className="p-0">
+        <div className="p-0">
           <ErrorBoundary
             onError={(error) => {
               console.error('[Box] Prize display error:', error)
@@ -391,7 +390,7 @@ export const Box = ({ type, isOpen, onClose, onError }: BoxProps) => {
             </div>
           </div>
           </ErrorBoundary>
-        </Grid>
+        </div>
       </div>
     )
   }
@@ -439,7 +438,7 @@ export const Box = ({ type, isOpen, onClose, onError }: BoxProps) => {
     
     return (
       <div className="fixed inset-0 z-50">
-        <Grid className="p-0">
+        <div className="p-0">
           <ErrorBoundary
             onError={(error) => {
               console.error('[Box] Component error:', error)
@@ -532,7 +531,7 @@ export const Box = ({ type, isOpen, onClose, onError }: BoxProps) => {
             )}
             </div>
           </ErrorBoundary>
-        </Grid>
+        </div>
       </div>
     )
   }

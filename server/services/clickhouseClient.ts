@@ -10,7 +10,7 @@ let clickhouseClient: ClickHouseClient | null = null;
 export const getClickHouseClient = (): ClickHouseClient => {
   if (!clickhouseClient) {
     const config = {
-      host: process.env.CLICKHOUSE_HOST || 'http://localhost:8123',
+      url: process.env.CLICKHOUSE_URL || process.env.CLICKHOUSE_HOST || 'http://localhost:8123',
       username: process.env.CLICKHOUSE_USERNAME || 'default',
       password: process.env.CLICKHOUSE_PASSWORD || '',
       database: process.env.CLICKHOUSE_DATABASE || 'cryptocraze_analytics',
@@ -34,7 +34,7 @@ export const getClickHouseClient = (): ClickHouseClient => {
     };
 
     console.log('[ClickHouse] Initializing client with config:', {
-      host: config.host,
+      url: config.url,
       database: config.database,
       username: config.username
     });
@@ -99,7 +99,7 @@ export const getClickHouseStats = () => {
   return {
     isConnected: clickhouseClient !== null,
     config: {
-      host: process.env.CLICKHOUSE_HOST || 'http://localhost:8123',
+      url: process.env.CLICKHOUSE_URL || process.env.CLICKHOUSE_HOST || 'http://localhost:8123',
       database: process.env.CLICKHOUSE_DATABASE || 'cryptocraze_analytics',
     }
   };

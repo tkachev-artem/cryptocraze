@@ -133,6 +133,19 @@ async function bootstrap() {
       }
     }));
 
+    // Serve uploaded files (avatars)
+    const uploadsDir = path.resolve(process.cwd(), 'uploads');
+    app.use('/uploads', express.static(uploadsDir, {
+      etag: true,
+      lastModified: true,
+      setHeaders: (res, filePath) => {
+        // Cache uploaded images for a reasonable time
+        if (filePath.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
+          res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
+        }
+      }
+    }));
+
     // Fallback to index.html for any non-API route without using path patterns (avoids path-to-regexp issues)
     app.use((req, res, next) => {
       // Skip API routes, health checks, docs, socket.io, and static file extensions

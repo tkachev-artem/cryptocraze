@@ -1,7 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { Grid } from '../components/ui/grid';
 import { useTranslation } from '../lib/i18n';
 
 export function NotFound() {
@@ -9,7 +8,7 @@ export function NotFound() {
   const navigate = useNavigate();
 
   return (
-    <Grid className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white">
       <div className="flex flex-col items-center justify-center min-h-screen px-4 text-center">
         
         {/* Bear character */}
@@ -43,6 +42,6 @@ export function NotFound() {
         </div>
 
       </div>
-    </Grid>
+    </div>
   );
 }

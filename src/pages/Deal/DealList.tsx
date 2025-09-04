@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
-import { Grid } from '../../components/ui/grid';
 import { formatMoneyShort } from '../../lib/numberUtils';
 import { symbolToCoinId } from '../../hooks/symbolToCoinId';
 import { useCoinGeckoIcon } from '../../hooks/useCoinGeckoIcon';
@@ -192,36 +191,72 @@ export function DealList() {
     navigate('/trade');
   }, [navigate]);
 
-  // Live данные для активных сделок
+  // Live данные для активных сделок - используем стабильную версию для предотвращения циклических обновлений
   const openDealIds = useMemo(() => {
     return deals
       .filter(d => d.status === 'open' && typeof d.id === 'number')
       .map(d => d.id);
   }, [deals]);
   
-  const { profits, isConnected } = useLiveDealProfits(openDealIds);
-
-  // Обновление прибыли из WebSocket
+  // Создаем стабильную ссылку на openDealIds для WebSocket подписки
+  const stableOpenDealIds = useRef<number[]>([]);
+  const [forceSocketUpdate, setForceSocketUpdate] = useState(0);
+  
+  // Обновляем stableOpenDealIds только при существенных изменениях (добавление/удаление сделок)
   useEffect(() => {
-    if (!openDealIds.length || !mountedRef.current) return;
+    const currentIds = openDealIds.sort((a, b) => a - b);
+    const stableIds = stableOpenDealIds.current.sort((a, b) => a - b);
     
-    setDeals(prev => prev.map(d => {
-      if (d.status !== 'open' || !d.id || !(d.id in profits)) {
+    // Сравниваем отсортированные массивы для определения реальных изменений
+    const hasChanges = currentIds.length !== stableIds.length || 
+                      currentIds.some((id, index) => id !== stableIds[index]);
+    
+    if (hasChanges) {
+      stableOpenDealIds.current = [...openDealIds];
+      setForceSocketUpdate(prev => prev + 1);
+    }
+  }, [openDealIds]);
+  
+  const { profits, isConnected } = useLiveDealProfits(stableOpenDealIds.current);
+
+  // Обновление прибыли из WebSocket - используем useCallback для стабилизации функции обновления
+  const updateProfitsFromWebSocket = useCallback(() => {
+    if (!stableOpenDealIds.current.length || !mountedRef.current) return;
+    
+    setDeals(prev => {
+      let hasChanges = false;
+      const newDeals = prev.map(d => {
+        // Проверяем, что сделка активна и есть данные по ней
+        if (d.status !== 'open' || !d.id || !(d.id in profits)) {
+          return d;
+        }
+        
+        const liveProfit = profits[d.id];
+        
+        // Сравниваем строковые значения для точного определения изменений
+        if (liveProfit && 
+            typeof liveProfit.profit === 'string' && 
+            d.profit !== liveProfit.profit) {
+          hasChanges = true;
+          return { 
+            ...d, 
+            profit: liveProfit.profit,
+            liveProfit: safeNumber(liveProfit.profit)
+          };
+        }
+        
         return d;
-      }
+      });
       
-      const liveProfit = profits[d.id];
-      if (liveProfit && typeof liveProfit.profit === 'string') {
-        return { 
-          ...d, 
-          profit: liveProfit.profit,
-          liveProfit: safeNumber(liveProfit.profit)
-        };
-      }
-      
-      return d;
-    }));
-  }, [profits, openDealIds]);
+      // Возвращаем новый массив только если есть реальные изменения
+      return hasChanges ? newDeals : prev;
+    });
+  }, [profits]);
+
+  // Запускаем обновление только при изменении profits, НЕ при изменении openDealIds
+  useEffect(() => {
+    updateProfitsFromWebSocket();
+  }, [updateProfitsFromWebSocket]);
 
   // Live цены для расчета прибыли на клиенте
   const openSymbols = useMemo(() => {
@@ -285,42 +320,58 @@ export function DealList() {
     loadCommissions();
   }, [openDealIds, dealCommissionMap, deals]);
 
-  // Расчет прибыли на основе live цен
-  useEffect(() => {
+  // Расчет прибыли на основе live цен - стабилизируем функцию обновления
+  const updateProfitsFromLivePrices = useCallback(() => {
     if (!openSymbols.length || !mountedRef.current) return;
     
-    setDeals(prev => prev.map(d => {
-      if (d.status !== 'open' || !d.symbol || !d.id) return d;
+    setDeals(prev => {
+      let hasChanges = false;
+      const newDeals = prev.map(d => {
+        if (d.status !== 'open' || !d.symbol || !d.id) return d;
+        
+        // Если уже есть live profit от сервера, не перезаписываем
+        if (d.id in profits && profits[d.id]?.profit != null) return d;
+        
+        const tick = livePrices[d.symbol.toUpperCase()];
+        if (!tick?.price) return d;
+        
+        const openPrice = safeNumber(d.openPrice);
+        const amount = safeNumber(d.amount);
+        const multiplier = safeNumber(d.multiplier);
+        const currentPrice = safeNumber(tick.price);
+        
+        if (!openPrice || !amount || !multiplier || !currentPrice) return d;
+        
+        const ratio = d.direction === 'up'
+          ? (currentPrice - openPrice) / openPrice
+          : (openPrice - currentPrice) / openPrice;
+        
+        const pnl = ratio * amount * multiplier;
+        const commission = dealCommissionMap[d.id] || (amount * multiplier * 0.0005);
+        const netProfit = pnl - commission;
+        const newProfitString = netProfit.toFixed(2);
+        
+        // Проверяем, изменилась ли прибыль
+        if (d.profit !== newProfitString) {
+          hasChanges = true;
+          return { 
+            ...d, 
+            profit: newProfitString,
+            currentPrice: currentPrice.toString(),
+            liveProfit: netProfit
+          };
+        }
+        
+        return d;
+      });
       
-      // Если уже есть live profit от сервера, не перезаписываем
-      if (d.id in profits && profits[d.id]?.profit != null) return d;
-      
-      const tick = livePrices[d.symbol.toUpperCase()];
-      if (!tick?.price) return d;
-      
-      const openPrice = safeNumber(d.openPrice);
-      const amount = safeNumber(d.amount);
-      const multiplier = safeNumber(d.multiplier);
-      const currentPrice = safeNumber(tick.price);
-      
-      if (!openPrice || !amount || !multiplier || !currentPrice) return d;
-      
-      const ratio = d.direction === 'up'
-        ? (currentPrice - openPrice) / openPrice
-        : (openPrice - currentPrice) / openPrice;
-      
-      const pnl = ratio * amount * multiplier;
-      const commission = dealCommissionMap[d.id] || (amount * multiplier * 0.0005);
-      const netProfit = pnl - commission;
-      
-      return { 
-        ...d, 
-        profit: netProfit.toFixed(2),
-        currentPrice: currentPrice.toString(),
-        liveProfit: netProfit
-      };
-    }));
+      return hasChanges ? newDeals : prev;
+    });
   }, [livePrices, openSymbols, dealCommissionMap, profits]);
+
+  useEffect(() => {
+    updateProfitsFromLivePrices();
+  }, [updateProfitsFromLivePrices]);
 
   // Фильтрованный список сделок
   const filteredDeals = useMemo(() => {
@@ -343,7 +394,7 @@ export function DealList() {
 
   if (error) {
     return (
-      <Grid>
+      <div>
         <div className="flex flex-col items-center justify-center p-4">
           <div className="text-red-500 text-center mb-4">
             <h2 className="text-xl font-bold mb-2">Error</h2>
@@ -360,12 +411,12 @@ export function DealList() {
             Retry
           </Button>
         </div>
-      </Grid>
+      </div>
     );
   }
 
   return (
-    <Grid className="p-0 flex flex-col pb-[calc(56px+env(safe-area-inset-bottom))]">
+    <div className="p-0 flex flex-col pb-[calc(56px+env(safe-area-inset-bottom))]">
       {/* Top Navigation + Tab Buttons - Fixed */}
       <div className="sticky top-0 z-30 bg-white">
         <div className="flex items-center justify-between px-4 py-4">
@@ -423,7 +474,6 @@ export function DealList() {
       {activeTab === 'active' && openDealIds.length > 0 && (
         <div className="px-4 py-1">
           <div className={`text-xs ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
-            {isConnected ? '🟢 Live updates active' : '🔴 Connecting...'}
           </div>
         </div>
       )}
@@ -464,7 +514,7 @@ export function DealList() {
 
       {/* Bottom Navigation */}
       <BottomNavigation />
-    </Grid>
+    </div>
   );
 }
 
@@ -534,7 +584,7 @@ const DealCard = ({ deal, closingDeals, onEdit, onClose }: DealCardProps) => {
             <span className={`text-lg sm:text-xl font-extrabold uppercase ${
               isProfit ? 'text-green-500' : 'text-red-500'
             }`}>
-              {isProfit ? '+' : ''}{fmtMoney(Math.abs(profitValue))}
+              {isProfit ? '+' : '-'}{fmtMoney(Math.abs(profitValue))}
             </span>
           </div>
           <div className="flex items-center gap-1">
@@ -551,25 +601,28 @@ const DealCard = ({ deal, closingDeals, onEdit, onClose }: DealCardProps) => {
 
       {/* Deal Actions */}
       {deal.status === 'open' && (
-        <div className="flex items-center justify-between p-2 sm:p-3">
-          {/* TP/SL + Edit container */}
-          <div className="bg-[#F1F7FF] rounded-[20px] p-1 flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              <div
-                className={`rounded-l-[999px] h-6 min-h-6 px-3 flex items-center justify-center ${
-                  deal.takeProfit ? 'bg-[#2EBD85]' : 'bg-black/30'
-                }`}
-              >
-                <span className="text-xs font-extrabold uppercase text-white">TP</span>
-              </div>
-              <div
-                className={`rounded-r-[999px] h-6 min-h-6 px-3 flex items-center justify-center ${
-                  deal.stopLoss ? 'bg-[#F6465D]' : 'bg-black/30'
-                }`}
-              >
-                <span className="text-xs font-extrabold uppercase text-white">SL</span>
+        <div className="flex flex-col gap-2 p-2 sm:p-3">
+          {/* TP/SL + Edit container - top row */}
+          <div className="flex items-center justify-between">
+            <div className="bg-[#F1F7FF] rounded-[20px] p-1 flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <div
+                  className={`rounded-l-[999px] h-6 min-h-6 px-3 flex items-center justify-center ${
+                    deal.takeProfit ? 'bg-[#2EBD85]' : 'bg-black/30'
+                  }`}
+                >
+                  <span className="text-xs font-extrabold uppercase text-white">TP</span>
+                </div>
+                <div
+                  className={`rounded-r-[999px] h-6 min-h-6 px-3 flex items-center justify-center ${
+                    deal.stopLoss ? 'bg-[#F6465D]' : 'bg-black/30'
+                  }`}
+                >
+                  <span className="text-xs font-extrabold uppercase text-white">SL</span>
+                </div>
               </div>
             </div>
+            
             <button
               onClick={handleEdit}
               className="flex items-center gap-1 px-2 py-1 bg-white border border-gray-200 rounded-[20px] shadow-sm hover:bg-gray-50"
@@ -581,18 +634,18 @@ const DealCard = ({ deal, closingDeals, onEdit, onClose }: DealCardProps) => {
             </button>
           </div>
 
-          {/* Close button */}
+          {/* Close button - bottom row, full width */}
           <button
             onClick={handleClose}
             disabled={isClosing}
-            className={`px-2 py-1.5 rounded-[40px] text-sm font-bold transition-colors ${
+            className={`w-full px-4 py-2.5 rounded-[40px] text-sm font-bold transition-colors ${
               isClosing
                 ? 'bg-gray-400 text-white cursor-not-allowed'
                 : 'bg-[#0C54EA] text-white hover:bg-blue-700'
             }`}
             type="button"
           >
-            {isClosing ? (t('deal.closing') || 'Закрытие...') : (t('deal.closeTrade') || 'Закрыть')}
+            {isClosing ? (t('deal.closing') || 'Закрытие...') : (t('deal.closeTrade') || 'Закрыть сделку')}
           </button>
         </div>
       )}

@@ -4,7 +4,6 @@ import { useTranslation } from '@/lib/i18n';
 import { useUser } from '@/hooks/useUser';
 import { useTasks } from '@/hooks/useTasks';
 import { formatMoneyShort } from '@/lib/numberUtils';
-import { Grid } from '@/components/ui/grid';
 import { WheelFortune } from '@/components/WheelFortune';
 import TaskCard from '@/components/TaskCard';
 import { Box } from '@/components/Box';
@@ -329,7 +328,7 @@ export function Trials() {
   }, [forceUpdateUser]);
 
   return (
-    <Grid className="p-0">
+    <div className="p-0">
       <div className="flex flex-col min-h-screen bg-white pb-[calc(16px+env(safe-area-inset-bottom))]">
         {/* Top Navigation */}
         <div className="sticky top-0 z-10 bg-white flex items-center justify-between px-4 py-4">
@@ -428,6 +427,6 @@ export function Trials() {
           )}
         </div>
       </div>
-    </Grid>
+    </div>
   );
 }

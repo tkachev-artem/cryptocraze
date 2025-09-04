@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Progress } from '../components/ui/progress';
 import { PandaMentor } from '../components/PandaMentor';
-import { Grid } from '../components/ui/grid';
 import { apiRequest } from '../lib/queryClient';
 import { API_BASE_URL } from '@/lib/api';
 import { useTranslation } from '../lib/i18n';
@@ -153,7 +152,7 @@ export function Tutorial() {
   const progress = ((currentStep + 1) / tutorialSteps.length) * 100;
 
   return (
-    <Grid>
+    <div>
       {/* Header */}
       <header className="bg-white border-b">
         <div className="px-4 py-4">
@@ -315,6 +314,6 @@ export function Tutorial() {
           </div>
         </div>
       </main>
-    </Grid>
+    </div>
   );
 }

@@ -249,6 +249,7 @@ img {
   will-change: transform;
 }
 
+
 /* Оптимизация анимаций для медленных устройств */
 @media (prefers-reduced-motion: reduce) {
   * {

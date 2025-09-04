@@ -302,7 +302,7 @@ const ProTutorial: React.FC<ProTutorialProps> = ({
     if (needsFixedPositioning) {
       setContainerStyle(undefined);
       setContentStyle({ 
-        position: 'fixed', 
+        position: 'absolute', 
         top: `${TUTORIAL_CONFIG.POSITIONING.TOP_MARGIN}px`, 
         left: `${TUTORIAL_CONFIG.POSITIONING.LEFT_MARGIN}px` 
       });
@@ -523,7 +523,7 @@ function renderModalForStepType(
           backdropClassName="bg-transparent"
           containerClassName="items-start justify-center"
           contentClassName={`z-[${TUTORIAL_CONFIG.Z_INDEX.CONTENT}] bg-[#0C54EA] rounded-2xl p-4 w-[calc(100vw-28px)] max-w-[calc(100vw-28px)] shadow-xl sm:max-w-sm`}
-          contentStyle={{ position: 'fixed', top: '12px', left: '14px' }}
+          contentStyle={{ position: 'absolute', top: '12px', left: '14px' }}
         >
           <ButtonOnlyModalContent step={step} onProceed={onProceed} onSkip={onSkip} t={t} />
         </Modal>

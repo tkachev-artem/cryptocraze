@@ -4,7 +4,6 @@ import { API_BASE_URL } from '@/lib/api';
 import { useTranslation } from '@/lib/i18n';
 import { formatNumberShort } from '@/lib/numberUtils';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { Grid } from '@/components/ui/grid';
 import BottomNavigation from '../components/ui/BottomNavigation';
 import { Button } from '@/components/ui/button';
 import type { RewardTier } from '../../shared/schema';
@@ -301,8 +300,8 @@ const Rewards: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <Grid className="p-0 flex flex-col pb-[calc(56px+env(safe-area-inset-bottom))]">
-        <div className="sticky top-0 z-30 bg-white shadow-sm">
+      <div className="p-0 flex flex-col pb-[calc(56px+env(safe-area-inset-bottom))]">
+        <div className="sticky top-0 z-30 bg-white">
           <div className="flex items-center justify-between px-4 py-4">
             <button 
               onClick={handleBack} 
@@ -313,24 +312,6 @@ const Rewards: React.FC = () => {
               <span className="text-xl font-extrabold text-black">{t('nav.back')}</span>
             </button>
             
-            {/* Real-time updates toggle */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={toggleRealTimeUpdates}
-                className={`p-2 rounded-lg transition-colors ${
-                  isRealTimeEnabled 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'bg-gray-100 text-gray-600'
-                }`}
-                aria-label={`${isRealTimeEnabled ? 'Disable' : 'Enable'} real-time updates`}
-                title={`${isRealTimeEnabled ? 'Disable' : 'Enable'} real-time updates`}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
-            </div>
           </div>
 
           <div className="px-4 pb-4">
@@ -344,7 +325,7 @@ const Rewards: React.FC = () => {
             {state.userStats.accountMoney !== undefined && (
               <div className="mt-3 p-3 bg-blue-50 rounded-lg">
                 <div className="text-xs text-blue-600 font-medium">
-                  {t('rewards.currentBalance') || 'Current Balance'}: {formatLargeNumber(state.userStats.accountMoney)}
+                  {t('rewards.currentBalance') || 'Current Balance'}: ${formatLargeNumber(state.userStats.accountMoney)}
                   {state.userStats.rewardsCount !== undefined && (
                     <span className="ml-4">
                       {t('rewards.completedRewards') || 'Completed'}: {state.userStats.rewardsCount}
@@ -357,7 +338,7 @@ const Rewards: React.FC = () => {
         </div>
 
         <div className="flex-1 bg-white">
-          <div className="px-4 pb-6">
+          <div className="px-4 pb-12">
             {/* Loading State */}
             {state.loadingState === 'loading' && (
               <div className="space-y-2" role="status" aria-label="Loading rewards">
@@ -429,7 +410,7 @@ const Rewards: React.FC = () => {
                                   ? 'bg-green-50 border border-green-200'
                                   : 'bg-[#F1F7FF] hover:bg-[#E8F2FF]'
                               }`}
-                              aria-label={`Reward tier ${tier.level}: ${formatLargeNumber(tier.accountMoney)} account money required for ${formatLargeNumber(tier.reward)} reward${tier.proDays ? ` plus ${tier.proDays} pro days` : ''}`}
+                              aria-label={`Reward tier ${tier.level}: $${formatLargeNumber(tier.accountMoney)} account money required for $${formatLargeNumber(tier.reward)} reward${tier.proDays ? ` plus ${tier.proDays} pro days` : ''}`}
                             >
                               <span 
                                 className={`text-base font-bold w-[84px] ${
@@ -449,12 +430,12 @@ const Rewards: React.FC = () => {
                               </span>
                               
                               <span className="text-sm font-medium text-black flex-1 text-left pl-4">
-                                {formatLargeNumber(tier.accountMoney || 0)}
+                                ${formatLargeNumber(tier.accountMoney || 0)}
                               </span>
                               
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-medium text-black">
-                                  {formatLargeNumber(tier.reward || 0)}
+                                  ${formatLargeNumber(tier.reward || 0)}
                                 </span>
                                 {tier.proDays != null && (
                                   <span
@@ -474,7 +455,7 @@ const Rewards: React.FC = () => {
 
                     {/* Pagination */}
                     {totalPages > 1 && (
-                      <div className="mt-6 flex items-center justify-between" role="navigation" aria-label="Rewards pagination">
+                      <div className="mt-3 flex items-center justify-between" role="navigation" aria-label="Rewards pagination">
                         <Button
                           onClick={handlePrevPage}
                           disabled={currentPage === 1}
@@ -489,7 +470,6 @@ const Rewards: React.FC = () => {
                           <span className="text-sm text-gray-600">
                             {t('common.page') || 'Page'} {currentPage} {t('common.of') || 'of'} {totalPages}
                           </span>
-                          <span className="text-xs text-gray-500">({totalItems} total)</span>
                         </div>
                         
                         <Button
@@ -516,18 +496,12 @@ const Rewards: React.FC = () => {
                   </div>
                 )}
                 
-                {/* Last updated indicator */}
-                {state.lastUpdated > 0 && (
-                  <div className="mt-4 text-xs text-gray-400 text-center">
-                    {t('common.lastUpdated') || 'Last updated'}: {new Date(state.lastUpdated).toLocaleTimeString()}
-                  </div>
-                )}
               </>
             )}
           </div>
         </div>
         <BottomNavigation />
-      </Grid>
+      </div>
     </ErrorBoundary>
   );
 };

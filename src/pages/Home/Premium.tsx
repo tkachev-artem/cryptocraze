@@ -30,7 +30,7 @@ const Premium: FC = () => {
         }
 
         const telegramId = localStorage.getItem('telegramId') ?? '';
-        const amount = planType === 'month' ? 499 : 5199;
+        const amount = planType === 'month' ? 6.99 : 64.99;
 
         setIsLoading(true);
         try {
@@ -62,8 +62,8 @@ const Premium: FC = () => {
                 // Обновляем локально статус PRO
                 dispatch(updateUserData({ isPremium: true }));
                 toast({ title: t('premium.activated') || 'PRO активирован', description: t('premium.enabled') || 'Premium режим включён' });
-                // Возвращаемся в настройки после успешной активации
-                setTimeout(() => { void navigate('/home/settings'); }, 300);
+                // Возвращаемся на главную после успешной активации
+                setTimeout(() => { void navigate('/home'); }, 300);
             } else {
                 console.error('Неожиданная структура ответа при создании подписки:', data);
                 toast({
@@ -181,7 +181,7 @@ const Premium: FC = () => {
                             </div>
                             <div className={`font-bold text-2xl ${selectedPlan === 'month' ? 'text-white' : 'text-black'
                                 }`}>
-                                499,00 ₽
+$6.99
                             </div>
                         </div>
 
@@ -211,12 +211,12 @@ const Premium: FC = () => {
                                 <span className="text-black font-medium text-xs">{t('premium.yearly') || 'в год'}</span>
                                 </div>
                                 <div className="flex h-5 w-16 justify-center items-center rounded-[12px] bg-[#2EBD85]">
-                                    <span className="text-white font-semibold text-xs">-13%</span>
+                                    <span className="text-white font-semibold text-xs">-22%</span>
                                 </div>
                             </div>
                             <div className={`font-bold text-2xl ${selectedPlan === 'year' ? 'text-white' : 'text-black'
                                 }`}>
-                                5 199,00 ₽
+$64.99
                             </div>
                         </div>
 
@@ -236,8 +236,8 @@ const Premium: FC = () => {
             <div className="px-4">
                 <p className="text-black max-w-[255px] mx-auto font-medium text-xs text-center leading-relaxed">
                     {selectedPlan === 'month'
-                        ? t('premium.chargeMonthly') || '499,00 ₽ будут списываться автоматически каждый месяц до тех пор, пока вы не отмените подписку'
-                        : t('premium.chargeYearly') || '5 199,00 ₽ будут списываться автоматически каждый год до тех пор, пока вы не отмените подписку'
+                        ? t('premium.chargeMonthly') || '$6.99 will be charged automatically every month until you cancel your subscription'
+                        : t('premium.chargeYearly') || '$64.99 will be charged automatically every year until you cancel your subscription'
                     }
                 </p>
             </div>

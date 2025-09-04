@@ -20,12 +20,12 @@ export interface TaskTemplate {
 export const TASK_TEMPLATES: TaskTemplate[] = [
   // === ЛЕГКИЕ ЗАДАНИЯ (частые, короткие кулдауны) ===
   
-  // 1. Быстрый бонус
+  // 1. Ежедневный бонус
   {
-    id: 'quick_bonus',
-    taskType: 'quick_bonus',
-    title: 'Быстрый бонус',
-    description: 'Получите быструю награду',
+    id: 'daily_bonus',
+    taskType: 'daily_bonus',
+    title: 'Ежедневный бонус',
+    description: 'Получите ежедневный бонус за вход в приложение',
     rewardType: 'money',
     rewardAmount: '500',
     progressTotal: 1,
@@ -33,17 +33,17 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
     category: 'daily',
     rarity: 'common',
     expiresInHours: 6,
-    cooldownMinutes: 15, // 15 минут
-    maxPerDay: null,
+    cooldownMinutes: 30, // 30 минут
+    maxPerDay: 3,
     weight: 30
   },
 
-  // 2. Видео бонус
+  // 2. Просмотр рекламы
   {
-    id: 'video_bonus',
-    taskType: 'video_bonus',
-    title: 'Видео бонус',
-    description: 'Просмотрите видео и получите награду',
+    id: 'watch_ad',
+    taskType: 'watch_ad',
+    title: 'Просмотр рекламы',
+    description: 'Просмотрите рекламное видео для получения награды',
     rewardType: 'mixed',
     rewardAmount: '10_energy_800_money',
     progressTotal: 1,
@@ -52,16 +52,16 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
     rarity: 'common',
     expiresInHours: 12,
     cooldownMinutes: 20, // 20 минут
-    maxPerDay: null,
+    maxPerDay: 10,
     weight: 25
   },
 
-  // 3. Энергетический заряд
+  // 3. Получить энергию
   {
-    id: 'energy_boost',
-    taskType: 'energy_boost',
-    title: 'Энергетический заряд',
-    description: 'Накопите энергию для новых достижений',
+    id: 'collect_energy',
+    taskType: 'collect_energy',
+    title: 'Пополнить энергию',
+    description: 'Получите бесплатную энергию для торговли',
     rewardType: 'energy',
     rewardAmount: '20',
     progressTotal: 1,
@@ -69,19 +69,19 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
     category: 'energy',
     rarity: 'common',
     expiresInHours: 8,
-    cooldownMinutes: 30, // 30 минут
-    maxPerDay: null,
+    cooldownMinutes: 45, // 45 минут
+    maxPerDay: 5,
     weight: 25
   },
 
   // === СРЕДНИЕ ЗАДАНИЯ (умеренные кулдауны) ===
 
-  // 4. Крипто трейдер
+  // 4. Совершить сделки
   {
-    id: 'crypto_trader',
-    taskType: 'crypto_trader',
-    title: 'Крипто трейдер',
-    description: 'Сделайте 3 сделки',
+    id: 'complete_trades',
+    taskType: 'complete_trades',
+    title: 'Активный трейдер',
+    description: 'Совершите 3 торговые сделки',
     rewardType: 'mixed',
     rewardAmount: '15_energy_1200_money',
     progressTotal: 3,
@@ -90,16 +90,16 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
     rarity: 'rare',
     expiresInHours: 12,
     cooldownMinutes: 60, // 1 час
-    maxPerDay: null,
+    maxPerDay: 2,
     weight: 15
   },
 
-  // 5. Социальный бонус
+  // 5. Проверить профиль
   {
-    id: 'social_bonus',
-    taskType: 'social_bonus',
-    title: 'Социальный бонус',
-    description: 'Поделитесь достижением в социальных сетях',
+    id: 'check_profile',
+    taskType: 'check_profile',
+    title: 'Обновить профиль',
+    description: 'Посетите свой профиль и проверьте статистику',
     rewardType: 'coins',
     rewardAmount: '75',
     progressTotal: 1,
@@ -112,50 +112,50 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
     weight: 12
   },
 
-  // 6. Удачливый просмотр (рулетка)
+  // 6. Испытать удачу
   {
-    id: 'lucky_watch',
-    taskType: 'lucky_watch',
-    title: 'Удачливый просмотр',
-    description: 'Просмотрите 2 видео и испытайте удачу в рулетке',
+    id: 'lucky_spin',
+    taskType: 'lucky_spin',
+    title: 'Испытать удачу',
+    description: 'Крутите рулетку фортуны для получения случайного приза',
     rewardType: 'wheel',
     rewardAmount: 'random',
-    progressTotal: 2,
-    icon: '/trials/video.svg',
-    category: 'video',
+    progressTotal: 1,
+    icon: '/wheel/coins.svg',
+    category: 'daily',
     rarity: 'rare',
     expiresInHours: 8,
     cooldownMinutes: 45, // 45 минут
-    maxPerDay: null,
-    weight: 10
+    maxPerDay: 3,
+    weight: 18
   },
 
   // === РЕДКИЕ ЗАДАНИЯ (долгие кулдауны, большие награды) ===
 
-  // 7. Ежедневный миллионер
+  // 7. Прибыльный день
   {
-    id: 'daily_millionaire',
-    taskType: 'daily_millionaire',
-    title: 'Ежедневный миллионер',
-    description: 'Заработайте 5000$ за один день',
+    id: 'profitable_day',
+    taskType: 'profitable_day',
+    title: 'Прибыльный день',
+    description: 'Заработайте $1000 прибыли за день',
     rewardType: 'mixed',
     rewardAmount: '25_energy_2500_money',
-    progressTotal: 5000,
+    progressTotal: 1000,
     icon: '/trials/crypto.svg',
     category: 'trade',
     rarity: 'epic',
     expiresInHours: 24,
     cooldownMinutes: 240, // 4 часа
-    maxPerDay: 2,
+    maxPerDay: 1,
     weight: 8
   },
 
-  // 8. Крипто мастер
+  // 8. Мастер торговли
   {
-    id: 'crypto_master',
-    taskType: 'crypto_master',
-    title: 'Крипто мастер',
-    description: 'Проведите 10 успешных сделок',
+    id: 'trading_master',
+    taskType: 'trading_master',
+    title: 'Мастер торговли',
+    description: 'Совершите 10 сделок подряд',
     rewardType: 'mixed',
     rewardAmount: '30_energy_3000_money',
     progressTotal: 10,
@@ -188,12 +188,12 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
 
   // === ДОПОЛНИТЕЛЬНЫЕ ЛЕГКИЕ ЗАДАНИЯ ===
 
-  // 10. Монеты за клик
+  // 10. Получить бонус монеты
   {
-    id: 'click_coins',
-    taskType: 'click_coins',
-    title: 'Монеты за клик',
-    description: 'Нажмите на кнопку и получите монеты',
+    id: 'bonus_coins',
+    taskType: 'bonus_coins',
+    title: 'Бонус монеты',
+    description: 'Получите бонусные монеты за активность',
     rewardType: 'coins',
     rewardAmount: '35',
     progressTotal: 1,
@@ -202,16 +202,16 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
     rarity: 'common',
     expiresInHours: 4,
     cooldownMinutes: 25, // 25 минут
-    maxPerDay: null,
+    maxPerDay: 5,
     weight: 28
   },
 
-  // 11. Мини энергия
+  // 11. Малая энергия
   {
-    id: 'mini_energy',
-    taskType: 'mini_energy',
-    title: 'Мини энергия',
-    description: 'Получите немного энергии',
+    id: 'small_energy',
+    taskType: 'small_energy',
+    title: 'Малый заряд энергии',
+    description: 'Восстановите немного энергии для торговли',
     rewardType: 'energy',
     rewardAmount: '12',
     progressTotal: 1,
@@ -219,17 +219,17 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
     category: 'energy',
     rarity: 'common',
     expiresInHours: 6,
-    cooldownMinutes: 18, // 18 минут
-    maxPerDay: null,
+    cooldownMinutes: 30, // 30 минут
+    maxPerDay: 8,
     weight: 26
   },
 
-  // 12. Быстрые деньги
+  // 12. Стартовый капитал
   {
-    id: 'quick_money',
-    taskType: 'quick_money',
-    title: 'Быстрые деньги',
-    description: 'Заработайте деньги быстро',
+    id: 'starter_cash',
+    taskType: 'starter_cash',
+    title: 'Стартовый капитал',
+    description: 'Получите стартовые средства для торговли',
     rewardType: 'money',
     rewardAmount: '750',
     progressTotal: 1,
@@ -237,19 +237,19 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
     category: 'daily',
     rarity: 'common',
     expiresInHours: 5,
-    cooldownMinutes: 22, // 22 минуты
-    maxPerDay: null,
+    cooldownMinutes: 40, // 40 минут
+    maxPerDay: 4,
     weight: 24
   },
 
   // === ДОПОЛНИТЕЛЬНЫЕ ЗАДАНИЯ С РУЛЕТКОЙ ===
 
-  // 13. Колесо фортуны
+  // 13. Колесо удачи
   {
-    id: 'fortune_wheel',
-    taskType: 'fortune_wheel',
-    title: '🎯 Колесо фортуны',
-    description: 'Испытайте удачу и выиграйте крупный приз!',
+    id: 'luck_wheel',
+    taskType: 'luck_wheel',
+    title: 'Колесо удачи',
+    description: 'Крутите колесо для получения случайного приза',
     rewardType: 'wheel',
     rewardAmount: 'random',
     progressTotal: 1,
@@ -258,98 +258,62 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
     rarity: 'common',
     expiresInHours: 8,
     cooldownMinutes: 30,
-    maxPerDay: null,
+    maxPerDay: 5,
     weight: 20
   },
 
-  // 14. Супер рулетка
+  // 14. Большое колесо
   {
-    id: 'super_wheel',
-    taskType: 'super_wheel',
-    title: '🎰 Супер рулетка',
-    description: 'Выполните 3 клика для супер приза!',
+    id: 'big_wheel',
+    taskType: 'big_wheel',
+    title: 'Большое колесо',
+    description: 'Крутите премиум рулетку с увеличенными призами',
     rewardType: 'wheel',
     rewardAmount: 'premium_random',
-    progressTotal: 3,
+    progressTotal: 1,
     icon: '/wheel/coins.svg',
     category: 'premium',
     rarity: 'rare',
     expiresInHours: 6,
-    cooldownMinutes: 45,
-    maxPerDay: null,
+    cooldownMinutes: 60,
+    maxPerDay: 3,
     weight: 15
   },
 
-  // 15. Магическое колесо
+  // 15. Быстрое колесо
   {
-    id: 'magic_wheel',
-    taskType: 'magic_wheel',
-    title: '✨ Магическое колесо',
-    description: 'Магические силы удваивают ваш шанс!',
-    rewardType: 'wheel',
-    rewardAmount: 'random',
-    progressTotal: 2,
-    icon: '/wheel/coins.svg',
-    category: 'daily',
-    rarity: 'rare',
-    expiresInHours: 4,
-    cooldownMinutes: 20,
-    maxPerDay: null,
-    weight: 18
-  },
-
-  // 16. Джекпот-рулетка
-  {
-    id: 'jackpot_wheel',
-    taskType: 'jackpot_wheel',
-    title: '💎 Джекпот-рулетка',
-    description: 'Шанс выиграть максимальный приз 10,000$!',
-    rewardType: 'wheel',
-    rewardAmount: 'premium_random',
-    progressTotal: 5,
-    icon: '/wheel/coins.svg',
-    category: 'premium',
-    rarity: 'epic',
-    expiresInHours: 12,
-    cooldownMinutes: 120, // 2 часа
-    maxPerDay: 1,
-    weight: 8
-  },
-
-  // 17. Быстрая удача
-  {
-    id: 'quick_luck',
-    taskType: 'quick_luck',
-    title: '⚡ Быстрая удача',
-    description: 'Один клик - мгновенный приз!',
+    id: 'quick_wheel',
+    taskType: 'quick_wheel',
+    title: 'Быстрое колесо',
+    description: 'Получите быстрый приз от рулетки',
     rewardType: 'wheel',
     rewardAmount: 'random',
     progressTotal: 1,
     icon: '/wheel/coins.svg',
     category: 'daily',
     rarity: 'common',
-    expiresInHours: 3,
-    cooldownMinutes: 15,
-    maxPerDay: null,
+    expiresInHours: 4,
+    cooldownMinutes: 20,
+    maxPerDay: 6,
     weight: 22
   },
 
-  // 18. Золотая рулетка
+  // 16. Джекпот рулетка
   {
-    id: 'golden_wheel',
-    taskType: 'golden_wheel',
-    title: '🏆 Золотая рулетка',
-    description: 'Крутите золотое колесо для больших выигрышей!',
+    id: 'jackpot_spin',
+    taskType: 'jackpot_spin',
+    title: 'Джекпот рулетка',
+    description: 'Шанс выиграть крупный приз в премиум рулетке',
     rewardType: 'wheel',
     rewardAmount: 'premium_random',
-    progressTotal: 4,
+    progressTotal: 1,
     icon: '/wheel/coins.svg',
     category: 'premium',
-    rarity: 'legendary',
-    expiresInHours: 10,
-    cooldownMinutes: 180, // 3 часа
-    maxPerDay: 1,
-    weight: 5
+    rarity: 'epic',
+    expiresInHours: 12,
+    cooldownMinutes: 120, // 2 часа
+    maxPerDay: 2,
+    weight: 8
   }
 ];
 

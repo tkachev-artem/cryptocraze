@@ -82,7 +82,20 @@ export const useLivePrices = (inputSymbols: string[]): { prices: PricesState; is
         const batch = batchRef.current
         if (Object.keys(batch).length === 0) return
         // Применяем накопленные изменения за один setState
-        setPrices((prev) => ({ ...prev, ...batch }))
+        setPrices((prev) => {
+          // Проверяем, есть ли реальные изменения
+          let hasChanges = false;
+          for (const [symbol, newData] of Object.entries(batch)) {
+            const oldData = prev[symbol];
+            if (!oldData || oldData.price !== newData.price || oldData.change !== newData.change) {
+              hasChanges = true;
+              break;
+            }
+          }
+          
+          // Возвращаем новый объект только если есть изменения
+          return hasChanges ? { ...prev, ...batch } : prev;
+        })
         batchRef.current = {}
       })
     }

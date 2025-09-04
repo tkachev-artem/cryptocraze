@@ -6,6 +6,7 @@ import { storage } from '../storage.js';
 import { applyAutoRewards } from './autoRewards.js';
 import { workerManager } from './workers/workerManager.js';
 import AnalyticsLogger from '../middleware/analyticsLogger.js';
+import { notificationService } from './notifications.js';
 
 export const dealsService = {
   async openDeal({ userId, symbol, direction, amount, multiplier, takeProfit, stopLoss }: {
@@ -115,6 +116,15 @@ export const dealsService = {
         console.error(`[dealsService] Failed to add order ${deal.id} to monitoring:`, error);
         // Don't fail the deal opening, just log the error
       }
+    }
+
+    // Create notification for deal opened
+    try {
+      await notificationService.createTradeOpenedNotification(userId, deal.id, symbol, amount, direction);
+      console.log(`[dealsService] Created trade opened notification for deal ${deal.id}`);
+    } catch (error) {
+      console.error(`[dealsService] Failed to create trade opened notification:`, error);
+      // Don't fail the deal opening, just log the error
     }
 
     return {
@@ -240,6 +250,15 @@ export const dealsService = {
     console.log(`[dealsService] Вызываем updateCryptoKingTasks для userId=${userId}, прибыль=${finalProfit}`);
     await this.updateCryptoKingTasks(userId, finalProfit);
     console.log(`[dealsService] updateCryptoKingTasks завершен`);
+
+    // Create notification for deal closed
+    try {
+      await notificationService.createTradeClosedNotification(userId, deal.id, deal.symbol, finalProfit);
+      console.log(`[dealsService] Created trade closed notification for deal ${deal.id}`);
+    } catch (error) {
+      console.error(`[dealsService] Failed to create trade closed notification:`, error);
+      // Don't fail the deal closing, just log the error
+    }
 
     return {
       id: deal.id,

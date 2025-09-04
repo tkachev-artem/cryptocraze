@@ -70,7 +70,7 @@ const ProChartModal: React.FC<ProChartModalProps> = ({
 
   return (
     <>
-    <div className="fixed inset-0 z-[60] flex items-end justify-center pointer-events-none">
+    <div className="absolute inset-0 z-[60] flex items-end justify-center pointer-events-none">
       {/* Backdrop that dims everything EXCEPT the area reserved above bottom controls */}
       <div
         className="absolute left-0 right-0 top-0 bg-black/40 pointer-events-auto"

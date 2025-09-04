@@ -126,13 +126,14 @@ export function setupSimpleOAuth(app: Express) {
       
       if (user) {
         console.log('👋 Existing user logging in');
-        // Update profile data
+        // Update profile data, but keep custom avatar if user uploaded one
         user = await storage.upsertUser({
           ...user,
           email: profile.email,
           firstName: profile.given_name,
           lastName: profile.family_name,
-          profileImageUrl: profile.picture,
+          // Only update profileImageUrl if user doesn't have a custom one (uploaded to /uploads)
+          profileImageUrl: user.profileImageUrl?.startsWith('/uploads') ? user.profileImageUrl : profile.picture,
           updatedAt: new Date(),
         });
       } else {

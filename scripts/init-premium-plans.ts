@@ -12,8 +12,8 @@ const initPremiumPlans = async () => {
         name: 'Premium Месяц',
         description: 'Premium подписка на 1 месяц',
         planType: 'month',
-        price: '299.00',
-        currency: 'RUB',
+        price: '6.99',
+        currency: 'USD',
         features: [
           'Расширенная аналитика',
           'Приоритетная поддержка',
@@ -27,8 +27,8 @@ const initPremiumPlans = async () => {
         name: 'Premium Год',
         description: 'Premium подписка на 1 год (экономия 20%)',
         planType: 'year',
-        price: '2999.00',
-        currency: 'RUB',
+        price: '64.99',
+        currency: 'USD',
         features: [
           'Все функции месячного плана',
           'Экономия 20%',

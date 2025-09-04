@@ -3,6 +3,7 @@ import { userTasks, users } from '../../shared/schema';
 import { eq, and, count, desc, gte, lt } from 'drizzle-orm';
 import { EnergyService } from './energyService.js';
 import { TaskTemplateService as StaticTaskTemplateService } from './taskTemplates.js';
+import { notificationService } from './notifications.js';
 
 export interface TaskReward {
   type: 'money' | 'coins' | 'energy' | 'mixed' | 'wheel';
@@ -294,6 +295,22 @@ export class TaskService {
     }).returning();
 
     console.log(`[TaskService] Created task with ID: ${newTask.id}, expires: ${expiresAt?.toISOString()}`);
+
+    // Create notification for new daily task (only for certain task types)
+    const notifiableTaskTypes = [
+      'daily_bonus', 'watch_ad', 'collect_energy', 'complete_trades', 
+      'check_profile', 'profitable_day', 'trading_master', 'luck_wheel', 
+      'big_wheel', 'jackpot_spin', 'daily_trade'
+    ];
+    if (notifiableTaskTypes.includes(options.taskType)) {
+      try {
+        await notificationService.createDailyTaskNotification(userId, options.title, options.description);
+        console.log(`[TaskService] Created notification for new daily task: ${options.title}`);
+      } catch (error) {
+        console.error(`[TaskService] Failed to create notification for daily task:`, error);
+        // Don't fail the task creation, just log the error
+      }
+    }
 
     const timeRemaining = expiresAt ? Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)) : null;
 

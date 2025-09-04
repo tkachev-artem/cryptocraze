@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '@/lib/i18n';
 import { useUser } from '@/hooks/useUser';
 import { useTasks } from '@/hooks/useTasks';
+import { usePremium } from '@/hooks/usePremium';
 import { formatMoneyShort } from '@/lib/numberUtils';
 import { WheelFortune } from '@/components/WheelFortune';
 import TaskCard from '@/components/TaskCard';
@@ -148,6 +149,7 @@ export function Trials() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { user } = useUser();
+  const { isPremium } = usePremium();
   const dispatch = useAppDispatch();
   const {
     tasks,
@@ -265,15 +267,10 @@ export function Trials() {
       console.log('🎰 Trials: Результат API рулетки:', result);
 
       if (result.success) {
-        // Завершаем активное задание если есть
-        if (activeWheelTaskId) {
-          const wheelTask = tasks.find(task => task.id === activeWheelTaskId);
-          if (wheelTask && wheelTask.status === 'active') {
-            console.log('🎰 Trials: Завершаем задание с рулеткой:', wheelTask.id);
-            await completeTask(wheelTask.id);
-          }
-        }
-
+        // FIXED: Just return the wheel result - no task manipulation
+        // The task should be completed via the normal claim button flow
+        console.log('🎰 Trials: Wheel spun successfully, returning result');
+        
         return {
           prize: result.prize,
           index: result.index
@@ -295,8 +292,24 @@ export function Trials() {
     userId: user?.id,
   }), [user?.balance, user?.coins, user?.energyTasksBonus, user?.id]);
 
-  // Мемоизируем список заданий
-  const tasksList = useMemo(() => tasks.filter(task => task.status !== 'completed' && !hiddenTaskIds.has(task.id)), [tasks, hiddenTaskIds]);
+  // Мемоизируем список заданий с фильтрацией премиум заданий
+  const tasksList = useMemo(() => 
+    tasks.filter(task => {
+      // Исключаем завершенные и скрытые задания
+      if (task.status === 'completed' || hiddenTaskIds.has(task.id)) {
+        return false;
+      }
+      
+      // Исключаем премиум задания для пользователей без премиума
+      const isPremiumTask = (task as any).taskType?.startsWith('premium_');
+      if (isPremiumTask && !isPremium) {
+        return false;
+      }
+      
+      return true;
+    }), 
+    [tasks, hiddenTaskIds, isPremium]
+  );
 
   // Fix memory leaks and ensure proper cleanup
   useEffect(() => {
@@ -354,7 +367,7 @@ export function Trials() {
         </div>
 
         {/* Прогресс уровня */}
-        <div className="px-4 py-4 pb-8">
+        <div className="sticky top-[76px] z-10 bg-white px-4 py-4 pb-8">
           <LevelProgress 
             energyProgress={userData.energyProgress} 
             onRedBoxClick={handleRedBoxClick}

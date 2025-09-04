@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../lib/i18n';
 import { useTaskTranslation } from '../lib/translationUtils';
 import type {
@@ -25,6 +26,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 }) => {
   const { t } = useTranslation();
   const { translateTask } = useTaskTranslation();
+  const navigate = useNavigate();
   
   // Component state management with proper typing
   const [componentState, setComponentState] = useState<TaskCardState>({
@@ -64,14 +66,18 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
     const isCompleted = task.status === 'completed';
     const isProgressComplete = task.progress.current >= task.progress.total && task.progress.total > 0;
     
-    // Resolve conflicting flags - prioritize server status over local flags
+    // UNIVERSAL CLAIM LOGIC - ALL TASKS MUST BE CLAIMABLE WHEN PROGRESS IS COMPLETE
     const canClaimReward = (
       task.isCompleted === true && task.rewardClaimed === false
     ) || (
       isActive && isProgressComplete
     ) || (
       isCompleted
+    ) || (
+      // FORCE CLAIMABLE: Any active task with full progress should be claimable
+      isActive && task.progress.current >= task.progress.total && task.progress.total > 0
     );
+    
     
     return {
       isActive,
@@ -83,6 +89,24 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 
   // Use computed task state instead of separate variables
   const { isActive, isCompleted, isProgressComplete, canClaimReward } = taskState;
+  
+  // Debug logging for claim button logic
+  React.useEffect(() => {
+    console.log(`[TaskCard] canClaimReward calculation for ${(task as any).taskType}:`, {
+      'task.isCompleted': task.isCompleted,
+      'task.rewardClaimed': task.rewardClaimed,
+      'condition1': task.isCompleted === true && task.rewardClaimed === false,
+      'isActive': isActive,
+      'isProgressComplete': isProgressComplete,
+      'condition2': isActive && isProgressComplete,
+      'isCompleted': isCompleted,
+      'condition3': isCompleted,
+      'finalCanClaimReward': canClaimReward,
+      'progress.current': task.progress.current,
+      'progress.total': task.progress.total,
+      'taskStatus': task.status
+    });
+  }, [task, isActive, isCompleted, isProgressComplete, canClaimReward]);
   
   // Destructure component state for easier access
   const { isLoading, isAnimating, isSlidingOut, isSlidingIn, isSimulatingAd, apiError } = componentState;
@@ -124,16 +148,93 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
   // Переводим задание
   const translatedTask = useMemo(() => translateTask(task), [task, translateTask]);
 
-  // Проверяем специальные задания
-  const isDailyBonus = useMemo(() => translatedTask.title === t('task.dailyBonus'), [translatedTask.title, t]);
-  const isVideoBonus = useMemo(() => translatedTask.title === t('task.videoBonus'), [translatedTask.title, t]);
-  const isVideoBonus2 = useMemo(() => translatedTask.title === t('task.videoBonus2'), [translatedTask.title, t]);
-  const isDealOfDay = useMemo(() => translatedTask.title === t('task.dealOfDay'), [translatedTask.title, t]);
+  // Проверяем типы заданий по taskType
+  const isVideoTask = useMemo(() => {
+    const result = (task as any).taskType?.startsWith('video_');
+    console.log(`[TaskCard] isVideoTask for ${(task as any).taskType}:`, result);
+    return result;
+  }, [(task as any).taskType]);
+  const isDailyTask = useMemo(() => {
+    const result = (task as any).taskType?.startsWith('daily_');
+    console.log(`[TaskCard] isDailyTask for ${(task as any).taskType}:`, result);
+    return result;
+  }, [(task as any).taskType]);
+  const isTradeTask = useMemo(() => {
+    const taskType = (task as any).taskType;
+    // Check both prefix and if taskType contains 'trade' or 'trader' anywhere
+    const result = taskType?.startsWith('trade_') || taskType?.includes('trade');
+    console.log(`[TaskCard] isTradeTask for ${taskType}:`, result);
+    return result;
+  }, [(task as any).taskType]);
+  const isPremiumTask = useMemo(() => {
+    const result = (task as any).taskType?.startsWith('premium_');
+    console.log(`[TaskCard] isPremiumTask for ${(task as any).taskType}:`, result);
+    return result;
+  }, [(task as any).taskType]);
 
-  // Simplified pickup button logic
-  const shouldShowPickupButton = useMemo(() => {
-    return (isVideoBonus || isVideoBonus2) && isActive && canClaimReward;
-  }, [isVideoBonus, isVideoBonus2, isActive, canClaimReward]);
+  // Определяем какую кнопку показать - ALL TASKS MUST SHOW PICKUP BUTTON
+  const getButtonConfig = useMemo(() => {
+    const result = (() => {
+      if (!isActive) return null;
+      
+      // FOR ALL TASK TYPES: Show claim button when ready, otherwise show action button
+      if (canClaimReward) {
+        return { text: t('common.collect'), action: 'claim' };
+      }
+      
+      // Show action button for incomplete tasks
+      if (isVideoTask) {
+        return { text: t('common.execute'), action: 'video' };
+      }
+      
+      if (isTradeTask) {
+        return { text: t('common.execute'), action: 'navigate' };
+      }
+      
+      // Daily and Premium tasks need execution button for manual activation  
+      const containsDaily = (task as any).taskType?.includes('daily');
+      const containsPremium = (task as any).taskType?.includes('premium');
+      console.log(`[TaskCard] Daily/Premium check for ${(task as any).taskType}: isDailyTask=${isDailyTask}, isPremiumTask=${isPremiumTask}, containsDaily=${containsDaily}, containsPremium=${containsPremium}, isTradeTask=${isTradeTask}`);
+      
+      if ((isDailyTask || containsDaily) && !isTradeTask) {
+        console.log(`[TaskCard] Daily task - showing execute button for manual activation`);
+        return { text: t('common.execute'), action: 'daily' };
+      }
+      
+      // Premium tasks also need execution button for manual activation
+      if ((isPremiumTask || containsPremium) && !isTradeTask && !isDailyTask) {
+        console.log(`[TaskCard] Premium task - showing execute button for manual activation`);
+        return { text: t('common.execute'), action: 'premium' };
+      }
+
+      // For other tasks - show claim button (they should auto-complete)
+      return { text: t('common.collect'), action: 'claim' };
+    })();
+    
+    console.log(`[TaskCard] Button config for ${(task as any).taskType}:`, {
+      isActive,
+      isVideoTask,
+      canClaimReward,
+      isDailyTask,
+      isPremiumTask,
+      isTradeTask,
+      isProgressComplete,
+      'progress.current': task.progress.current,
+      'progress.total': task.progress.total,
+      taskStatus: task.status,
+      isCompleted: task.isCompleted,
+      rewardClaimed: task.rewardClaimed,
+      result
+    });
+    
+    return result;
+  }, [isVideoTask, isTradeTask, isDailyTask, isPremiumTask, isActive, canClaimReward, isProgressComplete, task.taskType, task.reward.type, t]);
+
+  // Функция навигации для торговых заданий
+  const handleNavigateToTrading = useCallback(() => {
+    // Перенаправляем на страницу торговли
+    navigate('/trade');
+  }, [navigate]);
 
   const getRewardIcon = useCallback((type: string) => {
     switch (type) {
@@ -162,11 +263,10 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
       return;
     }
     
-    // For wheel tasks - open wheel modal instead of completing directly
+    // For wheel tasks - complete the task first, THEN open wheel modal
     if (task.reward.type === 'wheel') {
-      console.log('[TaskCard] Opening wheel for task:', task.title);
-      onWheelOpen?.(task.id);
-      return;
+      console.log('[TaskCard] Completing wheel task first, then will open wheel:', task.title);
+      // Don't return early - let the task complete normally, then open wheel
     }
     
     console.log('[TaskCard] Completing task:', {
@@ -192,10 +292,16 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
         console.log('[TaskCard] 🎡 WheelResult received:', result.wheelResult);
       }
       
-      // Task will disappear automatically from the list
-      setTimeout(() => {
-        setComponentState(prev => ({ ...prev, isSlidingOut: true }));
-      }, SLIDE_OUT_DELAY_MS);
+      // IMPORTANT: For wheel tasks, open wheel modal AFTER task completion
+      if (task.reward.type === 'wheel') {
+        console.log('[TaskCard] Task completed, now opening wheel modal for reward');
+        onWheelOpen?.(task.id);
+      }
+      
+      // Task will NOT disappear automatically - user must see the completed state
+      // setTimeout(() => {
+      //   setComponentState(prev => ({ ...prev, isSlidingOut: true }));
+      // }, SLIDE_OUT_DELAY_MS);
       
     } catch (error) {
       console.error('[TaskCard] Error completing task:', error);
@@ -253,6 +359,14 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
       
       console.log(`[TaskCard] Video ad completed successfully for ${task.title}`);
       
+      // Reset loading state after successful completion
+      setComponentState(prev => ({
+        ...prev,
+        isSimulatingAd: false,
+        isLoading: false,
+        apiError: null
+      }));
+      
     } catch (error) {
       console.error(`[TaskCard] Error during video ad simulation:`, error);
       const errorMessage = error instanceof Error ? error.message : 'Video ad failed';
@@ -269,6 +383,45 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 
   // Claim reward for completed task (same as handleComplete for simplicity)
   const handleClaimReward = handleComplete;
+
+  // Handle daily task completion
+  const handleDailyTaskComplete = useCallback(async () => {
+    if (componentState.isLoading || !isActive || isUpdatingRef.current) {
+      console.log(`[TaskCard] Cannot complete daily task - conditions not met for ${task.title}`);
+      return;
+    }
+
+    console.log(`[TaskCard] Executing daily task: ${task.title}`);
+    
+    isUpdatingRef.current = true;
+    setComponentState(prev => ({
+      ...prev,
+      isLoading: true,
+      isAnimating: true,
+      apiError: null
+    }));
+
+    try {
+      // For daily tasks, we complete them immediately when user clicks execute
+      const result = await onComplete(task.id);
+      console.log('[TaskCard] Daily task completed successfully');
+      
+    } catch (error) {
+      console.error('[TaskCard] Error completing daily task:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Daily task completion failed';
+      setComponentState(prev => ({
+        ...prev,
+        apiError: errorMessage,
+        isLoading: false
+      }));
+      isUpdatingRef.current = false;
+      setTimeout(() => {
+        setComponentState(prev => ({ ...prev, isAnimating: false }));
+      }, LOADING_ANIMATION_DURATION_MS);
+    } finally {
+      isUpdatingRef.current = false;
+    }
+  }, [isLoading, isActive, task.id, task.title, onComplete]);
 
   // Enhanced task replacement with better error handling
   const handleReplace = useCallback(async () => {
@@ -293,10 +446,10 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
       const replaced = await onReplace(task.id);
       if (replaced) {
         console.log('✅ TaskCard: Task replaced successfully');
-        // Start disappearing animation only on successful replacement
-        setTimeout(() => {
-          setComponentState(prev => ({ ...prev, isSlidingOut: true }));
-        }, 100);
+        // Task replacement successful - no automatic disappearing
+        // setTimeout(() => {
+        //   setComponentState(prev => ({ ...prev, isSlidingOut: true }));
+        // }, 100);
       } else {
         console.log('ℹ️ TaskCard: Replacement not performed (limits). Showing feedback animation');
         // Light feedback animation, card stays in place
@@ -425,7 +578,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 
         {/* Правая часть - Информация о задании */}
         <div className={`flex-1 p-3 flex flex-col justify-between ${
-          (canClaimReward || (isDailyBonus && isActive) || shouldShowPickupButton) ? 'bg-[#0C54EA26]' : ''
+          canClaimReward ? 'bg-[#0C54EA26]' : ''
         }`}>
           {/* Error message display */}
           {apiError && (
@@ -441,8 +594,8 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
             <p className="text-xs font-semibold text-black opacity-80">{translatedTask.description}</p>
           </div>
 
-          {/* Прогресс бар или кнопки */}
-          {isActive && !isDailyBonus && !isVideoBonus && !isVideoBonus2 && !canClaimReward ? (
+          {/* Прогресс бар только для заданий с прогрессом */}
+          {(isVideoTask || isTradeTask) ? (
             <div className="space-y-2">
               <div className="flex items-center justify-end">
                 <span className="text-xs font-bold text-[#0C54EA]">
@@ -464,123 +617,37 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                 />
               </div>
             </div>
-          ) : isDailyBonus && isActive && !canClaimReward ? (
+          ) : null}
+
+          {/* Кнопки действий */}
+          {getButtonConfig ? (
             <div className="flex justify-start mt-4">
               <button
                 onClick={() => {
-                  void handleComplete();
-                }}
-                disabled={isLoading}
-                className="flex w-[120px] h-[28px] p-0 flex-col justify-center items-center gap-[8px] flex-shrink-0 rounded-[100px] bg-[#0C54EA] text-white font-bold text-base hover:bg-[#0A4BC8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <div className="flex items-center justify-center">
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />
-                    <span className="text-xs">...</span>
-                  </div>
-                ) : (
-                  t('common.claim')
-                )}
-              </button>
-            </div>
-          ) : (isVideoBonus || isVideoBonus2) && isActive && !canClaimReward ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-end">
-                <span className="text-xs font-bold text-[#0C54EA]">
-                  {task.progress.current || 0}/{task.progress.total || 1}
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-                <div 
-                  className={progressBarClassName}
-                  role="progressbar"
-                  aria-label={t('task.progressLabel')}
-                  aria-valuenow={Number(progress.toFixed(0))}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  style={{ 
-                    width: `${progress.toString()}%`,
-                    transition: 'width 0.5s ease-out'
-                  }}
-                />
-              </div>
-              <div className="flex mt-2">
-                <button
-                  onClick={() => {
+                  if (getButtonConfig.action === 'claim') {
+                    void handleComplete();
+                  } else if (getButtonConfig.action === 'video') {
                     void handleVideoStart();
-                  }}
-                  disabled={isLoading || isSimulatingAd}
-                  className="flex w-[120px] h-[28px] p-0 flex-col justify-center items-center gap-[8px] flex-shrink-0 rounded-[100px] bg-[#0C54EA] text-white font-bold text-base hover:bg-[#0A4BC8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading || isSimulatingAd ? (
-                    <div className="flex items-center justify-center">
-                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />
-                      <span className="text-xs">{isSimulatingAd ? 'Ad...' : '...'}</span>
-                    </div>
-                  ) : (
-                    t('common.execute')
-                  )}
-                </button>
-              </div>
-            </div>
-          ) : shouldShowPickupButton ? (
-            <div className="flex justify-start mt-4">
-              <button
-                onClick={() => {
-                  if (isVideoBonus2) {
-                    onWheelOpen?.(task.id);
-                  } else {
-                    void handleClaimReward();
+                  } else if (getButtonConfig.action === 'navigate') {
+                    handleNavigateToTrading();
+                  } else if (getButtonConfig.action === 'daily') {
+                    // Daily tasks are completed immediately when user clicks execute
+                    void handleDailyTaskComplete();
+                  } else if (getButtonConfig.action === 'premium') {
+                    // Premium tasks are completed immediately when user clicks execute
+                    void handleDailyTaskComplete(); // Use the same handler as daily tasks
                   }
                 }}
-                disabled={isLoading}
+                disabled={isLoading || (getButtonConfig.action === 'video' && isSimulatingAd)}
                 className="flex w-[120px] h-[28px] p-0 flex-col justify-center items-center gap-[8px] flex-shrink-0 rounded-[100px] bg-[#0C54EA] text-white font-bold text-base hover:bg-[#0A4BC8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? (
+                {isLoading || (getButtonConfig.action === 'video' && isSimulatingAd) ? (
                   <div className="flex items-center justify-center">
                     <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />
-                    <span className="text-xs">...</span>
+                    <span className="text-xs">{getButtonConfig.action === 'video' && isSimulatingAd ? 'Ad...' : '...'}</span>
                   </div>
                 ) : (
-                  isVideoBonus2 ? t('wheel.spin') : t('common.claim')
-                )}
-              </button>
-            </div>
-          ) : (isActive && canClaimReward) ? (
-            <div className="flex justify-start mt-4">
-              <button
-                onClick={() => {
-                  void handleComplete();
-                }}
-                disabled={isLoading}
-                className="flex w-[120px] h-[28px] p-0 flex-col justify-center items-center gap-[8px] flex-shrink-0 rounded-[100px] bg-[#0C54EA] text-white font-bold text-base hover:bg-[#0A4BC8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <div className="flex items-center justify-center">
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />
-                    <span className="text-xs">...</span>
-                  </div>
-                ) : (
-                  t('common.claim')
-                )}
-              </button>
-            </div>
-          ) : (isDailyBonus || isDealOfDay) && canClaimReward ? (
-            <div className="flex justify-start mt-4">
-              <button
-                onClick={() => {
-                  void handleComplete();
-                }}
-                disabled={isLoading}
-                className="flex w-[120px] h-[28px] p-0 flex-col justify-center items-center gap-[8px] flex-shrink-0 rounded-[100px] bg-[#0C54EA] text-white font-bold text-base hover:bg-[#0A4BC8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <div className="flex items-center justify-center">
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />
-                    <span className="text-xs">...</span>
-                  </div>
-                ) : (
-                  t('common.claim')
+                  getButtonConfig.text
                 )}
               </button>
             </div>
@@ -589,38 +656,6 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 
         </div>
 
-        {/* Иконка перезагрузки в правом верхнем углу */}
-        <div className="absolute top-3 right-3">
-          {(isDailyBonus || isDealOfDay || isVideoBonus) && canClaimReward ? (
-            <button
-              onClick={() => {
-                void handleReplace();
-              }}
-              disabled={isLoading || !onReplace}
-              className="w-[32px] h-[32px] bg-white rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <img 
-                src="/trials/reload.svg" 
-                alt="reload" 
-                className="w-[20px] h-[20px]"
-              />
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                void handleReplace();
-              }}
-              disabled={isLoading || !onReplace}
-              className="hover:bg-gray-50 rounded-full p-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <img 
-                src="/trials/reload.svg" 
-                alt="reload" 
-                className="w-[20px] h-[20px]"
-              />
-            </button>
-          )}
-        </div>
       </div>
 
     </div>

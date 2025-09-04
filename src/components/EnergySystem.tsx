@@ -74,7 +74,7 @@ export const EnergySystem: React.FC = () => {
         </h3>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600">
-            {t('energy.progress')}: {progress}/100
+            {t('energy.progress')}: {progress}{progress >= 100 ? '/100+' : '/100'}
           </span>
           {isCompleted && (
             <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
@@ -94,7 +94,7 @@ export const EnergySystem: React.FC = () => {
         </div>
         <div className="flex justify-between text-xs text-gray-500 mt-1">
           <span>0</span>
-          <span>100</span>
+          <span>{progress >= 100 ? '100+' : '100'}</span>
         </div>
       </div>
 

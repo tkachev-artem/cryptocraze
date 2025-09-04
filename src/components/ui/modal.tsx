@@ -1,4 +1,5 @@
-import { useEffect } from 'react';\nimport { useTranslation } from '@/lib/i18n';
+import { useEffect } from 'react';
+import { useTranslation } from '@/lib/i18n';
 
 type ModalProps = {
   isOpen: boolean;

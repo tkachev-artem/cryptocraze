@@ -86,6 +86,19 @@ export namespace TaskService {
       const data: TaskResponse = await response.json() as TaskResponse;
       console.log(`[TaskService] Got ${data.tasks.length.toString()} tasks`);
       
+      // Debug: Log each task's details
+      data.tasks.forEach((task, index) => {
+        console.log(`[TaskService] Task ${index + 1} (${task.taskType}):`, {
+          id: task.id,
+          title: task.title,
+          status: task.status,
+          'progress.current': task.progress.current,
+          'progress.total': task.progress.total,
+          isCompleted: task.isCompleted,
+          rewardClaimed: task.rewardClaimed
+        });
+      });
+      
       return data.tasks;
     } catch (error) {
       console.error('[TaskService] Error getting tasks:', error);
@@ -97,7 +110,8 @@ export namespace TaskService {
    * Complete a task
    */
   export async function completeTask(taskId: string): Promise<CompleteTaskResponse> {
-    console.log(`[TaskService] Completing task: ${taskId}`);
+    console.log(`[TaskService] 🚨🚨🚨 CLIENT completeTask called for taskId: ${taskId}`);
+    console.log(`[TaskService] 🚨🚨🚨 CLIENT Call stack:`, new Error().stack);
     
     try {
       const response = await fetch(`${baseUrl}/${taskId}/complete`, {

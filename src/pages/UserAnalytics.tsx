@@ -596,8 +596,13 @@ const UserAnalytics: React.FC = () => {
                   </div>
                 </div>
                 <p className="text-sm text-gray-600">{t('analytics.worstDay')}</p>
-                <p className="text-xl font-bold text-[#F6465D]">
-                  {formatMoneyShort(Math.min(...chartDataSource.map(d => d.pnl)))}
+                <p className={`text-xl font-bold ${
+                  Math.min(...chartDataSource.map(d => d.pnl)) >= 0 ? 'text-[#2EBD85]' : 'text-[#F6465D]'
+                }`}>
+                  {(() => {
+                    const worst = Math.min(...chartDataSource.map(d => d.pnl));
+                    return worst >= 0 ? `+${formatMoneyShort(worst)}` : formatMoneyShort(worst);
+                  })()}
                 </p>
               </div>
             </div>

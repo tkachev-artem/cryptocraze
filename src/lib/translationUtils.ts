@@ -44,8 +44,8 @@ export const useTaskTranslation = () => {
     status: string;
     icon: string;
   }) => {
-    // Извлекаем тип задания из title или используем fallback
-    const taskType = getTaskTypeFromTitle(task.title);
+    // Используем taskType напрямую из API или fallback из title
+    const taskType = (task as any).taskType || getTaskTypeFromTitle(task.title);
     
     // Пытаемся найти перевод для типа задания
     const translatedTitle = t(`task.types.${taskType}`) || task.title;

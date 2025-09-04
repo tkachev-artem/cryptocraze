@@ -120,6 +120,18 @@ export class OrderClosureService extends EventEmitter {
         triggeredBy,
       });
       
+      // IMPORTANT: Update task progress after deal closure (same as dealsService.closeDeal)
+      console.log(`[OrderClosureService] Обновляем прогресс заданий после закрытия сделки: userId=${userId}, прибыль=${pnlCalculation.finalProfit}`);
+      try {
+        await dealsService.updateDailyTradeTasks(userId);
+        await dealsService.updateCryptoKingTasks(userId, pnlCalculation.finalProfit);
+        await dealsService.updateNewTradeTasksOnClose(userId, pnlCalculation.finalProfit);
+        console.log(`[OrderClosureService] Прогресс заданий обновлен`);
+      } catch (error) {
+        console.error(`[OrderClosureService] Ошибка при обновлении прогресса заданий:`, error);
+        // Don't fail deal closure due to task update errors
+      }
+      
       // Update user balance and statistics
       await this.updateUserFinancials(userId, {
         returnedAmount: Number(order.amount),

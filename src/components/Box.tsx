@@ -45,6 +45,7 @@ interface BoxProps {
   isOpen: boolean
   onClose: () => void
   onError?: (error: Error) => void
+  bottomOffset?: number
 }
 
 // Style constants - extracted from hardcoded values
@@ -264,7 +265,7 @@ const useBoxOpening = (type: BoxType) => {
   return { state, openBox, retry, closePrize, reset }
 }
 
-export const Box = ({ type, isOpen, onClose, onError }: BoxProps) => {
+export const Box = ({ type, isOpen, onClose, onError, bottomOffset = 0 }: BoxProps) => {
   const { t } = useTranslation()
   const { state, openBox, retry, closePrize, reset } = useBoxOpening(type)
   const isPrizeOpen = Boolean(state.prize)
@@ -334,8 +335,8 @@ export const Box = ({ type, isOpen, onClose, onError }: BoxProps) => {
   // Prize modal with error boundary
   if (isPrizeOpen && state.prize) {
     return (
-      <div className="fixed inset-0 z-50">
-        <div className="p-0">
+      <div className="absolute inset-0 z-[60] flex items-center justify-center overflow-hidden" style={{ bottom: `calc(${String(bottomOffset)}px + env(safe-area-inset-bottom))` }}>
+        <div className="p-0 w-full h-full">
           <ErrorBoundary
             onError={(error) => {
               console.error('[Box] Prize display error:', error)
@@ -344,7 +345,7 @@ export const Box = ({ type, isOpen, onClose, onError }: BoxProps) => {
             resetKeys={[state.prize]}
           >
             <div
-              className="w-full h-dvh relative p-4"
+              className="w-full h-full relative p-4"
               style={{ background: STYLES.gradients.success }}
             >
             <div className="absolute top-[80px] left-1/2 transform -translate-x-1/2 text-center">
@@ -437,8 +438,8 @@ export const Box = ({ type, isOpen, onClose, onError }: BoxProps) => {
     const backgroundStyle = state.error ? STYLES.gradients.error : cfg.gradient
     
     return (
-      <div className="fixed inset-0 z-50">
-        <div className="p-0">
+      <div className="absolute inset-0 z-[60] flex items-center justify-center overflow-hidden" style={{ bottom: `calc(${String(bottomOffset)}px + env(safe-area-inset-bottom))` }}>
+        <div className="p-0 w-full h-full">
           <ErrorBoundary
             onError={(error) => {
               console.error('[Box] Component error:', error)
@@ -447,7 +448,7 @@ export const Box = ({ type, isOpen, onClose, onError }: BoxProps) => {
             resetKeys={[type, isOpen]}
           >
             <div
-              className="w-full h-dvh flex flex-col items-center justify-center p-4 relative"
+              className="w-full h-full flex flex-col items-center justify-center p-4 relative"
               style={{ background: backgroundStyle }}
             >
             {/* Main box interaction area */}

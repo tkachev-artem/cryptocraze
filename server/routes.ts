@@ -3764,12 +3764,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/tasks', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user.id;
-      console.log(`[ROUTES] Getting tasks for user: ${userId}`);
+      console.log(`[ROUTES] 🎯 FRONTEND REQUEST - Getting tasks for user: ${userId}`);
+      console.log(`[ROUTES] User info:`, { 
+        id: req.user.id, 
+        email: req.user.email,
+        firstName: req.user.firstName 
+      });
       
-      // Get current tasks and auto-fill if needed
-      const tasks = await TaskService.autoFillTasks(userId);
+      // Get user tasks (auto-fill happens internally in ensureUserHasTasks)
+      console.log(`[ROUTES] 🔍 About to call ensureUserHasTasks for user: ${userId}`);
+      const tasks = await TaskService.ensureUserHasTasks(userId);
+      console.log(`[ROUTES] 📦 ensureUserHasTasks returned ${tasks.length} tasks`);
       
-      console.log(`[ROUTES] Returning ${tasks.length} tasks`);
+      console.log(`[ROUTES] 📋 Returning ${tasks.length} tasks for user ${userId}`);
+      if (tasks.length > 0) {
+        console.log(`[ROUTES] Task types: ${tasks.map(t => t.taskType).join(', ')}`);
+      } else {
+        console.log(`[ROUTES] ⚠️ WARNING: No tasks returned for user ${userId}!`);
+      }
+      
       res.json({ tasks });
       
     } catch (error: any) {
@@ -4027,7 +4040,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const taskId = parseInt(req.params.taskId);
       
-      console.log(`[ROUTES] Completing task: taskId=${taskId}, userId=${userId}`);
+      console.log(`[ROUTES] 🚨🚨🚨 === TASK COMPLETE ENDPOINT CALLED === taskId=${taskId}, userId=${userId}`);
+      console.log(`[ROUTES] 🚨🚨🚨 Call stack:`, new Error().stack);
       
       if (!taskId || isNaN(taskId)) {
         res.status(400).json({ error: 'Invalid task ID' });
@@ -6512,17 +6526,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/deals/close', isAuthenticated, AnalyticsLogger.tradeLogger(), async (req: AuthenticatedRequest, res: Response) => {
+  app.post('/api/deals/close', (req, res, next) => {
+    console.log(`🚨 [MIDDLEWARE] /api/deals/close вызван, body:`, req.body);
+    next();
+  }, isAuthenticated, AnalyticsLogger.tradeLogger(), async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user.id;
       const { dealId } = req.body;
+      console.log(`🔥 [ROUTES] REST API /api/deals/close вызван: userId=${userId}, dealId=${dealId}`);
       if (!dealId) {
         res.status(400).json({ error: 'dealId обязателен' });
         return;
       }
       const result = await dealsService.closeDeal({ userId, dealId: Number(dealId) });
+      console.log(`🔥 [ROUTES] REST API закрытие завершено успешно для dealId=${dealId}`);
       res.json({ success: true, ...result });
     } catch (error: any) {
+      console.error(`🔥 [ROUTES] REST API ошибка закрытия dealId=${dealId}:`, error.message);
       res.status(400).json({ success: false, error: error.message });
     }
   });

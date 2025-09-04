@@ -46,30 +46,37 @@ export function Welcome() {
 
   return (
     <>
-      <div className='items-center p-2'>
-        {/* Panda Mascot */}
-        <img 
-          src="/panda.png" 
-          alt="Logo" 
-          className="w-64 h-64 mx-auto mb-8 select-none pointer-events-none" 
-        />
+      <div className='min-h-screen flex flex-col items-center justify-between p-4'>
+        {/* Верхняя часть с пандой */}
+        <div className='flex flex-col items-center pt-8'>
+          {/* Panda Mascot */}
+          <img 
+            src="/panda.png" 
+            alt="Logo" 
+            className="w-64 h-64 mx-auto select-none pointer-events-none" 
+          />
+        </div>
+        
+        {/* Пустое пространство для разделения */}
+        <div className='flex-1'></div>
 
-        <div className='mb-8'>
+        {/* Нижняя часть с кнопкой и условиями */}
+        <div className='w-full max-w-md pb-8'>
           <Button 
-              className="flex w-full h-12 items-center justify-center bg-[#0C54EA] px-4  text-white font-semibold hover:bg-[#0A47C7] transition-colors"
+              className="flex w-full h-12 items-center justify-center bg-[#0C54EA] px-4 text-white font-semibold hover:bg-[#0A47C7] transition-colors mb-6"
               onClick={redirectToLogin}
             >
               {t('welcome.login.google')}
-            </Button> 
-        </div>
+            </Button>
 
-        {/* Terms */}
-        <p className="w-full mt-8 text-sm text-black text-center">
-          {t('welcome.terms.agree')} {' '}
-          <a href="#" className="text-gray-600 underline hover:text-gray-700">{t('welcome.terms.terms')}</a>
-          {' '}{t('welcome.terms.and')}{' '}
-          <a href="#" className="text-gray-600 underline hover:text-gray-700">{t('welcome.terms.privacy')}</a>
-        </p>
+          {/* Terms */}
+          <p className="w-full text-sm text-black text-center">
+            {t('welcome.terms.agree')} {' '}
+            <a href="#" className="text-gray-600 underline hover:text-gray-700">{t('welcome.terms.terms')}</a>
+            {' '}{t('welcome.terms.and')}{' '}
+            <a href="#" className="text-gray-600 underline hover:text-gray-700">{t('welcome.terms.privacy')}</a>
+          </p>
+        </div>
       </div>
 
     {/* Error Modal */}

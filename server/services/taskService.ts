@@ -46,16 +46,13 @@ export class TaskService {
   private static readonly AUTO_FILL_INTERVAL = 60000; // 1 минута в миллисекундах
 
   /**
-   * Get all active tasks for user and auto-fill if needed
+   * Get all active tasks for user (READ ONLY - no auto-creation)
    */
   static async getUserTasks(userId: string): Promise<TaskData[]> {
     console.log(`[TaskService] Getting tasks for user: ${userId}`);
     
     // First, expire old tasks
     await this.expireOldTasks(userId);
-    
-    // Auto-fill tasks to maintain 3 active tasks
-    await this.autoFillTasks(userId);
     
     let tasks = await db.select()
       .from(userTasks)
@@ -68,28 +65,6 @@ export class TaskService {
       .orderBy(desc(userTasks.createdAt));
 
     console.log(`[TaskService] Found ${tasks.length} active tasks`);
-    
-    // If no tasks exist, create some initial tasks
-    if (tasks.length === 0) {
-      console.log(`[TaskService] No tasks found, creating initial tasks`);
-      await this.createInitialTasks(userId);
-    }
-
-    // Re-fetch tasks after potential creation
-    if (tasks.length === 0) {
-      const newTasks = await db.select()
-        .from(userTasks)
-        .where(
-          and(
-            eq(userTasks.userId, userId),
-            eq(userTasks.status, 'active')
-          )
-        )
-        .orderBy(desc(userTasks.createdAt));
-      
-      console.log(`[TaskService] Re-fetched ${newTasks.length} tasks after creation`);
-      tasks = newTasks;
-    }
 
     const now = new Date();
     
@@ -110,12 +85,43 @@ export class TaskService {
           current: task.progressCurrent || 0,
           total: task.progressTotal
         },
-        status: 'active',
+        status: task.status as 'active' | 'completed' | 'expired',
         icon: task.icon || '/trials/energy.svg',
+        // Add completion flags
+        isCompleted: task.progressCurrent >= task.progressTotal && task.status === 'active',
+        rewardClaimed: task.status === 'completed',
         expiresAt: expiresAt?.toISOString(),
         timeRemaining: timeRemaining || undefined
       };
     });
+  }
+
+  /**
+   * Ensure user has tasks (create if needed) - call this explicitly when needed
+   */
+  static async ensureUserHasTasks(userId: string): Promise<TaskData[]> {
+    console.log(`[TaskService] 🎯 Ensuring user has tasks: ${userId}`);
+    
+    // First get current tasks
+    const currentTasks = await this.getUserTasks(userId);
+    console.log(`[TaskService] 📊 Current tasks count: ${currentTasks.length}/${this.MAX_ACTIVE_TASKS}`);
+    
+    // If no tasks, create initial set
+    if (currentTasks.length === 0) {
+      console.log(`[TaskService] 🆕 No tasks found, creating initial tasks`);
+      await this.createInitialTasks(userId);
+    } else if (currentTasks.length < this.MAX_ACTIVE_TASKS) {
+      // Auto-fill to maintain 3 active tasks
+      console.log(`[TaskService] 🔧 Auto-filling tasks (need ${this.MAX_ACTIVE_TASKS - currentTasks.length} more)`);
+      await this.autoFillTasks(userId);
+    } else {
+      console.log(`[TaskService] ✅ User already has max tasks (${currentTasks.length})`);
+    }
+    
+    // Return updated tasks
+    const finalTasks = await this.getUserTasks(userId);
+    console.log(`[TaskService] 🏁 Final tasks count: ${finalTasks.length}`);
+    return finalTasks;
   }
 
   /**
@@ -163,13 +169,29 @@ export class TaskService {
   }
 
   /**
-   * Check if user can receive task of this type (cooldown check)
+   * Check if user can receive task of this type (cooldown and active task checks)
    */
   private static async canUserReceiveTask(userId: string, taskType: string, cooldownMinutes: number, maxPerDay: number | null): Promise<boolean> {
     const now = new Date();
     const cooldownStart = new Date(now.getTime() - cooldownMinutes * 60 * 1000);
     
-    // Check cooldown period
+    // Check if there's already an active task of this type
+    const activeTasks = await db.select()
+      .from(userTasks)
+      .where(
+        and(
+          eq(userTasks.userId, userId),
+          eq(userTasks.taskType, taskType),
+          eq(userTasks.status, 'active')
+        )
+      );
+    
+    if (activeTasks.length > 0) {
+      console.log(`[TaskService] User ${userId} already has active task of type ${taskType}`);
+      return false;
+    }
+    
+    // Check cooldown period on completed tasks
     const recentTasks = await db.select()
       .from(userTasks)
       .where(
@@ -304,6 +326,8 @@ export class TaskService {
     newTask?: TaskData;
     error?: string;
   }> {
+    console.log(`[TaskService] 🚨🚨🚨 === CRITICAL ALERT === completeTask called: taskId=${taskId}, userId=${userId} - THIS SHOULD NOT HAPPEN!`);
+    console.log(`[TaskService] 🚨🚨🚨 Call stack:`, new Error().stack);
     console.log(`[TaskService] Completing task ${taskId} for user ${userId}`);
 
     try {
@@ -320,8 +344,24 @@ export class TaskService {
         .limit(1);
 
       if (!task) {
-        console.log(`[TaskService] Task not found: ${taskId}`);
-        return { success: false, error: 'Task not found' };
+        // DEBUG: Check if task exists with different status
+        const [anyTask] = await db.select()
+          .from(userTasks)
+          .where(
+            and(
+              eq(userTasks.id, taskId),
+              eq(userTasks.userId, userId)
+            )
+          )
+          .limit(1);
+        
+        if (anyTask) {
+          console.log(`[TaskService] Task ${taskId} exists but status is '${anyTask.status}', not 'active'. Progress: ${anyTask.progressCurrent}/${anyTask.progressTotal}, rewardClaimed: ${anyTask.rewardClaimed || 'undefined'}`);
+          return { success: false, error: 'Task already completed or not active' };
+        } else {
+          console.log(`[TaskService] Task ${taskId} does not exist at all for user ${userId}`);
+          return { success: false, error: 'Task not found' };
+        }
       }
 
       // Mark as completed
@@ -531,27 +571,41 @@ export class TaskService {
   static async createRandomTask(userId: string): Promise<TaskData | null> {
     console.log(`[TaskService] Creating random task for user: ${userId}`);
 
-    // Get random template
-    const template = StaticTaskTemplateService.getRandomTemplateByRarity();
-    if (!template) {
-      console.log(`[TaskService] No template available`);
-      return null;
+    // Try up to 10 times to find a suitable template
+    for (let attempt = 0; attempt < 10; attempt++) {
+      // Get random template
+      const template = StaticTaskTemplateService.getRandomTemplateByRarity();
+      if (!template) {
+        console.log(`[TaskService] No template available on attempt ${attempt + 1}`);
+        continue;
+      }
+
+      console.log(`[TaskService] Attempt ${attempt + 1}: trying template ${template.id} (${template.taskType})`);
+
+      const options: CreateTaskOptions = {
+        taskType: template.taskType,
+        title: template.title,
+        description: template.description,
+        rewardType: template.rewardType as 'money' | 'coins' | 'energy' | 'mixed' | 'wheel',
+        rewardAmount: template.rewardAmount,
+        progressTotal: template.progressTotal,
+        icon: template.icon || '/trials/energy.svg',
+        expiresInHours: template.expiresInHours,
+        cooldownMinutes: template.cooldownMinutes,
+        maxPerDay: template.maxPerDay
+      };
+
+      const task = await this.createTask(userId, options);
+      if (task) {
+        console.log(`[TaskService] Successfully created task: ${task.taskType}`);
+        return task;
+      }
+      
+      console.log(`[TaskService] Failed to create task ${template.taskType}, trying again...`);
     }
 
-    const options: CreateTaskOptions = {
-      taskType: template.taskType,
-      title: template.title,
-      description: template.description,
-      rewardType: template.rewardType as 'money' | 'coins' | 'energy' | 'mixed' | 'wheel',
-      rewardAmount: template.rewardAmount,
-      progressTotal: template.progressTotal,
-      icon: template.icon || '/trials/energy.svg',
-      expiresInHours: template.expiresInHours,
-      cooldownMinutes: template.cooldownMinutes,
-      maxPerDay: template.maxPerDay
-    };
-
-    return this.createTask(userId, options);
+    console.log(`[TaskService] Could not create any task after 10 attempts`);
+    return null;
   }
 
   /**
@@ -636,6 +690,8 @@ export class TaskService {
    * Legacy method for backward compatibility
    */
   static async updateTaskProgress(taskId: number, userId: string, progress: number): Promise<any> {
+    console.log(`[TaskService] 🚨 === CRITICAL DEBUG === updateTaskProgress called: taskId=${taskId}, userId=${userId}, progress=${progress}`);
+    console.log(`[TaskService] 🚨 Call stack:`, new Error().stack);
     // For backward compatibility, redirect to completeTask if progress is complete
     const [task] = await db.select()
       .from(userTasks)
@@ -653,40 +709,48 @@ export class TaskService {
     }
 
     if (progress >= task.progressTotal) {
-      // Check if this is a video bonus task - they should not auto-complete
-      const isVideoBonus = task.taskType === 'video_bonus' || task.taskType === 'video_bonus_2';
+      // UNIVERSAL FIX: ALL TASKS should not auto-complete - user must click pickup
+      console.log(`[TaskService] 🚨 Task ${taskId} progress complete (${progress}>=${task.progressTotal}), but NOT auto-completing. User must pickup manually.`);
+      console.log(`[TaskService] 🚨 Task details before update:`, {
+        id: task.id,
+        taskType: task.taskType,
+        title: task.title,
+        status: task.status,
+        progressCurrent: task.progressCurrent,
+        progressTotal: task.progressTotal,
+        rewardType: task.rewardType,
+        rewardAmount: task.rewardAmount
+      });
       
-      if (isVideoBonus) {
-        // For video bonus tasks, update progress but don't complete - user must click pickup
-        const [updatedTask] = await db.update(userTasks)
-          .set({ progressCurrent: progress })
-          .where(eq(userTasks.id, taskId))
-          .returning();
+      // For ALL tasks, update progress but don't complete - user must click pickup
+      const [updatedTask] = await db.update(userTasks)
+        .set({ progressCurrent: progress })
+        .where(eq(userTasks.id, taskId))
+        .returning();
 
-        return {
-          task: {
-            id: updatedTask.id.toString(),
-            taskType: updatedTask.taskType,
-            title: updatedTask.title,
-            description: updatedTask.description || '',
-            reward: {
-              type: updatedTask.rewardType as 'money' | 'coins' | 'energy' | 'mixed' | 'wheel',
-              amount: updatedTask.rewardAmount
-            },
-            progress: {
-              current: updatedTask.progressCurrent || 0,
-              total: updatedTask.progressTotal
-            },
-            status: 'active', // Keep as active so it stays in the list
-            icon: updatedTask.icon || '/trials/energy.svg'
+      const responseData = {
+        task: {
+          id: updatedTask.id.toString(),
+          taskType: updatedTask.taskType,
+          title: updatedTask.title,
+          description: updatedTask.description || '',
+          reward: {
+            type: updatedTask.rewardType as 'money' | 'coins' | 'energy' | 'mixed' | 'wheel',
+            amount: updatedTask.rewardAmount
           },
-          isCompleted: true, // But mark as completed for UI
-          rewardClaimed: false
-        };
-      } else {
-        // For other tasks, complete normally
-        return await this.completeTask(taskId, userId);
-      }
+          progress: {
+            current: updatedTask.progressCurrent || 0,
+            total: updatedTask.progressTotal
+          },
+          status: 'active', // Keep as active so it stays in the list
+          icon: updatedTask.icon || '/trials/energy.svg'
+        },
+        isCompleted: true, // But mark as completed for UI
+        rewardClaimed: false // Task is NOT claimed yet - user must click pickup
+      };
+      
+      console.log(`[TaskService] 🚨 Returning updateTaskProgress response:`, responseData);
+      return responseData;
     } else {
       // Just update progress without completing
       const [updatedTask] = await db.update(userTasks)

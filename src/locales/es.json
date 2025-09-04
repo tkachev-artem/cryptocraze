@@ -135,27 +135,6 @@
     "loginRequired": "Inicia sesión para continuar",
     "sessionExpired": "Tu sesión ha expirado"
   },
-  "errors": {
-    "404": {
-      "title": "Página No Encontrada",
-      "description": "La página que buscas no existe o ha sido movida.",
-      "goHome": "Regresar a la Pantalla Principal"
-    },
-    "general": "Error",
-    "dataLoading": "Error de carga de datos",
-    "binanceStats": "Error en fetchBinanceStats",
-    "userNotFound": "Usuario no encontrado",
-    "insufficientFunds": "Fondos insuficientes",
-    "symbolNotFound": "Símbolo no encontrado o no soportado",
-    "invalidLeverage": "Valor de apalancamiento inválido",
-    "invalidAmount": "La cantidad debe ser mayor que 0",
-    "invalidTakeProfit": "Take Profit inválido",
-    "invalidStopLoss": "Stop Loss inválido",
-    "dealNotFound": "Operación no encontrada",
-    "noAccess": "Sin acceso a la operación",
-    "dealAlreadyClosed": "Operación ya cerrada",
-    "priceNotFound": "Error al obtener precio"
-  },
   "profile": {
     "title": "Perfil",
     "editTitle": "Editar perfil",
@@ -204,6 +183,8 @@
     "closeTrade": "Cerrar operación"
   },
   "common": {
+    "execute": "Ejecutar",
+    "collect": "Cobrar",
     "loading": "Cargando...",
     "success": "Éxito",
     "error": "Error",
@@ -728,7 +709,19 @@
       "ethereum_trade": "Trading de Ethereum",
       "altcoin_trade": "Trading de Altcoins",
       "profitable_trade": "Operación Rentable",
-      "volume_trade": "Trading de Volumen"
+      "volume_trade": "Trading de Volumen",
+      "video_wheel": "Video por Ruleta",
+      "video_money": "Video por Moneda",
+      "video_coins": "Video por Monedas",
+      "video_energy": "Video por Energía",
+      "video_mega": "Mega Bono de Video",
+      "daily_trader": "Trader Activo del Día",
+      "trade_first_profit": "Primera Ganancia",
+      "trade_lucky": "Operación Afortunada",
+      "trade_close": "Cerrar Operación",
+      "trade_master": "Maestro de Ganancias",
+      "premium_login": "Entrada Premium",
+      "premium_vip": "Bono VIP"
     },
     "descriptions": {
       "daily_bonus": "Obtén tu recompensa diaria por iniciar sesión en la aplicación",
@@ -751,7 +744,19 @@
       "ethereum_trade": "Abre una operación de Ethereum y obtén monedas",
       "altcoin_trade": "Abre una operación con cualquier altcoin y obtén monedas",
       "profitable_trade": "Cierra una operación rentable y obtén energía",
-      "volume_trade": "Completa operaciones por más de 1000 USDT y obtén monedas"
+      "volume_trade": "Completa operaciones por más de 1000 USDT y obtén monedas",
+      "video_wheel": "Ve un anuncio y obtén un giro gratis en la ruleta de la fortuna",
+      "video_money": "Ve un video y recibe moneda de trading",
+      "video_coins": "Ve un anuncio y recarga tu balance de monedas",
+      "video_energy": "Restaura energía viendo un anuncio publicitario", 
+      "video_mega": "Ve un video por una recompensa generosa",
+      "daily_trader": "Obtén una recompensa por actividad de trading diaria",
+      "trade_first_profit": "Gana tus primeros $100 de beneficio en trading",
+      "trade_lucky": "Gana $500 de beneficio con operaciones de trading",
+      "trade_close": "Cierra cualquier posición de trading activa",
+      "trade_master": "Demuestra maestría ganando $1000 de beneficio",
+      "premium_login": "Recompensa exclusiva por estatus de usuario Premium",
+      "premium_vip": "Bono especial para miembros VIP de la plataforma"
     }
   },
   "video": {
@@ -1087,7 +1092,21 @@
         "premium": "Funciones Premium"
       },
       "pandaMessage": "¡No te preocupes! Incluso los traders experimentados a veces se pierden. ¡Vamos a llevarte de vuelta al camino!"
-    }
+    },
+    "general": "Error",
+    "dataLoading": "Error de carga de datos",
+    "binanceStats": "Error en fetchBinanceStats",
+    "userNotFound": "Usuario no encontrado",
+    "insufficientFunds": "Fondos insuficientes",
+    "symbolNotFound": "Símbolo no encontrado o no soportado",
+    "invalidLeverage": "Valor de apalancamiento inválido",
+    "invalidAmount": "La cantidad debe ser mayor que 0",
+    "invalidTakeProfit": "Take Profit inválido",
+    "invalidStopLoss": "Stop Loss inválido",
+    "dealNotFound": "Operación no encontrada",
+    "noAccess": "Sin acceso a la operación",
+    "dealAlreadyClosed": "Operación ya cerrada",
+    "priceNotFound": "Error al obtener precio"
   },
   "tutorial": {
     "error": {

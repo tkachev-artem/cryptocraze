@@ -202,7 +202,7 @@ const EnhancedProfileDashboard: React.FC = () => {
             <div className="w-px h-6 bg-gray-200" />
             <div className="text-center flex-1">
               <div className="text-base font-bold text-[#F5A600]">
-                {user.energyTasksBonus || 0}/100
+                {user.energyTasksBonus || 0}{(user.energyTasksBonus || 0) >= 100 ? '/100+' : '/100'}
               </div>
               <div className="text-xs text-black opacity-50">Energy</div>
             </div>

@@ -110,8 +110,8 @@ export const useEnergy = (options?: { autoload?: boolean }) => {
     refresh,
     
     // Вычисляемые значения
-    progressPercentage: Math.round((progress / 100) * 100),
+    progressPercentage: Math.min(100, Math.round((progress / 100) * 100)), // Ограничиваем визуальный прогресс до 100% для полосы
     isCompleted: progress >= 100,
-    remainingEnergy: 100 - progress,
+    remainingEnergy: Math.max(0, 100 - progress), // Не даём отрицательным значениям
   };
 }; 

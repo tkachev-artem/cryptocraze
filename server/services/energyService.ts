@@ -29,25 +29,21 @@ export class EnergyService {
     const currentProgress = user[0].energyTasksBonus || 0;
     const newProgress = currentProgress + energyAmount;
     
-    let finalProgress: number;
+    console.log(`[EnergyService] Adding energy: ${currentProgress} + ${energyAmount} = ${newProgress}`);
+    
+    // Разрешаем энергии расти выше 100 (110, 120, etc.)
+    const finalProgress = newProgress;
     let isCompleted = false;
     let completedTasks = 0;
 
-    // Если прогресс достиг или превысил 100, обрабатываем переполнение
-    if (newProgress >= 100) {
+    // Проверяем, достигли ли мы 100 или выше для первого раза
+    if (currentProgress < 100 && newProgress >= 100) {
       isCompleted = true;
-      completedTasks = Math.floor(newProgress / 100); // Сколько полных циклов выполнено
-      
-      // Остаток от деления на 100 (например, 105 % 100 = 5)
-      finalProgress = newProgress % 100;
-      
-      console.log(`[EnergyService] Энергия переполнена: ${currentProgress} + ${energyAmount} = ${newProgress}`);
-      console.log(`[EnergyService] Выполнено циклов: ${completedTasks}, остаток: ${finalProgress}`);
-    } else {
-      finalProgress = newProgress;
+      completedTasks = 1;
+      console.log(`[EnergyService] Energy milestone reached: ${newProgress}/100+`);
     }
 
-    // Обновляем прогресс в базе данных
+    // Обновляем прогресс в базе данных - БЕЗ ограничений
     await db.update(users)
       .set({ energyTasksBonus: finalProgress })
       .where(eq(users.id, userId));
@@ -62,7 +58,7 @@ export class EnergyService {
   /**
    * Получает текущий прогресс пользователя
    * @param userId - ID пользователя
-   * @returns текущий прогресс (0-100)
+   * @returns текущий прогресс (может быть больше 100)
    */
   static async getProgress(userId: string): Promise<number> {
     const user = await db.select({ energyTasksBonus: users.energyTasksBonus })
@@ -90,14 +86,14 @@ export class EnergyService {
   /**
    * Устанавливает конкретное значение прогресса
    * @param userId - ID пользователя
-   * @param progress - значение прогресса (0-100)
+   * @param progress - значение прогресса (может быть больше 100)
    */
   static async setProgress(userId: string, progress: number): Promise<void> {
-    // Ограничиваем прогресс от 0 до 100
-    const clampedProgress = Math.max(0, Math.min(100, progress));
+    // Разрешаем любое положительное значение
+    const finalProgress = Math.max(0, progress);
     
     await db.update(users)
-      .set({ energyTasksBonus: clampedProgress })
+      .set({ energyTasksBonus: finalProgress })
       .where(eq(users.id, userId));
   }
 

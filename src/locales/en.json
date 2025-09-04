@@ -220,6 +220,8 @@
     "closeTrade": "Close trade"
   },
   "common": {
+    "execute": "Execute",
+    "collect": "Collect",
     "loading": "Loading...",
     "success": "Success",
     "error": "Error",
@@ -720,7 +722,19 @@
       "ethereum_trade": "Ethereum Trading",
       "altcoin_trade": "Altcoin Trading",
       "profitable_trade": "Profitable Trade",
-      "volume_trade": "Volume Trading"
+      "volume_trade": "Volume Trading",
+      "video_wheel": "Video for Wheel",
+      "video_money": "Video for Currency",
+      "video_coins": "Video for Coins", 
+      "video_energy": "Video for Energy",
+      "video_mega": "Mega Video Bonus",
+      "daily_trader": "Active Trader of the Day",
+      "trade_first_profit": "First Profit",
+      "trade_lucky": "Lucky Trade",
+      "trade_close": "Close Deal",
+      "trade_master": "Profit Master", 
+      "premium_login": "Premium Entry",
+      "premium_vip": "VIP Bonus"
     },
     "descriptions": {
       "daily_bonus": "Get your daily reward for logging into the app",
@@ -743,7 +757,19 @@
       "ethereum_trade": "Open an Ethereum trade and get coins",
       "altcoin_trade": "Open a trade with any altcoin and get coins",
       "profitable_trade": "Close a profitable trade and get energy",
-      "volume_trade": "Complete trades worth more than 1000 USDT and get coins"
+      "volume_trade": "Complete trades worth more than 1000 USDT and get coins",
+      "video_wheel": "Watch an ad and get a free spin on the wheel of fortune",
+      "video_money": "Watch a video and receive trading currency",
+      "video_coins": "Watch an ad and top up your coin balance", 
+      "video_energy": "Restore energy by watching an advertisement",
+      "video_mega": "Watch a video for a generous reward",
+      "daily_trader": "Get a reward for daily trading activity",
+      "trade_first_profit": "Earn your first $100 profit in trading",
+      "trade_lucky": "Earn $500 profit from trading operations",
+      "trade_close": "Close any active trading position",
+      "trade_master": "Demonstrate mastery by earning $1000 profit",
+      "premium_login": "Exclusive reward for Premium user status",
+      "premium_vip": "Special bonus for VIP platform members"
     }
   },
   "video": {

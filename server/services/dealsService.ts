@@ -1,6 +1,6 @@
 import { db } from '../db.js';
 import { deals, users, userTasks } from '../../shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import { unifiedPriceService } from './unifiedPriceService.js';
 import { storage } from '../storage.js';
 import { applyAutoRewards } from './autoRewards.js';
@@ -136,7 +136,7 @@ export const dealsService = {
   },
 
   async closeDeal({ userId, dealId }: { userId: string, dealId: number }) {
-    console.log(`[dealsService] Закрытие сделки: userId=${userId}, dealId=${dealId}`);
+    console.log(`🔥🔥 [dealsService] НАЧИНАЕМ closeDeal: userId=${userId}, dealId=${dealId}`);
     
     // Remove from worker monitoring first (if it exists)
     try {
@@ -242,14 +242,19 @@ export const dealsService = {
     }
 
     // Обновляем прогресс заданий типа "daily_trade"
-    console.log(`[dealsService] Вызываем updateDailyTradeTasks для userId=${userId}`);
+    console.log(`🔥🔥 [dealsService] СЕЙЧАС будем вызывать updateDailyTradeTasks для userId=${userId}`);
     await this.updateDailyTradeTasks(userId);
-    console.log(`[dealsService] updateDailyTradeTasks завершен`);
+    console.log(`🔥🔥 [dealsService] updateDailyTradeTasks ЗАВЕРШЕН`);
 
     // Обновляем прогресс заданий типа "crypto_king" на основе прибыли
     console.log(`[dealsService] Вызываем updateCryptoKingTasks для userId=${userId}, прибыль=${finalProfit}`);
     await this.updateCryptoKingTasks(userId, finalProfit);
     console.log(`[dealsService] updateCryptoKingTasks завершен`);
+
+    // Обновляем новые типы торговых заданий
+    console.log(`[dealsService] Вызываем updateNewTradeTasksOnClose для userId=${userId}, прибыль=${finalProfit}`);
+    await this.updateNewTradeTasksOnClose(userId, finalProfit);
+    console.log(`[dealsService] updateNewTradeTasksOnClose завершен`);
 
     // Create notification for deal closed
     try {
@@ -291,18 +296,20 @@ export const dealsService = {
         console.log(`[dealsService] Задание ${task.id}: taskType="${task.taskType}", title="${task.title}", прогресс=${task.progressCurrent}/${task.progressTotal}`);
       });
       
-      // Находим активные задания типа "daily_trade"
-      const dailyTradeTasks = await db.select()
-        .from(userTasks)
-        .where(
-          and(
-            eq(userTasks.userId, userId),
-            eq(userTasks.taskType, 'daily_trade'),
-            eq(userTasks.status, 'active')
-          )
-        );
+      // Фильтруем задания для daily_trader - исключаем новые типы торговых заданий
+      const dailyTradeTasks = allActiveTasks.filter(task => {
+        // Только задания типа daily_trader должны обновляться здесь
+        const isDailyTrader = task.taskType === 'daily_trader';
+        
+        console.log(`[dealsService] 🔍 Проверка задания ${task.id} (${task.taskType}): isDailyTrader=${isDailyTrader}`);
+        
+        return isDailyTrader;
+      });
 
-      console.log(`[dealsService] Найдено заданий "daily_trade": ${dailyTradeTasks.length}`);
+      console.log(`[dealsService] Найдено торговых заданий: ${dailyTradeTasks.length}`);
+      dailyTradeTasks.forEach(task => {
+        console.log(`[dealsService] - Торговое задание: ${task.taskType} (${task.id}), прогресс: ${task.progressCurrent}/${task.progressTotal}`);
+      });
 
       // Обновляем прогресс каждого задания
       for (const task of dailyTradeTasks) {
@@ -381,6 +388,76 @@ export const dealsService = {
       }
     } catch (error) {
       console.error('[dealsService] Ошибка при обновлении заданий "crypto_king":', error);
+    }
+  },
+
+  /**
+   * Обновить прогресс новых типов торговых заданий при закрытии сделки
+   */
+  async updateNewTradeTasksOnClose(userId: string, profit: number): Promise<void> {
+    try {
+      console.log(`[dealsService] Обновляем прогресс новых торговых заданий для пользователя: ${userId}, прибыль: ${profit}`);
+
+      // Получаем все активные торговые задания новых типов
+      const tradeTasks = await db.select()
+        .from(userTasks)
+        .where(
+          and(
+            eq(userTasks.userId, userId),
+            eq(userTasks.status, 'active'),
+            or(
+              eq(userTasks.taskType, 'trade_close'),
+              eq(userTasks.taskType, 'trade_first_profit'),
+              eq(userTasks.taskType, 'trade_lucky'),
+              eq(userTasks.taskType, 'trade_master')
+            )
+          )
+        );
+
+      console.log(`[dealsService] Найдено новых торговых заданий: ${tradeTasks.length}`);
+
+      for (const task of tradeTasks) {
+        let progressUpdate = 0;
+        let shouldUpdate = false;
+
+        // Определяем как обновлять прогресс в зависимости от типа задания
+        if (task.taskType === 'trade_close') {
+          // Задание "Закрыть сделку" - +1 при любом закрытии
+          progressUpdate = 1;
+          shouldUpdate = true;
+        } else if (task.taskType === 'trade_first_profit' || task.taskType === 'trade_lucky' || task.taskType === 'trade_master') {
+          // Задания на прибыль - добавляем прибыль в долларах (только положительную)
+          if (profit > 0) {
+            progressUpdate = Math.floor(profit); // Прибыль в долларах
+            shouldUpdate = true;
+          }
+        }
+
+        if (shouldUpdate) {
+          const newProgress = Math.min((task.progressCurrent || 0) + progressUpdate, task.progressTotal);
+          const isCompleted = newProgress >= task.progressTotal;
+
+          const updateData: any = {
+            progressCurrent: newProgress
+          };
+
+          // НЕ завершаем задание автоматически - оставляем его активным для получения награды
+          // if (isCompleted) {
+          //   updateData.status = 'completed';
+          //   updateData.completedAt = new Date();
+          // }
+
+          await db.update(userTasks)
+            .set(updateData)
+            .where(eq(userTasks.id, task.id));
+
+          console.log(`[dealsService] Задание ${task.taskType} (${task.id}) обновлено: прогресс ${task.progressCurrent} → ${newProgress} (+${progressUpdate}), завершено: ${isCompleted}`);
+        } else {
+          console.log(`[dealsService] Задание ${task.taskType} (${task.id}) не обновлено (нет прибыли или неподходящий тип)`);
+        }
+      }
+    } catch (error) {
+      console.error('[dealsService] Ошибка при обновлении новых торговых заданий:', error);
     }
   }
 };

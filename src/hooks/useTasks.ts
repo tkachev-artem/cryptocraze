@@ -31,7 +31,8 @@ export function useTasks() {
     try {
       setError(null);
       const tasksData = await TaskService.getTasks();
-      setTasks(tasksData.filter(task => task.status !== 'completed'));
+      // SHOW ALL TASKS - let user claim rewards manually, don't auto-hide completed
+      setTasks(tasksData.filter(task => task.status === 'active' || (task.status === 'completed' && !task.rewardClaimed)));
       console.log(`[useTasks] Загружено ${tasksData.length} заданий`);
     } catch (err) {
       console.error('[useTasks] Ошибка загрузки заданий:', err);
@@ -99,22 +100,31 @@ export function useTasks() {
       
       const result = await TaskService.updateTaskProgress(taskId, progress);
       
-      // МГНОВЕННО обновляем задание в списке
+      // МГНОВЕННО обновляем задание в списке - KEEP ACTIVE STATUS FOR PICKUP
       setTasks(prev => {
-        return prev.map(task => {
+        const updatedTasks = prev.map(task => {
           if (task.id === taskId) {
-            return {
+            const updatedTask = {
               ...result.task,
+              // FORCE status to remain 'active' until reward is claimed
+              status: 'active' as const,
               isCompleted: result.isCompleted,
               rewardClaimed: result.rewardClaimed
             };
+            console.log(`[useTasks] UPDATED TASK ${taskId}:`, updatedTask);
+            return updatedTask;
           }
           return task;
         });
+        console.log(`[useTasks] FULL TASK LIST AFTER UPDATE (${updatedTasks.length} tasks):`, updatedTasks.map(t => ({id: t.id, status: t.status, progress: t.progress})));
+        return updatedTasks;
       });
 
       // ПРИНУДИТЕЛЬНО обновляем данные пользователя
       await forceUpdateUser();
+      
+      // ВРЕМЕННО НЕ ПЕРЕЗАГРУЖАЕМ список заданий - это может вызвать автоматическое создание новых
+      // await loadTasks();
 
       console.log(`[useTasks] Прогресс задания ${taskId} обновлен`);
       

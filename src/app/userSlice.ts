@@ -418,11 +418,8 @@ export const userSlice = createSlice({
       state.energyOverrideValue = action.payload.value;
       state.energyOverrideUntil = Date.now() + ttlMs;
       if (state.user) {
-        // Применяем к текущему пользователю немедленно
-        state.user.energyTasksBonus = Math.min(
-          state.user.energyTasksBonus ?? action.payload.value,
-          action.payload.value,
-        );
+        // Применяем к текущему пользователю немедленно - разрешаем значения выше 100
+        state.user.energyTasksBonus = action.payload.value;
       }
     },
     clearEnergyOverride: (state) => {
@@ -456,8 +453,8 @@ export const userSlice = createSlice({
           state.energyOverrideUntil !== undefined &&
           now < state.energyOverrideUntil
         ) {
-          const serverEnergy = state.user.energyTasksBonus ?? 0;
-          state.user.energyTasksBonus = Math.min(serverEnergy, state.energyOverrideValue);
+          // Используем серверное значение энергии без ограничений
+          state.user.energyTasksBonus = state.user.energyTasksBonus ?? 0;
         }
       })
       .addCase(fetchUser.rejected, (state, action) => {

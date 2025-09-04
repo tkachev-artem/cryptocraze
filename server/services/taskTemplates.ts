@@ -165,7 +165,7 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
     expiresInHours: 24,
     cooldownMinutes: 60,
     maxPerDay: 2,
-    weight: 20
+    weight: 25
   },
 
   // 9. Удачная сделка
@@ -183,7 +183,7 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
     expiresInHours: 24,
     cooldownMinutes: 75,
     maxPerDay: 2,
-    weight: 18
+    weight: 22
   },
 
   // 10. Закройте сделку
@@ -201,7 +201,7 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
     expiresInHours: 24,
     cooldownMinutes: 60,
     maxPerDay: 3,
-    weight: 17
+    weight: 12
   },
 
   // 11. Мастер прибыли
@@ -219,7 +219,7 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
     expiresInHours: 24,
     cooldownMinutes: 90,
     maxPerDay: 1,
-    weight: 15
+    weight: 20
   },
 
   // === ПРЕМИУМ ЗАДАНИЯ (3 часа кулдаун, с уведомлениями) ===

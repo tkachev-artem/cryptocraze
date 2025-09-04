@@ -92,7 +92,7 @@ const PremiumUsersModal: React.FC<PremiumUsersModalProps> = ({ isOpen, onClose, 
     const firstName = user.firstName || '';
     const lastName = user.lastName || '';
     const fullName = `${firstName} ${lastName}`.trim();
-    return fullName || 'N/A';
+    return fullName || t('admin.dashboard.notAvailable');
   };
 
   const formatNumber = (num: number) => {
@@ -170,7 +170,7 @@ const PremiumUsersModal: React.FC<PremiumUsersModalProps> = ({ isOpen, onClose, 
                   </div>
                 ))}
                 <div className="text-center text-sm text-gray-500 mt-4">
-                  Загрузка пользователей...
+                  {t('admin.dashboard.loadingUsers')}
                 </div>
               </div>
             )}
@@ -183,7 +183,7 @@ const PremiumUsersModal: React.FC<PremiumUsersModalProps> = ({ isOpen, onClose, 
                     <X className="w-8 h-8 text-red-600" />
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    Ошибка загрузки
+                    {t('admin.dashboard.errorLoading')}
                   </h3>
                   <p className="text-gray-600 mb-4">{error}</p>
                 </div>
@@ -216,10 +216,10 @@ const PremiumUsersModal: React.FC<PremiumUsersModalProps> = ({ isOpen, onClose, 
                               ) : (
                                 <div className="flex flex-col">
                                   <span className="text-sm font-semibold text-gray-900">
-                                    {user.proDaysGranted || 0} дней
+                                    {user.proDaysGranted || 0} {t('admin.dashboard.days')}
                                   </span>
                                   <span className="text-xs text-gray-500">
-                                    Уровень: {user.lastRewardLevel || 0}
+                                    {t('admin.dashboard.level')}: {user.lastRewardLevel || 0}
                                   </span>
                                 </div>
                               )}
@@ -248,11 +248,11 @@ const PremiumUsersModal: React.FC<PremiumUsersModalProps> = ({ isOpen, onClose, 
                               : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
                           }`}
                         >
-                          Назад
+                          {t('admin.dashboard.back')}
                         </button>
                         
                         <span className="text-sm text-gray-600 font-medium">
-                          Страница {currentPage} из {totalPages}
+                          {t('admin.dashboard.page')} {currentPage} {t('admin.dashboard.of')} {totalPages}
                         </span>
                         
                         <button
@@ -264,7 +264,7 @@ const PremiumUsersModal: React.FC<PremiumUsersModalProps> = ({ isOpen, onClose, 
                               : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
                           }`}
                         >
-                          Далее
+                          {t('admin.dashboard.next')}
                         </button>
                       </div>
                     )}
@@ -275,7 +275,7 @@ const PremiumUsersModal: React.FC<PremiumUsersModalProps> = ({ isOpen, onClose, 
                       <Crown className="w-8 h-8 text-gray-400" />
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      Пользователи не найдены
+                      {t('admin.dashboard.usersNotFound')}
                     </h3>
                     <p className="text-gray-600">
                       {type === 'purchased' 

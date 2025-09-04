@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { useUser } from '../../hooks/useUser';
-import { Grid } from '@/components/ui/grid';
 import { formatMoneyShort } from '../../lib/numberUtils';
 import BlockButton from '../../components/BlockButton';
 import BottomNavigation from '../../components/ui/BottomNavigation';
@@ -33,7 +32,7 @@ export function Home() {
   // Показываем загрузку пока проверяем авторизацию или пока не загрузились переводы
   if (isLoading || isI18nLoading) {
     return (
-      <Grid className='p-2'>
+      <div className='p-2'>
         <div className='flex flex-col gap-4 pb-[calc(70px+env(safe-area-inset-bottom))]'>
           <div className='h-10 bg-white rounded-xl border border-gray-200 animate-pulse' />
           <div className='h-28 bg-white rounded-xl border border-gray-200 animate-pulse' />
@@ -44,7 +43,7 @@ export function Home() {
           </div>
           <div className='h-12 bg-white rounded-full border border-gray-200 animate-pulse' />
         </div>
-      </Grid>
+      </div>
     );
   }
 
@@ -58,8 +57,7 @@ export function Home() {
   }
 
   return (
-    <Grid className='p-2'>
-
+    <div className='p-2'>
       <div className='flex flex-col gap-4 pb-[calc(70px+env(safe-area-inset-bottom))]'>
         <TopMenu />
 
@@ -97,8 +95,7 @@ export function Home() {
 
         {/* меню действий */}
 
-          <div className='w-full grid grid-cols-3 mt-3 mb-3 gap-4'> {/* сетка меню - одна линия */}
-            {/* <BlockButton title="Дивиденды" icon="/more-money.svg" size='w-[60px] h-[31px]' /> */}
+          <div className='w-full grid grid-cols-3 mt-3 mb-3 gap-4'> {/* сетка меню - две линии */}
             <BlockButton title={t('home.trials')} icon="/phone.svg" size='w-[23px] h-[43px]' onClick={() => void navigate('/trials')}/>
             <BlockButton 
               title={t('settings.premium.pro')}
@@ -107,7 +104,7 @@ export function Home() {
               onClick={() => void navigate('/home/premium')}
             />
             <BlockButton 
-              title={t('dashboard.openTrades')} 
+              title={t('home.openTrades')} 
               icon="/trade.svg" 
               size='w-[42px] h-[42px]'
               onClick={() => void navigate('/deals')}
@@ -118,6 +115,12 @@ export function Home() {
               icon="/awards-arm.svg" 
               size='w-[42px] h-[35px]'
               onClick={() => void navigate('/rewards')}
+            />
+            <BlockButton 
+              title={t('home.analytics')} 
+              icon="/more-money.svg" 
+              size='w-[60px] h-[31px]'
+              onClick={() => void navigate('/analytics')}
             />
           </div>
 
@@ -130,9 +133,8 @@ export function Home() {
         >
           <Button className='w-full h-[48px] text-[16px] font-semibold text-white'>{t('landing.getStarted')}</Button>
         </div>
-
       </div>
       <BottomNavigation />
-    </Grid>
+    </div>
   );
 }

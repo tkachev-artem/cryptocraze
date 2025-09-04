@@ -43,8 +43,6 @@ const UserAnalytics: React.FC = () => {
   const [realTotalPL, setRealTotalPL] = useState<number | null>(null);
   const [dailyPnL, setDailyPnL] = useState<Array<{date: string, pnl: number, isProfit: boolean}>>([]);
   const [isLoadingChart, setIsLoadingChart] = useState(false);
-  const [userRating, setUserRating] = useState<{ rank: number; total: number } | null>(null);
-  const [isLoadingRating, setIsLoadingRating] = useState(false);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<'Line'> | null>(null);
@@ -198,51 +196,6 @@ const UserAnalytics: React.FC = () => {
     fetchDailyPnL();
   }, [user]);
 
-  // Load user's rating position
-  useEffect(() => {
-    const fetchUserRating = async () => {
-      if (!user) return;
-      
-      setIsLoadingRating(true);
-      try {
-        const response = await fetch(`${config.api.baseUrl}/rating/user/${user.id}?period=month`, {
-          credentials: 'include'
-        });
-        
-        if (response.ok) {
-          const ratingData = await response.json();
-          console.log('User rating data:', ratingData);
-          
-          // Also get total number of users for percentage calculation
-          const totalUsersResponse = await fetch(`${config.api.baseUrl}/rating?period=month&limit=1&offset=9999`, {
-            credentials: 'include'
-          });
-          
-          let totalUsers = 0;
-          if (totalUsersResponse.ok) {
-            const totalData = await totalUsersResponse.json();
-            // This is a hack to get total count - in production we'd add a count endpoint
-            totalUsers = Math.max(ratingData.rank, 100); // Estimate based on rank
-          }
-          
-          setUserRating({
-            rank: ratingData.rank || 0,
-            total: totalUsers
-          });
-        } else {
-          console.error('Failed to fetch user rating:', response.status);
-          setUserRating(null);
-        }
-      } catch (error) {
-        console.error('Error fetching user rating:', error);
-        setUserRating(null);
-      } finally {
-        setIsLoadingRating(false);
-      }
-    };
-
-    fetchUserRating();
-  }, [user]);
 
   // Initialize lightweight-charts when data is available
   useEffect(() => {
@@ -370,8 +323,8 @@ const UserAnalytics: React.FC = () => {
       <div className="min-h-screen bg-[#F1F7FF] p-4">
         <div className="max-w-2xl mx-auto pb-20">
           <div className="mb-6">
-            <h1 className="text-3xl font-semibold text-gray-900">Analytics</h1>
-            <p className="text-sm text-gray-500 mt-1">Your trading performance</p>
+            <h1 className="text-3xl font-semibold text-gray-900">{t('analytics.title')}</h1>
+            <p className="text-sm text-gray-500 mt-1">{t('analytics.subtitle')}</p>
           </div>
           
           {/* Loading skeleton */}
@@ -415,7 +368,7 @@ const UserAnalytics: React.FC = () => {
         
         <div className="px-4 pb-4">
           <div className="w-full h-[50px] bg-[#0C54EA] rounded-xl flex items-center justify-center">
-            <h1 className="text-lg font-bold text-white">Analytics</h1>
+            <h1 className="text-lg font-bold text-white">{t('analytics.title')}</h1>
           </div>
         </div>
       </div>
@@ -430,7 +383,7 @@ const UserAnalytics: React.FC = () => {
             <div className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center">
               <BarChart3 className="w-4 h-4 text-[#0C54EA]" />
             </div>
-            Trading Statistics
+            {t('analytics.tradingStatistics')}
           </h2>
           
           <div className="grid grid-cols-2 gap-8">
@@ -508,14 +461,14 @@ const UserAnalytics: React.FC = () => {
             <div className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center">
               <LineChart className="w-4 h-4 text-[#0C54EA]" />
             </div>
-            Profit & Loss
+            {t('analytics.profitAndLoss')}
           </h2>
           
           <div className="grid grid-cols-1 gap-4">
             {/* Total P/L */}
             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
               <div>
-                <p className="text-sm text-gray-600">Total P/L</p>
+                <p className="text-sm text-gray-600">{t('analytics.totalPL')}</p>
                 <p className={`text-2xl font-bold ${totalPLColor}`}>{totalPLFormatted}</p>
               </div>
               <div className={`w-12 h-12 rounded-full flex items-center justify-center ${totalPL >= 0 ? 'bg-[#2EBD85]' : 'bg-[#F6465D]'}`}>
@@ -527,31 +480,6 @@ const UserAnalytics: React.FC = () => {
               </div>
             </div>
 
-            {/* User Rating Position */}
-            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100">
-              <div>
-                <p className="text-sm text-gray-600">Rating Position</p>
-                {isLoadingRating ? (
-                  <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
-                ) : userRating ? (
-                  <div className="flex items-baseline gap-2">
-                    <p className="text-2xl font-bold text-[#0C54EA]">#{userRating.rank}</p>
-                    {userRating.total > 0 && (
-                      <p className="text-sm text-gray-500">
-                        / {userRating.total} ({Math.round(((userRating.total - userRating.rank + 1) / userRating.total) * 100)}% percentile)
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-xl font-medium text-gray-400">Not ranked</p>
-                )}
-              </div>
-              <div className="w-12 h-12 bg-gradient-to-r from-[#0C54EA] to-[#8B5CF6] rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              </div>
-            </div>
             
           </div>
         </div>
@@ -562,7 +490,7 @@ const UserAnalytics: React.FC = () => {
             <div className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center">
               <ChartCandlestick className="w-4 h-4 text-[#0C54EA]" />
             </div>
-            Top 5 Trades
+            {t('analytics.topTrades')}
           </h2>
           
           {isLoadingTrades ? (
@@ -616,7 +544,7 @@ const UserAnalytics: React.FC = () => {
           ) : (
             <div className="text-center py-8 text-gray-500">
               <BarChart3 className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p>No profitable trades yet</p>
+              <p>{t('analytics.noProfitableTrades')}</p>
             </div>
           )}
         </div>
@@ -627,7 +555,7 @@ const UserAnalytics: React.FC = () => {
             <div className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center">
               <TrendingUpDown className="w-4 h-4 text-[#0C54EA]" />
             </div>
-            Performance Trends
+            {t('analytics.performanceTrends')}
           </h2>
           
           <div className="grid grid-cols-1 gap-4">
@@ -639,7 +567,7 @@ const UserAnalytics: React.FC = () => {
                     <ChevronsLeftRight className="w-4 h-4 text-white" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600">Avg Trade Size</p>
+                <p className="text-sm text-gray-600">{t('analytics.avgTradeSize')}</p>
                 <p className="text-xl font-bold text-gray-900">{avgTradeAmount}</p>
               </div>
               
@@ -649,7 +577,7 @@ const UserAnalytics: React.FC = () => {
                     <DiamondPlus className="w-4 h-4 text-white" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-600">Success Rate</p>
+                <p className="text-sm text-gray-600">{t('analytics.successRate')}</p>
                 <p className="text-xl font-bold text-gray-900">{successRate}</p>
               </div>
             </div>
@@ -657,10 +585,10 @@ const UserAnalytics: React.FC = () => {
             {/* Daily P/L Chart */}
             <div className="p-4 bg-gray-50 rounded-lg">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-sm text-gray-600">Daily P/L (Last 7 Days)</p>
+                <p className="text-sm text-gray-600">{t('analytics.dailyPL')}</p>
                 {dailyPnL.length > 0 && !isLoadingChart && (
                   <div className="text-xs text-gray-500">
-                    {dailyPnL.filter(d => d.isProfit).length}/{dailyPnL.length} profitable days
+                    {dailyPnL.filter(d => d.isProfit).length}/{dailyPnL.length} {t('analytics.profitableDays')}
                   </div>
                 )}
               </div>
@@ -673,8 +601,8 @@ const UserAnalytics: React.FC = () => {
                 // No data state
                 <div className="flex flex-col items-center justify-center h-40 text-gray-400">
                   <LineChart className="w-12 h-12 mb-3 text-gray-300" />
-                  <p className="text-sm font-medium">No trading activity yet</p>
-                  <p className="text-xs text-gray-400 mt-1">Start trading to see your daily P/L</p>
+                  <p className="text-sm font-medium">{t('analytics.noTradingActivity')}</p>
+                  <p className="text-xs text-gray-400 mt-1">{t('analytics.startTrading')}</p>
                 </div>
               ) : (
                 // Professional Line Chart Implementation using lightweight-charts
@@ -692,7 +620,7 @@ const UserAnalytics: React.FC = () => {
                   <div className="mt-4 pt-3 border-t border-gray-200">
                     <div className="grid grid-cols-3 gap-4 text-center">
                       <div>
-                        <div className="text-xs text-gray-500 mb-1">Best Day</div>
+                        <div className="text-xs text-gray-500 mb-1">{t('analytics.bestDay')}</div>
                         <div className={`text-sm font-semibold ${
                           Math.max(...dailyPnL.map(d => d.pnl)) >= 0 ? 'text-[#2EBD85]' : 'text-[#F6465D]'
                         }`}>
@@ -703,13 +631,13 @@ const UserAnalytics: React.FC = () => {
                         </div>
                       </div>
                       <div>
-                        <div className="text-xs text-gray-500 mb-1">Worst Day</div>
+                        <div className="text-xs text-gray-500 mb-1">{t('analytics.worstDay')}</div>
                         <div className="text-sm font-semibold text-[#F6465D]">
                           {formatMoneyShort(Math.min(...dailyPnL.map(d => d.pnl)))}
                         </div>
                       </div>
                       <div>
-                        <div className="text-xs text-gray-500 mb-1">Avg Daily</div>
+                        <div className="text-xs text-gray-500 mb-1">{t('analytics.avgDaily')}</div>
                         <div className={`text-sm font-semibold ${
                           dailyPnL.reduce((sum, d) => sum + d.pnl, 0) >= 0 ? 'text-[#2EBD85]' : 'text-[#F6465D]'
                         }`}>

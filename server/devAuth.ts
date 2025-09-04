@@ -2,6 +2,7 @@ import type { Express, RequestHandler } from "express";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage.js";
+import AnalyticsLogger from "./middleware/analyticsLogger.js";
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
@@ -31,7 +32,7 @@ export async function setupAuth(app: Express) {
   app.use(getSession());
 
   // Простая аутентификация для разработки
-  app.get("/api/login", async (req, res) => {
+  app.get("/api/login", AnalyticsLogger.loginLogger(), async (req, res) => {
     // Создаем тестового пользователя
     const testUser = {
       id: 'dev-user-123',

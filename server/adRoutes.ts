@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { isAuthenticated, isAdminWithAuth } from "./simpleOAuth";
 import { adService, AdServiceError } from './services/adService';
+import AnalyticsLogger from './middleware/analyticsLogger.js';
 
 // Types for authenticated requests  
 type AuthenticatedRequest = Request & {
@@ -139,7 +140,7 @@ export function registerAdRoutes(app: Express): void {
    *       404:
    *         description: Ad session not found
    */
-  app.post('/api/ads/session/complete', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
+  app.post('/api/ads/session/complete', isAuthenticated, AnalyticsLogger.adLogger(), async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user?.id ?? req.user?.claims?.sub;
       if (!userId) {

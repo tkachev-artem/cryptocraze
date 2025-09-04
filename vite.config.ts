@@ -53,6 +53,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react(), tailwindcss()],
+    optimizeDeps: {
+      exclude: ['lightweight-charts']
+    },
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),

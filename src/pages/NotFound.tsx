@@ -1,39 +1,48 @@
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Grid } from '../components/ui/grid';
 import { useTranslation } from '../lib/i18n';
 
 export function NotFound() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   return (
-    <Grid className="flex items-center justify-center px-4 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
-      <Card className="w-full text-center">
-        <CardHeader>
-          <div className="text-6xl mb-4">🤔</div>
-          <CardTitle className="text-2xl">{t('errors.404.title')}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="text-gray-600">{t('errors.404.description')}</div>
-          
-          <div className="space-y-3">
-            <Button
-              onClick={() => window.location.href = '/'}
-              className="w-full"
-            >
-              {t('errors.404.goHome')}
-            </Button>
-            
-            <Button
-              variant="outline"
-              onClick={() => { window.history.back(); }}
-              className="w-full"
-            >
-              {t('common.back')}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+    <Grid className="min-h-screen bg-white">
+      <div className="flex flex-col items-center justify-center min-h-screen px-4 text-center">
+        
+        {/* Bear character */}
+        <div className="mb-8">
+          <img 
+            src="/tutorial/bear-1.svg" 
+            alt="Bear" 
+            className="w-48 h-48 mx-auto mb-6"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        </div>
+
+        {/* Error message */}
+        <div className="mb-8 max-w-md">
+          <h1 className="text-6xl font-bold text-gray-900 mb-4">404</h1>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">
+            {t('errors.404.title')}
+          </h2>
+        </div>
+
+        {/* Action button */}
+        <div className="w-full max-w-sm">
+          <Button
+            onClick={() => navigate('/home')}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
+          >
+            {t('errors.404.goHome')}
+          </Button>
+        </div>
+
+      </div>
     </Grid>
   );
 }

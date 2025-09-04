@@ -390,11 +390,11 @@ export const Box = ({ type, isOpen, onClose, onError }: BoxProps) => {
               </Button>
             </div>
           </div>
-        </div>
-      </ErrorBoundary>
+          </ErrorBoundary>
+        </Grid>
+      </div>
     )
   }
-
 
   // Error display component
   const renderError = () => {

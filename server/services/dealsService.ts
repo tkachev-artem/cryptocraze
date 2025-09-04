@@ -5,6 +5,7 @@ import { unifiedPriceService } from './unifiedPriceService.js';
 import { storage } from '../storage.js';
 import { applyAutoRewards } from './autoRewards.js';
 import { workerManager } from './workers/workerManager.js';
+import AnalyticsLogger from '../middleware/analyticsLogger.js';
 
 export const dealsService = {
   async openDeal({ userId, symbol, direction, amount, multiplier, takeProfit, stopLoss }: {
@@ -71,6 +72,25 @@ export const dealsService = {
 
     // Замораживаем средства
     await storage.updateUserFreeBalance(userId, -amount);
+
+    // Синхронизируем сделку с ClickHouse
+    try {
+      await AnalyticsLogger.syncDeal({
+        id: deal.id,
+        userId,
+        symbol,
+        direction,
+        amount,
+        multiplier,
+        openPrice,
+        takeProfit,
+        stopLoss,
+        openedAt: now,
+        status: 'open'
+      });
+    } catch (error) {
+      console.error('Failed to sync deal to ClickHouse:', error);
+    }
 
     // Увеличиваем счетчик сделок пользователя
     await storage.incrementUserTradesCount(userId);
@@ -187,6 +207,29 @@ export const dealsService = {
     // Обновляем статистику торговли пользователя
     await storage.updateUserTradingStats(userId, finalProfit, amount);
     console.log(`[dealsService] Обновлена статистика торговли: прибыль=${finalProfit}`);
+
+    // Синхронизируем закрытие сделки с ClickHouse
+    const closedAt = new Date();
+    try {
+      await AnalyticsLogger.syncDeal({
+        id: dealId,
+        userId,
+        symbol: deal.symbol,
+        direction: deal.direction,
+        amount: parseFloat(deal.amount),
+        multiplier: deal.multiplier,
+        openPrice: parseFloat(deal.openPrice),
+        takeProfit: deal.takeProfit ? parseFloat(deal.takeProfit) : undefined,
+        stopLoss: deal.stopLoss ? parseFloat(deal.stopLoss) : undefined,
+        openedAt: deal.openedAt,
+        closedAt,
+        closePrice,
+        profit: finalProfit,
+        status: 'closed'
+      });
+    } catch (error) {
+      console.error('Failed to sync closed deal to ClickHouse:', error);
+    }
 
     // Обновляем прогресс заданий типа "daily_trade"
     console.log(`[dealsService] Вызываем updateDailyTradeTasks для userId=${userId}`);

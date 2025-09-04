@@ -3,6 +3,7 @@ import { storage } from './storage.js';
 import { applyAutoRewards } from './services/autoRewards.js';
 import session from 'express-session';
 import connectPg from 'connect-pg-simple';
+import AnalyticsLogger from './middleware/analyticsLogger.js';
 
 // Simple OAuth without Passport.js
 export function setupSimpleOAuth(app: Express) {
@@ -166,6 +167,31 @@ export function setupSimpleOAuth(app: Express) {
       (req as any).session.userId = user.id;
       
       console.log(`✅ User authenticated: ${user.id}`);
+      
+      // Логируем событие логина в ClickHouse
+      console.log(`[Analytics Debug] About to log login event for user ${user.id}`);
+      try {
+        // Используем BigInt для больших ID, затем Number для ClickHouse
+        const userIdNumber = Number(BigInt(user.id));
+        console.log(`[Analytics Debug] Calling logUserEvent with userId: ${userIdNumber}, eventType: login`);
+        await AnalyticsLogger.logUserEvent(
+          userIdNumber,
+          'login',
+          {
+            email: profile.email,
+            firstName: profile.given_name,
+            lastName: profile.family_name,
+            ip: req.ip,
+            userAgent: req.get('User-Agent'),
+            isNewUser: !user // true если пользователь был создан только что
+          },
+          `oauth-session-${Date.now()}`
+        );
+        console.log(`[Analytics] ✅ Login event logged successfully for user ${user.id}`);
+      } catch (error) {
+        console.error('[Analytics] ❌ Failed to log login event:', error);
+        console.error('[Analytics] ❌ Error details:', error?.message, error?.stack);
+      }
       
       // Clean up OAuth state
       delete (req as any).session.oauth_state;

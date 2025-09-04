@@ -30,7 +30,30 @@
     "todayPnl": "Today's P&L",
     "totalTrades": "Total Trades",
     "free": "Free",
-    "trials": "Challenges"
+    "trials": "Challenges",
+    "analytics": "Analytics"
+  },
+  "analytics": {
+    "title": "Analytics",
+    "subtitle": "Your trading performance",
+    "tradingStatistics": "Trading Statistics",
+    "profitAndLoss": "Profit and Loss",
+    "topTrades": "Top 5 Trades",
+    "performanceTrends": "Performance Trends",
+    "totalPL": "Total P&L",
+    "ratingPosition": "Rating Position",
+    "notRanked": "Not ranked",
+    "percentile": "percentile",
+    "noProfitableTrades": "No profitable trades yet",
+    "avgTradeSize": "Average Trade Size",
+    "successRate": "Success Rate",
+    "dailyPL": "Daily P&L (Last 7 Days)",
+    "profitableDays": "profitable days",
+    "noTradingActivity": "No trading activity yet",
+    "startTrading": "Start trading to see your daily P&L",
+    "bestDay": "Best Day",
+    "worstDay": "Worst Day",
+    "avgDaily": "Average Daily"
   },
   "wallet": {
     "total": "Total",
@@ -95,6 +118,7 @@
   "nav": {
     "back": "Back",
     "home": "Home",
+    "goHome": "Go to Home",
     "topInvestors": "Top Investors"
   },
   "rewards": {
@@ -113,8 +137,20 @@
   "errors": {
     "404": {
       "title": "Page Not Found",
-      "description": "The page you're looking for doesn't exist or has been moved.",
-      "goHome": "Go to Home"
+      "subtitle": "Oops! The page you're looking for doesn't exist.",
+      "description": "The page you were trying to access may have been moved, deleted, or you may have entered an incorrect URL.",
+      "goHome": "Go to Trading",
+      "goBack": "Go Back",
+      "searchPlaceholder": "Search trading pairs...",
+      "suggestions": {
+        "title": "Try these popular sections:",
+        "trading": "Start Trading",
+        "profile": "Your Profile",
+        "rating": "Rating",
+        "rewards": "Rewards",
+        "premium": "Premium Features"
+      },
+      "pandaMessage": "Don't worry! Even experienced traders sometimes get lost. Let's get you back on the right path!"
     },
     "general": "Error",
     "dataLoading": "Data loading error",
@@ -152,7 +188,19 @@
     "editBg": "Edit background",
     "editIcon": "Edit",
     "rewards": "Rewards",
-    "analytics": "Analytics"
+    "uploadPhoto": "Upload Photo",
+    "uploading": "Uploading...",
+    "fileTooLarge": "File too large. Max size: 5MB",
+    "imagesOnly": "Only images are allowed",
+    "uploadError": "Failed to upload photo. Try again.",
+    "updateError": "Error updating profile",
+    "cancel": "Cancel",
+    "analytics": "Analytics",
+    "defaultName": "User",
+    "notAvailable": "N/A",
+    "rating30Days": "30-day rating",
+    "top": "Top",
+    "allDeals": "All deals"
   },
   "deal": {
     "commission": "Commission",
@@ -194,7 +242,10 @@
     "viewAll": "View All",
     "page": "Page",
     "of": "of",
-    "lastUpdated": "Last updated"
+    "lastUpdated": "Last updated",
+    "goHome": "Go to Home",
+    "balance": "Balance",
+    "closeNotification": "Close notification"
   },
   "app": {
     "phoneOnly": {
@@ -265,6 +316,67 @@
     }
   },
   "admin": {
+    "dashboard": {
+      "title": "Dashboard",
+      "totalUsers": "Total Users", 
+      "totalUsersDesc": "All registered users",
+      "activeDeals": "Active Deals",
+      "activeDealsDesc": "Currently open positions",
+      "dailyActiveUsers": "Daily Active Users",
+      "dailyActiveUsersDesc": "Users active today",
+      "totalRevenue": "Total Revenue",
+      "totalRevenueDesc": "All time revenue",
+      "engagementMetrics": "Engagement Metrics",
+      "revenueMonetization": "Revenue & Monetization",
+      "tradingPerformance": "Trading Performance",
+      "userActivity": "User Activity",
+      "adPerformance": "Ad Performance",
+      "arpu": "ARPU",
+      "arppu": "ARPPU",
+      "conversionRate": "Conversion Rate",
+      "payingUsers": "Paying Users",
+      "weeklyActiveUsers": "Weekly Active Users",
+      "monthlyActiveUsers": "Monthly Active Users",
+      "avgSessionsPerUser": "Avg Sessions Per User",
+      "totalTrades": "Total Trades",
+      "newUsersToday": "New Users Today",
+      "totalSessions": "Total Sessions",
+      "logins7d": "Logins (7d)",
+      "adsWatched": "Ads Watched",
+      "closedTrades": "Closed Trades",
+      "profitableTrades": "Profitable Trades",
+      "successRate": "Success Rate",
+      "totalPnL": "Total P&L",
+      "totalAdSpend": "Total Ad Spend",
+      "cpi": "CPI (Cost Per Install)",
+      "cpa": "CPA (Cost Per Action)",
+      "roas": "ROAS (Return On Ad Spend)",
+      "premiumStats": "Premium Statistics",
+      "premiumStatsError": "Error loading premium user statistics",
+      "premiumPurchased": "Purchased",
+      "premiumMonthly": "Mon",
+      "premiumYearly": "Year",
+      "premiumPurchasedPercent": "Purchased",
+      "premiumReceived": "Received",
+      "premiumDaysGranted": "days granted",
+      "premiumActive": "Active",
+      "allRegisteredUsers": "All registered users",
+      "currentlyOpenPositions": "Currently open positions", 
+      "usersActiveToday": "Users active today",
+      "allTimeRevenue": "All time revenue",
+      "premiumMonth": "Month",
+      "premiumYear": "Year",
+      "errorLoadingUsers": "Error loading users",
+      "invalidDate": "Invalid date",
+      "purchasedPremium": "Purchased Premium",
+      "receivedPremium": "Received Premium",
+      "user": "User",
+      "subscriptionType": "Subscription Type",
+      "daysGranted": "Days Granted",
+      "activeUntil": "Active Until",
+      "noPurchasedPremiumUsers": "No users with purchased premium",
+      "noRewardPremiumUsers": "No users with reward premium"
+    },
     "analytics": {
       "title": "BI Analytics Dashboard",
       "subtitle": "Business Intelligence & User Analytics",
@@ -654,10 +766,12 @@
     }
   },
   "wheel": {
+    "back": "Back",
     "yourWin": "Your winnings",
     "tryLuck": "Try your luck!",
     "spin": "Spin",
-    "spinning": "Spinning..."
+    "spinning": "Spinning...",
+    "collect": "Collect"
   },
   "indicators": {
     "ema": "Exponential Moving Average (EMA)",
@@ -789,6 +903,7 @@
       "fraudDetected": "Suspicious activity detected",
       "initialization": "Initializing ad system...",
       "simulation": "Demo advertisement",
+      "videoAd": "Video advertisement",
       "testAd": "Test Advertisement",
       "startingAd": "Starting advertisement...",
       "initializing": "Initializing...",
@@ -802,7 +917,10 @@
       "capturing": "Capturing chart...",
       "noImage": "No chart image available",
       "share": "Share",
-      "saveToDevice": "Save to Device"
+      "saveToDevice": "Save to Device",
+      "controlPanel": "Chart control panel",
+      "symbol": "Symbol",
+      "timeframeSelection": "Timeframe selection"
     },
     "test": {
       "proTutorial": "ProTutorial Test",

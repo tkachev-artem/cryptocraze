@@ -26,7 +26,8 @@ import { db } from './db';
 import { deals, users, premiumSubscriptions, rewardTiers, analytics, userDailyStats, cohortAnalysis, userAcquisitionMetrics, engagementMetrics, revenueMetrics, adPerformanceMetrics, adSessions, adRewards } from '../shared/schema';
 import { applyAutoRewards } from './services/autoRewards';
 import { biAnalyticsService } from './services/biAnalyticsService';
-import { adminAnalyticsService } from './services/adminAnalyticsService';
+import { clickhouseAnalyticsService } from './services/clickhouseAnalyticsService.js';
+import AnalyticsLogger from './middleware/analyticsLogger.js';
 import { registerAdRoutes } from './adRoutes';
 import { adminRoutes as workerAdminRoutes, getWorkerSystemHealth } from './services/workers/index.js';
 import { and, eq, gte, lte, inArray, sql, desc, asc, count, sum, lt } from 'drizzle-orm';
@@ -72,6 +73,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test endpoint for analytics logging
+  app.post('/api/test/analytics', async (req, res) => {
+    try {
+      console.log('[Test Analytics] Request received:', {
+        body: req.body,
+        userId: req.body?.userId
+      });
+
+      if (!req.body?.userId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'userId is required' 
+        });
+      }
+
+      await AnalyticsLogger.logUserEvent(
+        parseInt(req.body.userId),
+        req.body?.eventType || 'test_endpoint_call',
+        {
+          source: 'test_endpoint',
+          timestamp: new Date().toISOString(),
+          ...req.body?.eventData
+        },
+        `test-session-${Date.now()}`
+      );
+
+      res.json({ 
+        success: true, 
+        message: 'Analytics event logged successfully',
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('[Test Analytics] Error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error?.message || 'Internal server error'
+      });
+    }
+  });
+
   // Debug endpoint for auth
   app.get('/api/debug/auth', (req, res) => {
     const shouldSkipAuth = process.env.STATIC_ONLY === 'true';
@@ -92,6 +134,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Swagger UI с защитой паролем
   app.use('/api-docs', swaggerAuth, swaggerUi.serve, swaggerUi.setup(specs, swaggerUiOptions));
   
+  // Глобальный middleware для аналитики (page logging)
+  app.use(AnalyticsLogger.pageLogger());
 
   
   // Auth middleware - always setup OAuth unless in static mode
@@ -4898,6 +4942,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== CLICKHOUSE HEALTH CHECK =====
+  
+  /**
+   * @swagger
+   * /api/admin/clickhouse/health:
+   *   get:
+   *     summary: Проверка состояния ClickHouse
+   *     tags: [Admin ClickHouse]
+   *     responses:
+   *       200:
+   *         description: Состояние ClickHouse
+   */
+  app.get('/api/admin/clickhouse/health', async (req: Request, res: Response) => {
+    try {
+      const health = await clickhouseAnalyticsService.healthCheck();
+      res.json({
+        clickhouse: health,
+        timestamp: new Date()
+      });
+    } catch (error: any) {
+      console.error('[ClickHouse] Health check error:', error);
+      res.status(500).json({
+        clickhouse: {
+          healthy: false,
+          error: error.message
+        },
+        timestamp: new Date()
+      });
+    }
+  });
+
   // ===== ADMIN BI ANALYTICS ENDPOINTS =====
 
   /**
@@ -4914,14 +4989,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.get('/api/admin/analytics/overview', async (req: Request, res: Response) => {
     try {
-      console.log('[AdminAnalytics] Overview endpoint called');
-      const overview = await adminAnalyticsService.getOverview();
-      console.log('[AdminAnalytics] Overview data retrieved successfully');
+      console.log('[AdminAnalytics] Overview endpoint called - ClickHouse only');
+      
+      // Initialize ClickHouse schema if not done yet
+      await clickhouseAnalyticsService.initializeSchema();
+      
+      // Get data from ClickHouse only
+      const overview = await clickhouseAnalyticsService.getDashboardOverview();
+      console.log('[AdminAnalytics] ClickHouse overview data retrieved successfully');
       res.json(overview);
+      
     } catch (error: any) {
-      console.error("[AdminAnalytics] Error getting admin analytics overview:", error);
+      console.error("[ClickHouse] Error getting analytics from ClickHouse:", error);
       res.status(500).json({ 
-        error: 'Ошибка получения обзора аналитики',
+        error: 'ClickHouse недоступен',
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
@@ -5440,14 +5521,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.get('/api/admin/analytics/overview-v2', async (req: Request, res: Response) => {
     try {
-      console.log('[AdminAnalytics] Overview-v2 endpoint called');
-      const overview = await adminAnalyticsService.getOverview();
-      console.log('[AdminAnalytics] Overview data retrieved successfully');
-      res.json(overview);
+      console.log('[AdminAnalytics] Overview-v2 endpoint called - ClickHouse only');
+      
+      // Initialize ClickHouse schema if not done yet
+      await clickhouseAnalyticsService.initializeSchema();
+      
+      // Get data from ClickHouse only
+      const overview = await clickhouseAnalyticsService.getDashboardOverview();
+      console.log('[AdminAnalytics] ClickHouse overview-v2 data retrieved successfully');
+      
+      res.json({
+        ...overview,
+        dataSource: 'clickhouse',
+        version: 'v2'
+      });
+      
     } catch (error: any) {
-      console.error("[AdminAnalytics] Error getting admin analytics overview:", error);
+      console.error("[AdminAnalytics] Error getting admin analytics overview-v2:", error);
       res.status(500).json({ 
-        error: 'Ошибка получения обзора аналитики',
+        error: 'ClickHouse недоступен',
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
@@ -5477,7 +5569,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365); // Limit 1-365 days
       
       console.log(`[AdminAnalytics] Getting revenue data for ${days} days`);
-      const result = await adminAnalyticsService.getRevenueData(days);
+      // ClickHouse only - no fallback
+      throw new Error('Revenue data available only via ClickHouse overview endpoint');
       console.log(`[AdminAnalytics] Revenue data retrieved: ${result.data.length} records`);
       
       res.json(result);
@@ -5514,7 +5607,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365); // Limit 1-365 days
       
       console.log(`[AdminAnalytics] Getting ads data for ${days} days`);
-      const result = await adminAnalyticsService.getAdsData(days);
+      // ClickHouse only - no fallback
+      throw new Error('Ads data available only via ClickHouse overview endpoint');
       console.log(`[AdminAnalytics] Ads data retrieved: ${result.data.length} records`);
       
       res.json(result);
@@ -5531,7 +5625,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   if (process.env.NODE_ENV === 'development') {
     app.get('/api/debug/table-structure', async (req: Request, res: Response) => {
       try {
-        const structure = await adminAnalyticsService.debugTableStructure();
+        // Debug endpoint removed - ClickHouse only
         res.json(structure);
       } catch (error: any) {
         console.error("Error getting table structure:", error);
@@ -5846,7 +5940,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/deals/open', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
+  app.post('/api/deals/open', isAuthenticated, AnalyticsLogger.tradeLogger(), async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user.id;
       const { symbol, direction, amount, multiplier, takeProfit, stopLoss } = req.body;
@@ -5869,7 +5963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/deals/close', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
+  app.post('/api/deals/close', isAuthenticated, AnalyticsLogger.tradeLogger(), async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user.id;
       const { dealId } = req.body;

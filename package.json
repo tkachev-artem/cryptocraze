@@ -32,6 +32,7 @@
     "db:init": "tsx scripts/init-db.ts"
   },
   "dependencies": {
+    "@clickhouse/client": "^1.12.1",
     "@hookform/resolvers": "^5.2.1",
     "@neondatabase/serverless": "^1.0.1",
     "@reduxjs/toolkit": "^2.6.1",

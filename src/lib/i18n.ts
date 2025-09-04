@@ -1,4 +1,11 @@
 import { useEffect, useState } from 'react';
+
+// Static imports instead of dynamic
+import ruTranslations from '../locales/ru.json';
+import enTranslations from '../locales/en.json';
+import esTranslations from '../locales/es.json';
+import frTranslations from '../locales/fr.json';
+import ptTranslations from '../locales/pt.json';
 import { ensureLanguageInitialized, setPreferredLanguage, type SupportedLanguage } from './languageUtils';
 
 type TranslationCache = Record<string, Record<string, unknown>>
@@ -12,12 +19,12 @@ let currentTranslations: Record<string, unknown> = {};
 let isLoadingGlobal = true;
 const listeners = new Set<() => void>();
 
-const translationLoaders: Record<Language, () => Promise<{ default: Record<string, unknown> }>> = {
-  ru: () => import('../locales/ru.json'),
-  en: () => import('../locales/en.json'),
-  es: () => import('../locales/es.json'),
-  fr: () => import('../locales/fr.json'),
-  pt: () => import('../locales/pt.json'),
+const staticTranslations: Record<Language, Record<string, unknown>> = {
+  ru: ruTranslations,
+  en: enTranslations,
+  es: esTranslations,
+  fr: frTranslations,
+  pt: ptTranslations,
 };
 
 const notify = () => { listeners.forEach((fn) => { fn(); }); };
@@ -28,16 +35,30 @@ const loadTranslationsGlobal = async (lang: Language) => {
   try {
     if (lang in translationCache) {
       currentTranslations = translationCache[lang];
+      isLoadingGlobal = false;
+      notify();
       return;
     }
-    const module = await translationLoaders[lang]();
-    const data = module.default;
+    const data = staticTranslations[lang];
+    if (!data) {
+      throw new Error(`No translations found for language: ${lang}`);
+    }
     translationCache[lang] = data;
     currentTranslations = data;
-  } catch {
+  } catch (error) {
+    console.error(`Failed to load translations for ${lang}:`, error);
     // fallback to EN
     if (lang !== 'en') {
-      await loadTranslationsGlobal('en');
+      const enData = staticTranslations.en;
+      if (enData) {
+        currentTranslations = enData;
+        translationCache.en = enData;
+      } else {
+        console.error('Failed to load fallback EN translations');
+        currentTranslations = {};
+      }
+    } else {
+      currentTranslations = {};
     }
   } finally {
     isLoadingGlobal = false;
@@ -51,13 +72,23 @@ export const setGlobalLanguage = (newLanguage: Language) => {
   void loadTranslationsGlobal(normalized);
 };
 
+// Initialize synchronously with static translations
+const initializeSync = () => {
+  if (!currentLanguage) {
+    const initialized = ensureLanguageInitialized();
+    currentLanguage = initialized;
+    // Load synchronously for static imports
+    const data = staticTranslations[initialized];
+    if (data) {
+      translationCache[initialized] = data;
+      currentTranslations = data;
+      isLoadingGlobal = false;
+    }
+  }
+};
+
 // initialize once on first import
-// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-if (!currentLanguage) {
-  const initialized = ensureLanguageInitialized();
-  currentLanguage = initialized;
-  void loadTranslationsGlobal(initialized);
-}
+initializeSync();
 
 export type UseTranslationReturn = {
   language: Language;

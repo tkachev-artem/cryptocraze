@@ -28,9 +28,32 @@
     "welcome": "¡Bienvenido de vuelta!",
     "portfolio": "Valor del Portafolio",
     "todayPnl": "P&L de Hoy",
-    "totalTrades": "Total de Operaciones",
+    "totalTrades": "Operaciones",
     "free": "Gratis",
-    "trials": "Desafíos"
+    "trials": "Desafíos",
+    "analytics": "Analíticas"
+  },
+  "analytics": {
+    "title": "Analíticas",
+    "subtitle": "Tu rendimiento de trading",
+    "tradingStatistics": "Estadísticas de Trading",
+    "profitAndLoss": "Ganancias y Pérdidas",
+    "topTrades": "Top 5 Operaciones",
+    "performanceTrends": "Tendencias de Rendimiento",
+    "totalPL": "P&L Total",
+    "ratingPosition": "Posición en el Ranking",
+    "notRanked": "Sin clasificar",
+    "percentile": "percentil",
+    "noProfitableTrades": "Aún no hay operaciones rentables",
+    "avgTradeSize": "Tamaño Promedio de Operación",
+    "successRate": "Tasa de Éxito",
+    "dailyPL": "P&L Diario (Últimos 7 Días)",
+    "profitableDays": "días rentables",
+    "noTradingActivity": "Aún no hay actividad de trading",
+    "startTrading": "Comienza a operar para ver tu P&L diario",
+    "bestDay": "Mejor Día",
+    "worstDay": "Peor Día",
+    "avgDaily": "Promedio Diario"
   },
   "wallet": {
     "total": "Total",
@@ -95,6 +118,7 @@
   "nav": {
     "back": "Atrás",
     "home": "Inicio",
+    "goHome": "Regresar a la Pantalla Principal",
     "topInvestors": "Top Inversores"
   },
   "rewards": {
@@ -114,7 +138,7 @@
     "404": {
       "title": "Página No Encontrada",
       "description": "La página que buscas no existe o ha sido movida.",
-      "goHome": "Ir al Inicio"
+      "goHome": "Regresar a la Pantalla Principal"
     },
     "general": "Error",
     "dataLoading": "Error de carga de datos",
@@ -135,10 +159,10 @@
     "title": "Perfil",
     "editTitle": "Editar perfil",
     "successRate": "Tasa de éxito",
-    "maxTradeAmount": "Cantidad máxima de operación",
-    "avgTradeAmount": "Cantidad promedio de operación",
-    "maxProfit": "Ganancia máxima",
-    "maxLoss": "Pérdida máxima",
+    "maxTradeAmount": "Máximo",
+    "avgTradeAmount": "Promedio",
+    "maxProfit": "Ganancia",
+    "maxLoss": "Pérdida",
     "name": "Nombre",
     "namePlaceholder": "Tu nombre",
     "phone": "Número de teléfono",
@@ -152,7 +176,19 @@
     "editBg": "Editar fondo",
     "editIcon": "Editar",
     "rewards": "Recompensas",
-    "analytics": "Análisis"
+    "uploadPhoto": "Subir Foto",
+    "uploading": "Subiendo...",
+    "fileTooLarge": "Archivo demasiado grande. Tamaño máximo: 5MB",
+    "imagesOnly": "Solo se permiten imágenes",
+    "uploadError": "Error al subir la foto. Por favor, inténtalo de nuevo.",
+    "updateError": "Error al actualizar el perfil",
+    "cancel": "Cancelar",
+    "analytics": "Análisis",
+    "defaultName": "Usuario",
+    "notAvailable": "N/D",
+    "rating30Days": "Calificación de 30 días",
+    "top": "Top",
+    "allDeals": "Todas las operaciones"
   },
   "deal": {
     "commission": "Comisión",
@@ -178,7 +214,7 @@
     "close": "Cerrar",
     "back": "←",
     "na": "N/A",
-    "noData": "Sin datos",
+    "noData": "No se han realizado operaciones comerciales, no hay información disponible",
     "select": "Seleccionar",
     "info": "Información",
     "previous": "Anterior",
@@ -194,7 +230,9 @@
     "viewAll": "Ver Todo",
     "page": "Página",
     "of": "de",
-    "lastUpdated": "Última actualización"
+    "lastUpdated": "Última actualización",
+    "goHome": "Regresar a la Pantalla Principal",
+    "balance": "Saldo"
   },
   "app": {
     "phoneOnly": {
@@ -233,8 +271,59 @@
     "highlighted": "Tu cuenta está destacada en el ranking",
     "monthly": "por mes",
     "yearly": "por año",
-    "chargeMonthly": "499.00 ₽ se cobrará automáticamente cada mes hasta que canceles tu suscripción",
-    "chargeYearly": "5,199.00 ₽ se cobrará automáticamente cada año hasta que canceles tu suscripción"
+    "chargeMonthly": "$6.99 se cobrará automáticamente cada mes hasta que canceles tu suscripción",
+    "chargeYearly": "$64.99 se cobrará automáticamente cada año hasta que canceles tu suscripción"
+  },
+  "admin": {
+    "dashboard": {
+      "title": "Panel de Control",
+      "totalUsers": "Total de Usuarios",
+      "totalUsersDesc": "Todos los usuarios registrados",
+      "activeDeals": "Operaciones Activas",
+      "activeDealsDesc": "Posiciones actualmente abiertas",
+      "dailyActiveUsers": "Usuarios Activos Diarios",
+      "dailyActiveUsersDesc": "Usuarios activos hoy",
+      "totalRevenue": "Ingresos Totales",
+      "totalRevenueDesc": "Ingresos de todos los tiempos",
+      "engagementMetrics": "Métricas de Participación",
+      "weeklyActiveUsers": "Usuarios Activos Semanales",
+      "monthlyActiveUsers": "Usuarios Activos Mensuales",
+      "avgSessionsPerUser": "Sesiones Promedio por Usuario",
+      "totalTrades": "Total de Operaciones",
+      "revenueMonetization": "Ingresos y Monetización",
+      "arpu": "ARPU",
+      "arppu": "ARPPU",
+      "conversionRate": "Tasa de Conversión",
+      "payingUsers": "Usuarios de Pago",
+      "tradingPerformance": "Rendimiento de Trading",
+      "closedTrades": "Operaciones Cerradas",
+      "profitableTrades": "Operaciones Rentables",
+      "successRate": "Tasa de Éxito",
+      "totalPnL": "P&L Total",
+      "userActivity": "Actividad de Usuarios",
+      "newUsersToday": "Nuevos Usuarios Hoy",
+      "totalSessions": "Sesiones Totales",
+      "logins7d": "Inicios de Sesión (7d)",
+      "adsWatched": "Anuncios Vistos",
+      "adPerformance": "Rendimiento de Anuncios",
+      "totalAdSpend": "Gasto Total en Anuncios",
+      "cpi": "CPI (Costo Por Instalación)",
+      "cpa": "CPA (Costo Por Acción)",
+      "roas": "ROAS (Retorno de Inversión Publicitaria)",
+      "premiumStats": "Estadísticas Premium",
+      "allRegisteredUsers": "Todos los usuarios registrados",
+      "currentlyOpenPositions": "Posiciones actualmente abiertas",
+      "usersActiveToday": "Usuarios activos hoy",
+      "allTimeRevenue": "Ingresos de todos los tiempos",
+      "premiumPurchased": "Compraron Premium",
+      "premiumMonthly": "Mensual",
+      "premiumYearly": "Anual",
+      "premiumPurchasedPercent": "Compraron Premium",
+      "premiumReceived": "Recibieron Premium",
+      "premiumDaysGranted": "días Premium otorgados",
+      "premiumActive": "Total usuarios Premium",
+      "premiumStatsError": "Error al cargar estadísticas Premium"
+    }
   },
   "notifications": {
     "emptyTitle": "No hay notificaciones activas",
@@ -277,7 +366,7 @@
       "weeklyActiveUsers": "Usuarios Activos Semanales",
       "monthlyActiveUsers": "Usuarios Activos Mensuales",
       "avgSessionDuration": "Duración Promedio de Sesión",
-      "totalTrades": "Total de Operaciones",
+      "totalTrades": "Operaciones",
       "arpu": "ARPU",
       "arppu": "ARPPU", 
       "conversionRate": "Tasa de Conversión",
@@ -290,7 +379,45 @@
       "recentRevenue": "Ingresos Recientes",
       "processMetrics": "Procesar Métricas de Hoy",
       "metricsProcessed": "¡Métricas diarias procesadas exitosamente!",
-      "lastUpdated": "Última actualización"
+      "lastUpdated": "Última actualización",
+      "avgSessionsPerUser": "Sesiones Promedio por Usuario",
+      "newUsersToday": "Nuevos Usuarios Hoy",
+      "totalSessions": "Sesiones Totales",
+      "logins7d": "Inicios de Sesión (7d)",
+      "adsWatched": "Anuncios Vistos",
+      "closedTrades": "Operaciones Cerradas",
+      "profitableTrades": "Operaciones Rentables",
+      "successRate": "Tasa de Éxito",
+      "totalPnL": "P&L Total",
+      "totalAdSpend": "Gasto Total en Publicidad",
+      "cpi": "CPI (Costo por Instalación)",
+      "cpa": "CPA (Costo por Acción)",
+      "roas": "ROAS (Retorno de la Inversión Publicitaria)",
+      "premiumStats": "Estadísticas Premium",
+      "premiumStatsError": "Error al cargar las estadísticas de usuarios premium",
+      "premiumPurchased": "Comprado",
+      "premiumMonthly": "Mes",
+      "premiumYearly": "Año",
+      "premiumPurchasedPercent": "Comprados",
+      "premiumReceived": "Recibido",
+      "premiumDaysGranted": "días otorgados",
+      "premiumActive": "Activo",
+      "allRegisteredUsers": "Todos los usuarios registrados",
+      "currentlyOpenPositions": "Posiciones abiertas actualmente", 
+      "usersActiveToday": "Usuarios activos hoy",
+      "allTimeRevenue": "Ingresos de todos los tiempos",
+      "premiumMonth": "Mes",
+      "premiumYear": "Año",
+      "errorLoadingUsers": "Error al cargar usuarios",
+      "invalidDate": "Fecha inválida",
+      "purchasedPremium": "Premium Comprado",
+      "receivedPremium": "Premium Recibido",
+      "user": "Usuario",
+      "subscriptionType": "Tipo de Suscripción",
+      "daysGranted": "Días Otorgados",
+      "activeUntil": "Activo Hasta",
+      "noPurchasedPremiumUsers": "No hay usuarios con premium comprado",
+      "noRewardPremiumUsers": "No hay usuarios con premium por recompensa"
     }
   },
   "language": {
@@ -651,10 +778,12 @@
     }
   },
   "wheel": {
-    "yourWin": "Tu ganancia",
+    "back": "Atrás",
+    "yourWin": "Tu premio",
     "tryLuck": "¡Prueba tu suerte!",
     "spin": "Girar",
-    "spinning": "Girando..."
+    "spinning": "Girando...",
+    "collect": "Recoger"
   },
   "indicators": {
     "ema": "Media Móvil Exponencial (EMA)",
@@ -863,5 +992,24 @@
     "symbol": "BTCUSDT",
     "amount": "$0.00",
     "number": "0"
+  },
+  "errors": {
+    "404": {
+      "title": "Página No Encontrada",
+      "subtitle": "¡Oops! La página que buscas no existe.",
+      "description": "La página a la que intentabas acceder pudo haber sido movida, eliminada, o puede que hayas introducido una URL incorrecta.",
+      "goHome": "Ir a Trading",
+      "goBack": "Volver",
+      "searchPlaceholder": "Buscar pares de trading...",
+      "suggestions": {
+        "title": "Prueba estas secciones populares:",
+        "trading": "Comenzar Trading",
+        "profile": "Tu Perfil",
+        "rating": "Clasificación",
+        "rewards": "Recompensas",
+        "premium": "Funciones Premium"
+      },
+      "pandaMessage": "¡No te preocupes! Incluso los traders experimentados a veces se pierden. ¡Vamos a llevarte de vuelta al camino!"
+    }
   }
 }

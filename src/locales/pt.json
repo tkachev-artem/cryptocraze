@@ -28,9 +28,32 @@
     "welcome": "Bem-vindo de volta!",
     "portfolio": "Valor do Portfólio",
     "todayPnl": "L&P de Hoje",
-    "totalTrades": "Total de Negociações",
+    "totalTrades": "Negociações",
     "free": "Grátis",
-    "trials": "Desafios"
+    "trials": "Desafios",
+    "analytics": "Análises"
+  },
+  "analytics": {
+    "title": "Análises",
+    "subtitle": "Seu desempenho de trading",
+    "tradingStatistics": "Estatísticas de Trading",
+    "profitAndLoss": "Lucros e Perdas",
+    "topTrades": "Top 5 Negociações",
+    "performanceTrends": "Tendências de Desempenho",
+    "totalPL": "L&P Total",
+    "ratingPosition": "Posição no Ranking",
+    "notRanked": "Sem classificação",
+    "percentile": "percentil",
+    "noProfitableTrades": "Ainda não há negociações lucrativas",
+    "avgTradeSize": "Tamanho Médio da Negociação",
+    "successRate": "Taxa de Sucesso",
+    "dailyPL": "L&P Diário (Últimos 7 Dias)",
+    "profitableDays": "dias lucrativos",
+    "noTradingActivity": "Ainda não há atividade de trading",
+    "startTrading": "Comece a negociar para ver seu L&P diário",
+    "bestDay": "Melhor Dia",
+    "worstDay": "Pior Dia",
+    "avgDaily": "Média Diária"
   },
   "wallet": {
     "total": "Total",
@@ -95,6 +118,7 @@
   "nav": {
     "back": "Voltar",
     "home": "Início",
+    "goHome": "Retornar à Tela Principal",
     "topInvestors": "Top Investidores"
   },
   "rewards": {
@@ -114,7 +138,7 @@
     "404": {
       "title": "Página Não Encontrada",
       "description": "A página que você está procurando não existe ou foi movida.",
-      "goHome": "Ir para o Início"
+      "goHome": "Retornar à Tela Principal"
     },
     "general": "Erro",
     "dataLoading": "Erro no carregamento de dados",
@@ -135,10 +159,10 @@
     "title": "Perfil",
     "editTitle": "Editar perfil",
     "successRate": "Taxa de sucesso",
-    "maxTradeAmount": "Quantidade máxima de negociação",
-    "avgTradeAmount": "Quantidade média de negociação",
-    "maxProfit": "Lucro máximo",
-    "maxLoss": "Perda máxima",
+    "maxTradeAmount": "Máximo",
+    "avgTradeAmount": "Média",
+    "maxProfit": "Lucro",
+    "maxLoss": "Perda",
     "name": "Nome",
     "namePlaceholder": "Seu nome",
     "phone": "Número de telefone",
@@ -152,7 +176,19 @@
     "editBg": "Editar fundo",
     "editIcon": "Editar",
     "rewards": "Recompensas",
-    "analytics": "Análise"
+    "uploadPhoto": "Enviar Foto",
+    "uploading": "Enviando...",
+    "fileTooLarge": "Arquivo muito grande. Tamanho máximo: 5MB",
+    "imagesOnly": "Apenas imagens são permitidas",
+    "uploadError": "Falha ao enviar foto. Tente novamente.",
+    "updateError": "Erro ao atualizar perfil",
+    "cancel": "Cancelar",
+    "analytics": "Análise",
+    "defaultName": "Usuário",
+    "notAvailable": "N/D",
+    "rating30Days": "Avaliação de 30 dias",
+    "top": "Topo",
+    "allDeals": "Todas as negociações"
   },
   "deal": {
     "commission": "Comissão",
@@ -178,7 +214,7 @@
     "close": "Fechar",
     "back": "←",
     "na": "N/A",
-    "noData": "Sem dados",
+    "noData": "Nenhuma negociação comercial foi realizada, nenhuma informação disponível",
     "select": "Selecionar",
     "info": "Informação",
     "previous": "Anterior",
@@ -194,7 +230,9 @@
     "viewAll": "Ver Tudo",
     "page": "Página",
     "of": "de",
-    "lastUpdated": "Última atualização"
+    "lastUpdated": "Última atualização",
+    "goHome": "Retornar à Tela Principal",
+    "balance": "Saldo"
   },
   "app": {
     "phoneOnly": {
@@ -277,7 +315,7 @@
       "weeklyActiveUsers": "Usuários Ativos Semanais",
       "monthlyActiveUsers": "Usuários Ativos Mensais",
       "avgSessionDuration": "Duração Média da Sessão",
-      "totalTrades": "Total de Negociações",
+      "totalTrades": "Negociações",
       "arpu": "ARPU",
       "arppu": "ARPPU",
       "conversionRate": "Taxa de Conversão",
@@ -291,6 +329,80 @@
       "processMetrics": "Processar Métricas de Hoje",
       "metricsProcessed": "Métricas diárias processadas com sucesso!",
       "lastUpdated": "Última atualização"
+    },
+    "dashboard": {
+      "title": "Painel Administrativo",
+      "totalUsers": "Total de Usuários",
+      "totalUsersDesc": "Todos os usuários registrados",
+      "activeDeals": "Negociações Ativas",
+      "activeDealsDesc": "Posições atualmente abertas",
+      "dailyActiveUsers": "Usuários Ativos Diários",
+      "dailyActiveUsersDesc": "Usuários ativos hoje",
+      "totalRevenue": "Receita Total",
+      "totalRevenueDesc": "Receita de todos os tempos",
+      "engagementMetrics": "Métricas de Engajamento",
+      "revenueMonetization": "Receita e Monetização",
+      "tradingPerformance": "Desempenho de Trading",
+      "userActivity": "Atividade de Usuários",
+      "adPerformance": "Desempenho de Anúncios",
+      "arpu": "ARPU",
+      "arppu": "ARPPU",
+      "conversionRate": "Taxa de Conversão",
+      "payingUsers": "Usuários Pagantes",
+      "weeklyActiveUsers": "Usuários Ativos Semanais",
+      "monthlyActiveUsers": "Usuários Ativos Mensais",
+      "avgSessionDuration": "Duração Média da Sessão",
+      "totalTrades": "Total de Negociações",
+      "totalSignups": "Total de Cadastros",
+      "firstTrades": "Primeiras Negociações",
+      "tradeOpenRate": "Taxa de Abertura de Negociações",
+      "avgTimeToFirstTrade": "Tempo Médio para Primeira Negociação",
+      "premiumStats": "Estatísticas Premium",
+      "adViews": "Visualizações de Anúncios",
+      "adRevenue": "Receita de Anúncios",
+      "adClickRate": "Taxa de Cliques em Anúncios",
+      "adFillRate": "Taxa de Preenchimento de Anúncios",
+      "recentActivity": "Atividade Recente",
+      "recentRevenue": "Receita Recente",
+      "lastUpdated": "Última atualização",
+      "avgSessionsPerUser": "Sessões Médias por Usuário",
+      "newUsersToday": "Novos Usuários Hoje",
+      "totalSessions": "Sessões Totais",
+      "logins7d": "Logins (7d)",
+      "adsWatched": "Anúncios Assistidos",
+      "closedTrades": "Negociações Fechadas",
+      "profitableTrades": "Negociações Lucrativas",
+      "successRate": "Taxa de Sucesso",
+      "totalPnL": "P&L Total",
+      "totalAdSpend": "Gasto Total em Anúncios",
+      "cpi": "CPI (Custo por Instalação)",
+      "cpa": "CPA (Custo por Ação)",
+      "roas": "ROAS (Retorno sobre o Investimento em Anúncios)",
+      "premiumStats": "Estatísticas Premium",
+      "premiumStatsError": "Erro ao carregar as estatísticas de usuários premium",
+      "premiumPurchased": "Comprado",
+      "premiumMonthly": "Mês",
+      "premiumYearly": "Ano",
+      "premiumPurchasedPercent": "Comprados",
+      "premiumReceived": "Recebido",
+      "premiumDaysGranted": "dias concedidos",
+      "premiumActive": "Ativo",
+      "allRegisteredUsers": "Todos os usuários registrados",
+      "currentlyOpenPositions": "Posições atualmente abertas", 
+      "usersActiveToday": "Usuários ativos hoje",
+      "allTimeRevenue": "Receita de todos os tempos",
+      "premiumMonth": "Mês",
+      "premiumYear": "Ano",
+      "errorLoadingUsers": "Erro ao carregar usuários",
+      "invalidDate": "Data inválida",
+      "purchasedPremium": "Premium Comprado",
+      "receivedPremium": "Premium Recebido",
+      "user": "Usuário",
+      "subscriptionType": "Tipo de Assinatura",
+      "daysGranted": "Dias Concedidos",
+      "activeUntil": "Ativo Até",
+      "noPurchasedPremiumUsers": "Nenhum usuário com premium comprado",
+      "noRewardPremiumUsers": "Nenhum usuário com premium de recompensa"
     }
   },
   "language": {
@@ -651,10 +763,12 @@
     }
   },
   "wheel": {
-    "yourWin": "Seus ganhos",
-    "tryLuck": "Tente sua sorte!",
+    "back": "Voltar",
+    "yourWin": "Seu prêmio",
+    "tryLuck": "Tente a sorte!",
     "spin": "Girar",
-    "spinning": "Girando..."
+    "spinning": "Girando...",
+    "collect": "Coletar"
   },
   "indicators": {
     "ema": "Média Móvel Exponencial (EMA)",
@@ -863,5 +977,24 @@
     "symbol": "BTCUSDT",
     "amount": "R$0,00",
     "number": "0"
+  },
+  "errors": {
+    "404": {
+      "title": "Página Não Encontrada",
+      "subtitle": "Ops! A página que você está procurando não existe.",
+      "description": "A página que você estava tentando acessar pode ter sido movida, excluída, ou você pode ter digitado uma URL incorreta.",
+      "goHome": "Ir para Trading",
+      "goBack": "Voltar",
+      "searchPlaceholder": "Buscar pares de trading...",
+      "suggestions": {
+        "title": "Experimente estas seções populares:",
+        "trading": "Começar Trading",
+        "profile": "Seu Perfil",
+        "rating": "Classificação",
+        "rewards": "Recompensas",
+        "premium": "Recursos Premium"
+      },
+      "pandaMessage": "Não se preocupe! Até traders experientes às vezes se perdem. Vamos colocá-lo de volta no caminho certo!"
+    }
   }
 }

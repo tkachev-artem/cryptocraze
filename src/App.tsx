@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, Suspense } from "react"
 import type React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom"
-import { Home, Tutorial, Profile, EditProfile, Landing, Welcome, Trade, ListCrypto, Settings, Language, Notifications, Share, Premium, DealList, Rating, Rewards, TradePro, Live, Trials, AdminDashboard } from './pages';
+import { Home, Tutorial, Profile, EditProfile, Landing, Welcome, Trade, ListCrypto, Settings, Language, Notifications, Share, Premium, DealList, Rating, Rewards, TradePro, Live, Trials, AdminDashboard, NotFound } from './pages';
 import UserAnalytics from './pages/UserAnalytics';
 import GlobalLoading from './components/GlobalLoading';
 import { ScrollLock } from './components/ui/ScrollLock';
@@ -153,8 +153,8 @@ export const App: React.FC = () => {
                     <Route path="/admin/dashboard" element={<RouteErrorBoundary routeName="Admin Dashboard"><AdminDashboard /></RouteErrorBoundary>} />
                   </Route>
 
-                  {/* Любые неизвестные ссылки: ведем на /home если авторизован, иначе на / */}
-                  <Route path="*" element={<Navigate to={isAuthenticated ? '/home' : '/'} replace />} />
+                  {/* 404 страница для неизвестных маршрутов */}
+                  <Route path="*" element={<RouteErrorBoundary routeName="NotFound"><NotFound /></RouteErrorBoundary>} />
                 </Routes>
               </Suspense>
               </BrowserRouter>

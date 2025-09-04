@@ -28,9 +28,32 @@
     "welcome": "Bon retour !",
     "portfolio": "Valeur du Portefeuille",
     "todayPnl": "P&L d'Aujourd'hui",
-    "totalTrades": "Total des Trades",
+    "totalTrades": "Trades",
     "free": "Gratuit",
-    "trials": "Défis"
+    "trials": "Défis",
+    "analytics": "Analytique"
+  },
+  "analytics": {
+    "title": "Analytique",
+    "subtitle": "Votre performance de trading",
+    "tradingStatistics": "Statistiques de Trading",
+    "profitAndLoss": "Profits et Pertes",
+    "topTrades": "Top 5 Trades",
+    "performanceTrends": "Tendances de Performance",
+    "totalPL": "P&L Total",
+    "ratingPosition": "Position au Classement",
+    "notRanked": "Non classé",
+    "percentile": "percentile",
+    "noProfitableTrades": "Pas encore de trades rentables",
+    "avgTradeSize": "Taille Moyenne de Trade",
+    "successRate": "Taux de Réussite",
+    "dailyPL": "P&L Quotidien (7 Derniers Jours)",
+    "profitableDays": "jours rentables",
+    "noTradingActivity": "Pas encore d'activité de trading",
+    "startTrading": "Commencez à trader pour voir votre P&L quotidien",
+    "bestDay": "Meilleur Jour",
+    "worstDay": "Pire Jour",
+    "avgDaily": "Moyenne Quotidienne"
   },
   "wallet": {
     "total": "Total",
@@ -95,6 +118,7 @@
   "nav": {
     "back": "Retour",
     "home": "Accueil",
+    "goHome": "Retourner à l'Écran Principal",
     "topInvestors": "Top Investisseurs"
   },
   "rewards": {
@@ -114,7 +138,7 @@
     "404": {
       "title": "Page Non Trouvée",
       "description": "La page que vous recherchez n'existe pas ou a été déplacée.",
-      "goHome": "Aller à l'Accueil"
+      "goHome": "Retourner à l'Écran Principal"
     },
     "general": "Erreur",
     "dataLoading": "Erreur de chargement des données",
@@ -135,10 +159,10 @@
     "title": "Profil",
     "editTitle": "Modifier le profil",
     "successRate": "Taux de réussite",
-    "maxTradeAmount": "Montant de trade maximum",
-    "avgTradeAmount": "Montant de trade moyen",
-    "maxProfit": "Profit maximum",
-    "maxLoss": "Perte maximum",
+    "maxTradeAmount": "Maximum",
+    "avgTradeAmount": "Moyenne",
+    "maxProfit": "Profit",
+    "maxLoss": "Perte",
     "name": "Nom",
     "namePlaceholder": "Votre nom",
     "phone": "Numéro de téléphone",
@@ -152,7 +176,19 @@
     "editBg": "Modifier l'arrière-plan",
     "editIcon": "Modifier",
     "rewards": "Récompenses",
-    "analytics": "Analyses"
+    "uploadPhoto": "Télécharger Photo",
+    "uploading": "Téléchargement...",
+    "fileTooLarge": "Fichier trop volumineux. Taille maximale: 5MB",
+    "imagesOnly": "Seules les images sont autorisées",
+    "uploadError": "Échec du téléchargement de la photo. Veuillez réessayer.",
+    "updateError": "Erreur lors de la mise à jour du profil",
+    "cancel": "Annuler",
+    "analytics": "Analyses",
+    "defaultName": "Utilisateur",
+    "notAvailable": "N/D",
+    "rating30Days": "Note sur 30 jours",
+    "top": "Top",
+    "allDeals": "Toutes les transactions"
   },
   "deal": {
     "commission": "Commission",
@@ -178,7 +214,7 @@
     "close": "Fermer",
     "back": "←",
     "na": "N/A",
-    "noData": "Aucune donnée",
+    "noData": "Aucune transaction commerciale n'a été effectuée, aucune information disponible",
     "select": "Sélectionner",
     "info": "Information",
     "previous": "Précédent",
@@ -194,7 +230,9 @@
     "viewAll": "Voir Tout",
     "page": "Page",
     "of": "de",
-    "lastUpdated": "Dernière mise à jour"
+    "lastUpdated": "Dernière mise à jour",
+    "goHome": "Retourner à l'Écran Principal",
+    "balance": "Solde"
   },
   "app": {
     "phoneOnly": {
@@ -233,8 +271,59 @@
     "highlighted": "Votre compte est mis en évidence dans le classement",
     "monthly": "par mois",
     "yearly": "par an",
-    "chargeMonthly": "499,00 ₽ seront facturés automatiquement chaque mois jusqu'à ce que vous annuliez votre abonnement",
-    "chargeYearly": "5 199,00 ₽ seront facturés automatiquement chaque année jusqu'à ce que vous annuliez votre abonnement"
+    "chargeMonthly": "$6.99 seront facturés automatiquement chaque mois jusqu'à ce que vous annuliez votre abonnement",
+    "chargeYearly": "$64.99 seront facturés automatiquement chaque année jusqu'à ce que vous annuliez votre abonnement"
+  },
+  "admin": {
+    "dashboard": {
+      "title": "Tableau de Bord",
+      "totalUsers": "Total des Utilisateurs",
+      "totalUsersDesc": "Tous les utilisateurs enregistrés",
+      "activeDeals": "Transactions Actives",
+      "activeDealsDesc": "Positions actuellement ouvertes",
+      "dailyActiveUsers": "Utilisateurs Actifs Quotidiens",
+      "dailyActiveUsersDesc": "Utilisateurs actifs aujourd'hui",
+      "totalRevenue": "Revenus Totaux",
+      "totalRevenueDesc": "Revenus de tous les temps",
+      "engagementMetrics": "Métriques d'Engagement",
+      "weeklyActiveUsers": "Utilisateurs Actifs Hebdomadaires",
+      "monthlyActiveUsers": "Utilisateurs Actifs Mensuels",
+      "avgSessionsPerUser": "Sessions Moyennes par Utilisateur",
+      "totalTrades": "Total des Transactions",
+      "revenueMonetization": "Revenus et Monétisation",
+      "arpu": "ARPU",
+      "arppu": "ARPPU",
+      "conversionRate": "Taux de Conversion",
+      "payingUsers": "Utilisateurs Payants",
+      "tradingPerformance": "Performance de Trading",
+      "closedTrades": "Transactions Fermées",
+      "profitableTrades": "Transactions Rentables",
+      "successRate": "Taux de Réussite",
+      "totalPnL": "P&L Total",
+      "userActivity": "Activité des Utilisateurs",
+      "newUsersToday": "Nouveaux Utilisateurs Aujourd'hui",
+      "totalSessions": "Sessions Totales",
+      "logins7d": "Connexions (7j)",
+      "adsWatched": "Publicités Regardées",
+      "adPerformance": "Performance Publicitaire",
+      "totalAdSpend": "Dépenses Publicitaires Totales",
+      "cpi": "CPI (Coût Par Installation)",
+      "cpa": "CPA (Coût Par Action)",
+      "roas": "ROAS (Retour sur Investissement Publicitaire)",
+      "premiumStats": "Statistiques Premium",
+      "allRegisteredUsers": "Tous les utilisateurs enregistrés",
+      "currentlyOpenPositions": "Positions actuellement ouvertes",
+      "usersActiveToday": "Utilisateurs actifs aujourd'hui",
+      "allTimeRevenue": "Revenus de tous les temps",
+      "premiumPurchased": "Ont acheté Premium",
+      "premiumMonthly": "Mensuel",
+      "premiumYearly": "Annuel",
+      "premiumPurchasedPercent": "Ont acheté Premium",
+      "premiumReceived": "Ont reçu Premium",
+      "premiumDaysGranted": "jours Premium accordés",
+      "premiumActive": "Total utilisateurs Premium",
+      "premiumStatsError": "Erreur lors du chargement des statistiques Premium"
+    }
   },
   "notifications": {
     "emptyTitle": "Aucune notification active",
@@ -290,7 +379,45 @@
       "recentRevenue": "Revenus Récents",
       "processMetrics": "Traiter les Métriques d'Aujourd'hui",
       "metricsProcessed": "Métriques quotidiennes traitées avec succès !",
-      "lastUpdated": "Dernière mise à jour"
+      "lastUpdated": "Dernière mise à jour",
+      "avgSessionsPerUser": "Sessions Moy. par Utilisateur",
+      "newUsersToday": "Nouveaux Utilisateurs Aujourd'hui",
+      "totalSessions": "Sessions Totales",
+      "logins7d": "Connexions (7j)",
+      "adsWatched": "Publicités Vues",
+      "closedTrades": "Trades Fermés",
+      "profitableTrades": "Trades Rentables",
+      "successRate": "Taux de Réussite",
+      "totalPnL": "P&L Total",
+      "totalAdSpend": "Dépenses Publicitaires Totales",
+      "cpi": "CPI (Coût par Installation)",
+      "cpa": "CPA (Coût par Action)",
+      "roas": "ROAS (Retour sur Investissement Publicitaire)",
+      "premiumStats": "Statistiques Premium",
+      "premiumStatsError": "Erreur lors du chargement des statistiques d'utilisateurs premium",
+      "premiumPurchased": "Acheté",
+      "premiumMonthly": "Mois",
+      "premiumYearly": "Année",
+      "premiumPurchasedPercent": "Achetés",
+      "premiumReceived": "Reçu",
+      "premiumDaysGranted": "jours accordés",
+      "premiumActive": "Actif",
+      "allRegisteredUsers": "Tous les utilisateurs enregistrés",
+      "currentlyOpenPositions": "Positions actuellement ouvertes", 
+      "usersActiveToday": "Utilisateurs actifs aujourd'hui",
+      "allTimeRevenue": "Revenus de tous les temps",
+      "premiumMonth": "Mois",
+      "premiumYear": "Année",
+      "errorLoadingUsers": "Erreur de chargement des utilisateurs",
+      "invalidDate": "Date invalide",
+      "purchasedPremium": "Premium Acheté",
+      "receivedPremium": "Premium Reçu",
+      "user": "Utilisateur",
+      "subscriptionType": "Type d'Abonnement",
+      "daysGranted": "Jours Accordés",
+      "activeUntil": "Actif Jusqu'à",
+      "noPurchasedPremiumUsers": "Aucun utilisateur avec premium acheté",
+      "noRewardPremiumUsers": "Aucun utilisateur avec premium de récompense"
     }
   },
   "language": {
@@ -651,10 +778,12 @@
     }
   },
   "wheel": {
-    "yourWin": "Vos gains",
-    "tryLuck": "Tentez votre chance !",
+    "back": "Retour",
+    "yourWin": "Votre gain",
+    "tryLuck": "Tentez votre chance!",
     "spin": "Tourner",
-    "spinning": "En rotation..."
+    "spinning": "En cours...",
+    "collect": "Récupérer"
   },
   "indicators": {
     "ema": "Moyenne Mobile Exponentielle (EMA)",
@@ -863,5 +992,24 @@
     "symbol": "BTCUSDT",
     "amount": "0,00 $",
     "number": "0"
+  },
+  "errors": {
+    "404": {
+      "title": "Page Non Trouvée",
+      "subtitle": "Oups ! La page que vous cherchez n'existe pas.",
+      "description": "La page à laquelle vous tentiez d'accéder a peut-être été déplacée, supprimée, ou vous avez saisi une URL incorrecte.",
+      "goHome": "Aller au Trading",
+      "goBack": "Retour",
+      "searchPlaceholder": "Rechercher des paires de trading...",
+      "suggestions": {
+        "title": "Essayez ces sections populaires :",
+        "trading": "Commencer le Trading",
+        "profile": "Votre Profil",
+        "rating": "Classement",
+        "rewards": "Récompenses",
+        "premium": "Fonctionnalités Premium"
+      },
+      "pandaMessage": "Ne vous inquiétez pas ! Même les traders expérimentés se perdent parfois. Remettons-vous sur la bonne voie !"
+    }
   }
 }

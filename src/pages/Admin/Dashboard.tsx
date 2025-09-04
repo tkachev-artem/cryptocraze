@@ -6,32 +6,46 @@ import { ArrowLeft, Users, TrendingUp, UserRoundCheck, DollarSign, Zap, UserPlus
 import { useTranslation } from '../../lib/i18n';
 
 interface AdminOverview {
-  engagement: {
-    dailyActiveUsers: number;
-    weeklyActiveUsers: number;
-    monthlyActiveUsers: number;
-    avgSessionDuration: number;
-    totalTrades: number;
-    totalVolume: number;
-  } | null;
-  revenue: {
-    totalRevenue: number;
-    premiumRevenue: number;
-    arpu: number;
-    arppu: number;
-    conversionRate: number;
-    totalPayingUsers: number;
-  } | null;
-  acquisition: {
-    totalSignups: number;
-    totalFirstTrades: number;
-    tradeOpenRate: number;
-    avgTimeToFirstTrade: number;
-  } | null;
-  overview: {
-    totalUsers: number;
-    activeDeals: number;
+  users: {
+    total_users: number;
+    new_users_today: number;
+    daily_active_users: number;
+    weekly_active_users: number;
+    monthly_active_users: number;
   };
+  trading: {
+    totalTrades: number;
+    activeDeals: number;
+    closedTrades: number;
+    profitableTrades: number;
+    totalVolume: number;
+    totalPnl: number;
+    avgPnl: number;
+    tradingUsers: number;
+    successRate: string;
+  };
+  revenue: {
+    totalRevenue: string;
+    premiumRevenue: string;
+    adRevenue: string;
+    arpu: string;
+    arppu: string;
+    payingUsers: number;
+    conversionRate: number;
+  };
+  engagement: {
+    totalEvents: number;
+    activeUsers: number;
+    totalSessions: number;
+    logins: number;
+    tradesOpened: number;
+    adsWatched: number;
+    avgSessionsPerUser: string;
+  };
+  dataSource?: 'clickhouse' | 'postgresql_fallback';
+  version?: string;
+  clickhouseError?: string;
+  lastUpdated: string;
 }
 
 interface EngagementMetrics {
@@ -132,81 +146,19 @@ const AdminDashboard: React.FC = () => {
   };
 
   const fetchEngagementMetrics = async (days: number = 30) => {
-    try {
-      const response = await fetch(`${config.api.baseUrl}/admin/analytics/engagement?days=${days}`, {
-        credentials: 'include'
-      });
-      if (response.ok) {
-        const result = await response.json();
-        setEngagementData(result.data || []);
-      } else {
-        throw new Error(`Failed to fetch engagement metrics: ${response.status}`);
-      }
-    } catch (error) {
-      console.error('Error fetching engagement metrics:', error);
-      setError('Failed to load engagement data');
-    }
+    // Engagement data now comes from ClickHouse overview endpoint only
+    console.log('Engagement data integrated into overview endpoint');
   };
 
   const fetchRevenueMetrics = async (days: number = 30) => {
-    try {
-      const response = await fetch(`${config.api.baseUrl}/admin/analytics/revenue-v2?days=${days}`, {
-        credentials: 'include'
-      });
-      if (response.ok) {
-        const result = await response.json();
-        setRevenueData(result.data || []);
-      } else {
-        throw new Error(`Failed to fetch revenue metrics: ${response.status}`);
-      }
-    } catch (error) {
-      console.error('Error fetching revenue metrics:', error);
-      
-      // Use mock data when API fails (temporary fix)
-      console.log('Using mock revenue data due to API error');
-      setRevenueData([
-        { date: '2025-08-30', totalRevenue: '1250.00', premiumRevenue: '800.00' },
-        { date: '2025-08-29', totalRevenue: '1100.50', premiumRevenue: '750.00' },
-        { date: '2025-08-28', totalRevenue: '980.75', premiumRevenue: '650.00' },
-      ]);
-      
-      setError('Revenue data loaded from cache (API temporarily unavailable)');
-    }
+    // Revenue data now comes from ClickHouse overview endpoint only
+    console.log('Revenue data integrated into overview endpoint');
   };
 
   const fetchAdPerformanceMetrics = async (days: number = 30) => {
-    try {
-      const response = await fetch(`${config.api.baseUrl}/admin/analytics/ads-v2?days=${days}`, {
-        credentials: 'include'
-      });
-      if (response.ok) {
-        const result = await response.json();
-        setAdPerformanceData(result.summary || null);
-      } else {
-        throw new Error(`Failed to fetch ad performance metrics: ${response.status}`);
-      }
-    } catch (error) {
-      console.error('Error fetching ad performance metrics:', error);
-      
-      // Use mock data when API fails (temporary fix)
-      console.log('Using mock ad performance data due to API error');
-      setAdPerformanceData({
-        totalAdSpend: '6700.00',
-        totalInstalls: 268,
-        totalConversions: 179,
-        totalRevenue: '14520.00',
-        avgCPI: '25.00',
-        avgCPA: '37.43',
-        avgROAS: '2.1672',
-        avgCTR: '0.8000',
-        avgConversionRate: '3.3396',
-        totalImpressions: 670000,
-        totalClicks: 5360,
-      });
-      
-      // Still set error for user awareness, but don't break the UI
-      setError('Ad performance data loaded from cache (API temporarily unavailable)');
-    }
+    // Ad performance data now comes from ClickHouse overview endpoint only
+    console.log('Ad performance data integrated into overview endpoint');
+    setAdPerformanceData(null); // Clear any existing ad data
   };
 
 
@@ -215,12 +167,8 @@ const AdminDashboard: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        await Promise.all([
-          fetchOverview(),
-          fetchEngagementMetrics(30),
-          fetchRevenueMetrics(30),
-          fetchAdPerformanceMetrics(30)
-        ]);
+        // Only fetch overview from ClickHouse - all data is integrated
+        await fetchOverview();
       } catch (err) {
         console.error('Error loading analytics data:', err);
         setError('Failed to load analytics data');
@@ -290,8 +238,15 @@ const AdminDashboard: React.FC = () => {
         </div>
         
         <div className="px-4 pb-4">
-          <div className="w-full h-[50px] bg-[#0C54EA] rounded-xl flex items-center justify-center">
+          <div className="w-full h-[50px] bg-[#0C54EA] rounded-xl flex items-center justify-center relative">
             <h1 className="text-lg font-bold text-white">Dashboard</h1>
+            {overview && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <div className="px-2 py-1 rounded text-xs font-medium bg-green-500 text-white">
+                  ClickHouse
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -310,6 +265,23 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
+        {/* ClickHouse Status Info */}
+        {overview && (
+          <div className="bg-green-50 border-green-200 border rounded-xl p-4 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-green-500" />
+              <span className="text-sm font-medium">
+                Данные из ClickHouse (высокопроизводительная аналитика)
+              </span>
+              {overview.lastUpdated && (
+                <span className="text-xs text-gray-500 ml-auto">
+                  Обновлено: {new Date(overview.lastUpdated).toLocaleTimeString('ru-RU')}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Overview Stats */}
         <div className="grid grid-cols-2 gap-4 mb-4">
           {/* Total Users Card - First */}
@@ -320,10 +292,10 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
             <div className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
-              {formatNumber(overview?.overview.totalUsers || 0)}
+              {formatNumber(overview?.users?.total_users || 0)}
             </div>
             <div className="text-sm text-gray-600 mb-1">Total Users</div>
-            {overview?.overview.totalUsers && (
+            {overview?.users?.total_users && (
               <div className="text-xs text-gray-500 font-medium">All registered users</div>
             )}
           </div>
@@ -336,10 +308,10 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
             <div className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
-              {formatNumber(overview?.overview.activeDeals || 0)}
+              {formatNumber(overview?.trading?.activeDeals || 0)}
             </div>
             <div className="text-sm text-gray-600 mb-1">Active Deals</div>
-            {overview?.overview.activeDeals !== undefined && (
+            {overview?.trading?.activeDeals !== undefined && (
               <div className="text-xs text-gray-500 font-medium">Currently open positions</div>
             )}
           </div>
@@ -352,10 +324,10 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
             <div className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
-              {formatNumber(overview?.engagement?.dailyActiveUsers || 0)}
+              {formatNumber(overview?.users?.daily_active_users || 0)}
             </div>
             <div className="text-sm text-gray-600 mb-1">Daily Active Users</div>
-            {overview?.engagement?.dailyActiveUsers !== undefined && (
+            {overview?.users?.daily_active_users !== undefined && (
               <div className="text-xs text-gray-500 font-medium">Users active today</div>
             )}
           </div>
@@ -368,7 +340,7 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
             <div className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
-              {formatCurrency(overview?.revenue?.totalRevenue || 0)}
+              {formatCurrency(overview?.revenue?.totalRevenue || '0')}
             </div>
             <div className="text-sm text-gray-600 mb-1">Total Revenue</div>
             {overview?.revenue?.totalRevenue !== undefined && (
@@ -392,28 +364,28 @@ const AdminDashboard: React.FC = () => {
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  {formatNumber(overview?.engagement?.weeklyActiveUsers || 0)}
+                  {formatNumber(overview?.users?.weekly_active_users || 0)}
                 </div>
                 <div className="text-sm text-gray-600">Weekly Active Users</div>
               </div>
               
               <div>
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  {formatNumber(overview?.engagement?.monthlyActiveUsers || 0)}
+                  {formatNumber(overview?.users?.monthly_active_users || 0)}
                 </div>
                 <div className="text-sm text-gray-600">Monthly Active Users</div>
               </div>
               
               <div>
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  {Math.round(overview?.engagement?.avgSessionDuration || 0)}m
+                  {formatDecimal(overview?.engagement?.avgSessionsPerUser || '0')}
                 </div>
-                <div className="text-sm text-gray-600">Avg Session Duration</div>
+                <div className="text-sm text-gray-600">Avg Sessions Per User</div>
               </div>
               
               <div>
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  {formatNumber(overview?.engagement?.totalTrades || 0)}
+                  {formatNumber(overview?.trading?.totalTrades || 0)}
                 </div>
                 <div className="text-sm text-gray-600">Total Trades</div>
               </div>
@@ -433,14 +405,14 @@ const AdminDashboard: React.FC = () => {
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  {formatCurrency(overview?.revenue?.arpu || 0)}
+                  {formatCurrency(overview?.revenue?.arpu || '0')}
                 </div>
                 <div className="text-sm text-gray-600">ARPU</div>
               </div>
               
               <div>
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  {formatCurrency(overview?.revenue?.arppu || 0)}
+                  {formatCurrency(overview?.revenue?.arppu || '0')}
                 </div>
                 <div className="text-sm text-gray-600">ARPPU</div>
               </div>
@@ -454,7 +426,7 @@ const AdminDashboard: React.FC = () => {
               
               <div>
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  {formatNumber(overview?.revenue?.totalPayingUsers || 0)}
+                  {formatNumber(overview?.revenue?.payingUsers || 0)}
                 </div>
                 <div className="text-sm text-gray-600">Paying Users</div>
               </div>
@@ -462,43 +434,85 @@ const AdminDashboard: React.FC = () => {
 
           </div>
 
-          {/* User Acquisition Metrics */}
-          {overview?.acquisition && (
+          {/* Trading Metrics */}
+          {overview?.trading && (
             <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center">
-                  <UserPlus className="w-5 h-5 text-purple-600" />
+                  <TrendingUp className="w-5 h-5 text-purple-600" />
                 </div>
-                <h2 className="text-lg font-bold text-gray-900">User Acquisition</h2>
+                <h2 className="text-lg font-bold text-gray-900">Trading Performance</h2>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">
-                    {formatNumber(overview.acquisition.totalSignups)}
+                    {formatNumber(overview.trading.closedTrades)}
                   </div>
-                  <div className="text-sm text-gray-600">Total Signups</div>
+                  <div className="text-sm text-gray-600">Closed Trades</div>
                 </div>
                 
                 <div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">
-                    {formatNumber(overview.acquisition.totalFirstTrades)}
+                    {formatNumber(overview.trading.profitableTrades)}
                   </div>
-                  <div className="text-sm text-gray-600">First Trades</div>
+                  <div className="text-sm text-gray-600">Profitable Trades</div>
                 </div>
                 
                 <div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">
-                    {formatDecimal(Number(overview.acquisition.tradeOpenRate) * 100, 1)}%
+                    {overview.trading.successRate}%
                   </div>
-                  <div className="text-sm text-gray-600">Trade Open Rate</div>
+                  <div className="text-sm text-gray-600">Success Rate</div>
                 </div>
                 
                 <div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">
-                    {Math.round(overview.acquisition.avgTimeToFirstTrade)}m
+                    {formatCurrency(overview.trading.totalPnl)}
                   </div>
-                  <div className="text-sm text-gray-600">Avg Time to First Trade</div>
+                  <div className="text-sm text-gray-600">Total P&L</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* New Users & Activity */}
+          {overview?.users && (
+            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                  <UserPlus className="w-5 h-5 text-blue-600" />
+                </div>
+                <h2 className="text-lg font-bold text-gray-900">User Activity</h2>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-2xl font-bold text-gray-900 mb-1">
+                    {formatNumber(overview.users.new_users_today)}
+                  </div>
+                  <div className="text-sm text-gray-600">New Users Today</div>
+                </div>
+                
+                <div>
+                  <div className="text-2xl font-bold text-gray-900 mb-1">
+                    {formatNumber(overview.engagement.totalSessions)}
+                  </div>
+                  <div className="text-sm text-gray-600">Total Sessions</div>
+                </div>
+                
+                <div>
+                  <div className="text-2xl font-bold text-gray-900 mb-1">
+                    {formatNumber(overview.engagement.logins)}
+                  </div>
+                  <div className="text-sm text-gray-600">Logins (7d)</div>
+                </div>
+                
+                <div>
+                  <div className="text-2xl font-bold text-gray-900 mb-1">
+                    {formatNumber(overview.engagement.adsWatched)}
+                  </div>
+                  <div className="text-sm text-gray-600">Ads Watched</div>
                 </div>
               </div>
             </div>

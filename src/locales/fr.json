@@ -31,7 +31,8 @@
     "totalTrades": "Trades",
     "free": "Gratuit",
     "trials": "Défis",
-    "analytics": "Analytique"
+    "analytics": "Analytique",
+    "openTrades": "Trades Ouverts"
   },
   "analytics": {
     "title": "Analytique",

@@ -285,8 +285,8 @@
     "highlighted": "Your account is highlighted in the rating",
     "monthly": "per month",
     "yearly": "per year",
-    "chargeMonthly": "499.00 ₽ will be charged automatically every month until you cancel your subscription",
-    "chargeYearly": "5,199.00 ₽ will be charged automatically every year until you cancel your subscription"
+    "chargeMonthly": "$6.99 will be charged automatically every month until you cancel your subscription",
+    "chargeYearly": "$64.99 will be charged automatically every year until you cancel your subscription"
   },
   "notifications": {
     "emptyTitle": "No active notifications",

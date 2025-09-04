@@ -271,8 +271,8 @@
     "highlighted": "Sua conta está destacada na classificação",
     "monthly": "por mês",
     "yearly": "por ano",
-    "chargeMonthly": "R$ 25,00 será cobrado automaticamente todo mês até você cancelar sua assinatura",
-    "chargeYearly": "R$ 260,00 será cobrado automaticamente todo ano até você cancelar sua assinatura"
+    "chargeMonthly": "$6.99 será cobrado automaticamente todo mês até você cancelar sua assinatura",
+    "chargeYearly": "$64.99 será cobrado automaticamente todo ano até você cancelar sua assinatura"
   },
   "notifications": {
     "emptyTitle": "Nenhuma notificação ativa",

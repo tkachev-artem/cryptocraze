@@ -267,7 +267,7 @@ const Rating = () => {
 
       {/* Pinned current user row above bottom navigation */}
       {!loading && (myLeader != null || myLoading) && (
-        <div className="absolute left-0 right-0 bottom-[calc(72px+env(safe-area-inset-bottom))] z-10 bg-[#F1F7FF]">
+        <div className="absolute left-0 right-0 bottom-[calc(64px+env(safe-area-inset-bottom))] z-10 bg-[#F1F7FF]">
           <div className="px-4 pt-3 pb-6">
             {myLeader ? (
               <Row leader={myLeader} />

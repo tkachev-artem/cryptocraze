@@ -69,6 +69,7 @@ const PRO_STEP_CONFIGS: Record<number, ProStepConfig> = {
     targetSelector: '[data-tutorial-target="fx-element"]',
     hasConnectionLine: true,
     modalType: 'blue',
+    eventHandlers: ['pro:tutorial:fxClicked'],
     progressDots: 6,
     filledDots: 1,
   },
@@ -348,17 +349,63 @@ const ProTutorial: React.FC<ProTutorialProps> = ({
       });
     }
 
-    // Setup event handlers
+    // Setup event handlers with proper validation
     if (stepConfig.eventHandlers) {
       stepConfig.eventHandlers.forEach(eventName => {
-        const handler = () => {
-          tutorialLogger.debug('Tutorial event handled', { eventName, currentStep });
-          onProceed();
+        const handler = (event: Event) => {
+          tutorialLogger.debug('Tutorial event received', { eventName, currentStep });
+          
+          // Only proceed if this is the expected event for the current step
+          const currentConfig = PRO_STEP_CONFIGS[currentStep];
+          if (currentConfig?.eventHandlers?.includes(eventName)) {
+            tutorialLogger.debug('Event validated and accepted for current step', { eventName, currentStep });
+            onProceed();
+          } else {
+            tutorialLogger.debug('Event ignored - not for current step', { 
+              eventName, 
+              currentStep, 
+              expectedEvents: currentConfig?.eventHandlers || [] 
+            });
+          }
         };
         
         cleanupManagerRef.current!.addEventListener(window as any, eventName as any, handler as any);
       });
     }
+
+    // Also listen to all possible tutorial events to filter them properly
+    const allPossibleEvents = [
+      'pro:tutorial:emaToggled',
+      'pro:tutorial:rsiToggled', 
+      'pro:tutorial:smaToggled',
+      'pro:tutorial:fxClicked',
+      'pro:tutorial:markerClicked',
+      'pro:tutorial:lineDrawn',
+      'pro:tutorial:areasClicked',
+      'pro:tutorial:arrowDrawn',
+      'pro:tutorial:arrowClicked'
+    ];
+
+    allPossibleEvents.forEach(eventName => {
+      // Only add listener if it's not already in stepConfig.eventHandlers
+      if (!stepConfig.eventHandlers?.includes(eventName)) {
+        const handler = (event: Event) => {
+          const currentConfig = PRO_STEP_CONFIGS[currentStep];
+          if (currentConfig?.eventHandlers?.includes(eventName)) {
+            tutorialLogger.debug('Global event validated for current step', { eventName, currentStep });
+            onProceed();
+          } else {
+            tutorialLogger.debug('Global event ignored - not for current step', { 
+              eventName, 
+              currentStep, 
+              expectedEvents: currentConfig?.eventHandlers || [] 
+            });
+          }
+        };
+        
+        cleanupManagerRef.current!.addEventListener(window as any, eventName as any, handler as any);
+      }
+    });
   }, [stepConfig, currentStep, isOpen, onProceed]);
 
   // Error boundary

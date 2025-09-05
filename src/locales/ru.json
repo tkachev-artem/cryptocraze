@@ -168,7 +168,8 @@
     "coin": "Монета",
     "coins": "Монеты",
     "retry": "Повторить",
-    "viewAll": "Посмотреть все"
+    "viewAll": "Посмотреть все",
+    "closeNotification": "Закрыть уведомление"
   },
   "app": {
     "phoneOnly": {
@@ -349,9 +350,9 @@
       "roas": "ROAS (Возврат на рекламу)",
       "avgSessionDuration": "Средняя длительность сессии",
       "screensOpened": "Открыто экранов",
-      "retentionMetrics": "Метрики удержания",
+      "retentionMetrics": "Метрики удержания", 
       "retentionD1": "Удержание 1 день",
-      "retentionD3": "Удержание 3 дня",
+      "retentionD3": "Удержание 3 дня", 
       "retentionD7": "Удержание 7 дней",
       "retentionD30": "Удержание 30 дней",
       "tutorialMetrics": "Метрики обучения",

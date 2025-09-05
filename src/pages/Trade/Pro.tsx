@@ -6,11 +6,12 @@ import ProBottomMenu from '@/components/ui/ProBottomMenu';
 import ProChartModal from '@/components/ProChartModal';
 import ProShareModal from '@/components/ProShareModal';
 import ProTutorial from '@/components/ProTutorial';
+import UniversalTutorial from '@/components/UniversalTutorial';
 import ProExitModal from '@/components/ProExitModal';
 import Deal from '@/components/Deal';
 import { EditDealModal } from '@/components/EditDealModal';
 import TextMarkerModal from '@/components/TextMarkerModal';
-
+import { analyticsService } from '@/services/analyticsService';
 
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { fetchBinanceStats, selectBinanceStats } from '@/app/binanceSlice';
@@ -259,9 +260,11 @@ const Pro: React.FC = () => {
       const seen = localStorage.getItem(key);
       if (seen !== 'true') {
         setIsProTutorialOpen(true);
+        analyticsService.trackTutorialProgress('pro_tutorial', 'start');
       }
     } catch {
       setIsProTutorialOpen(true);
+      analyticsService.trackTutorialProgress('pro_tutorial', 'start');
     }
   }, []);
 
@@ -475,6 +478,10 @@ const Pro: React.FC = () => {
         offsetBottomPx={menuHeight}
       />
 
+      {/* New Pro Tutorial System */}
+      <UniversalTutorial type="pro" autoStart={true} />
+      
+      {/* Keep old ProTutorial for backwards compatibility */}
       <ProTutorial
         isOpen={isProTutorialOpen}
         currentStep={proTutorialStep}
@@ -490,6 +497,7 @@ const Pro: React.FC = () => {
             setDrawingObjects([]);
             setSelectedDrawingId(null);
             setActiveTool('none');
+            analyticsService.trackTutorialProgress('pro_tutorial', 'complete');
             try { 
               localStorage.setItem('proTutorialSeen', 'true'); 
             } catch {
@@ -498,6 +506,7 @@ const Pro: React.FC = () => {
           }
         }}
         onSkip={() => {
+          analyticsService.trackTutorialProgress('pro_tutorial', 'skip');
           try { 
             localStorage.setItem('proTutorialSeen', 'true'); 
           } catch {

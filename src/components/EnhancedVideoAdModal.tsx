@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from '../lib/i18n'
 import { adService } from '../services/adService'
 import type { AdPlacement, AdWatchResult, AdError } from '../services/adService'
+import { analyticsService } from '../services/analyticsService'
 
 // Props interface
 interface EnhancedVideoAdModalProps {
@@ -75,100 +76,6 @@ const EnhancedVideoAdModal: React.FC<EnhancedVideoAdModalProps> = ({
     }
   }, [isOpen])
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (cleanupRef.current) {
-        cleanupRef.current()
-      }
-    }
-  }, [])
-
-  const initializeAdSystem = useCallback(async () => {
-    try {
-      setState(prev => ({ ...prev, isLoading: true, error: null }))
-      
-      // Initialize the ad service
-      await adService.initialize(import.meta.env.DEV) // Use test mode in development
-      
-      setState(prev => ({ ...prev, isReady: true, isLoading: false }))
-      
-      // Auto-start first ad after initialization
-      setTimeout(() => {
-        startNextAd()
-      }, 1000)
-      
-    } catch (error) {
-      console.error('[EnhancedVideoAdModal] Failed to initialize ad system:', error)
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Failed to initialize ads',
-        isLoading: false 
-      }))
-    }
-  }, [])
-
-  const startNextAd = useCallback(async () => {
-    if (!state.isReady || state.isLoading) return
-    
-    try {
-      setState(prev => ({ 
-        ...prev, 
-        isLoading: true, 
-        isStarted: true, 
-        error: null,
-        watchStartTime: Date.now()
-      }))
-      
-      // Show the ad using the ad service
-      const videoElement = videoRef.current
-      const containerElement = adContainerRef.current
-      
-      if (videoElement && containerElement && adService.isReady()) {
-        const result = await adService.showRewardedVideo(placement, videoElement, containerElement)
-        
-        setState(prev => {
-          const newViewCount = prev.viewCount + 1
-          const allAdsCompleted = newViewCount >= requiredViews
-          
-          return {
-            ...prev,
-            isLoading: false,
-            viewCount: newViewCount,
-            canClaim: allAdsCompleted,
-            adResult: result
-          }
-        })
-        
-        if (result.success) {
-          startProgressAnimation()
-        }
-        
-      } else {
-        // Fallback to simulation
-        simulateAdExperience()
-      }
-      
-    } catch (error) {
-      console.error('[EnhancedVideoAdModal] Error starting ad:', error)
-      
-      const errorMessage = error instanceof AdError 
-        ? error.message 
-        : 'Ad failed to load. Please try again.'
-        
-      setState(prev => ({ 
-        ...prev, 
-        error: errorMessage,
-        isLoading: false 
-      }))
-      
-      // Try simulation as fallback
-      setTimeout(() => {
-        simulateAdExperience()
-      }, 2000)
-    }
-  }, [state.isReady, state.isLoading, placement, requiredViews])
-
   const simulateAdExperience = useCallback(() => {
     console.log('[EnhancedVideoAdModal] Running ad simulation')
     
@@ -208,9 +115,28 @@ const EnhancedVideoAdModal: React.FC<EnhancedVideoAdModalProps> = ({
         }
       })
       
+      // Track ad viewing event for analytics
+      const adId = `sim_${Date.now()}`
+      analyticsService.trackAdWatch(
+        adId,
+        placement,
+        adDuration,
+        true, // isSimulation = true
+        rewardAmount || (placement === 'trading_bonus' ? 100 : 5)
+      )
+      
       startProgressAnimation()
     }, adDuration)
   }, [placement, rewardAmount, requiredViews])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (cleanupRef.current) {
+        cleanupRef.current()
+      }
+    }
+  }, [])
 
   const startProgressAnimation = useCallback(() => {
     setState(prev => ({ ...prev, showProgressBar: true, progressPercent: 0 }))
@@ -244,19 +170,179 @@ const EnhancedVideoAdModal: React.FC<EnhancedVideoAdModalProps> = ({
               }
             }
           })
-          
-          // Auto-start next ad if needed
-          if (state.viewCount < requiredViews) {
-            setTimeout(() => {
-              startNextAd()
-            }, 2000)
-          }
         }, 1000)
       }
     }
     
     requestAnimationFrame(animate)
-  }, [requiredViews, state.viewCount, startNextAd])
+  }, [requiredViews])
+
+  const startNextAd = useCallback(async () => {
+    console.log('[EnhancedVideoAdModal] startNextAd called', { isReady: state.isReady, isLoading: state.isLoading })
+    if (!state.isReady || state.isLoading) {
+      console.log('[EnhancedVideoAdModal] Not ready or loading, skipping')
+      return
+    }
+    
+    try {
+      setState(prev => ({ 
+        ...prev, 
+        isLoading: true, 
+        isStarted: true, 
+        error: null,
+        watchStartTime: Date.now()
+      }))
+      
+      // Check if we're in test mode or should use simulation
+      if (import.meta.env.VITE_AD_TEST_MODE === 'true') {
+        console.log('[EnhancedVideoAdModal] Using simulation mode')
+        simulateAdExperience()
+      } else {
+        // Try to show real ad
+        const videoElement = videoRef.current
+        const containerElement = adContainerRef.current
+        
+        if (videoElement && containerElement && adService.isReady()) {
+          const result = await adService.showRewardedVideo(placement, videoElement, containerElement)
+          
+          setState(prev => {
+            const newViewCount = prev.viewCount + 1
+            const allAdsCompleted = newViewCount >= requiredViews
+            
+            return {
+              ...prev,
+              isLoading: false,
+              viewCount: newViewCount,
+              canClaim: allAdsCompleted,
+              adResult: result
+            }
+          })
+          
+          if (result.success) {
+            startProgressAnimation()
+          }
+          
+        } else {
+          // Fallback to simulation
+          simulateAdExperience()
+        }
+      }
+      
+    } catch (error) {
+      console.error('[EnhancedVideoAdModal] Error starting ad:', error)
+      
+      const errorMessage = error instanceof AdError 
+        ? error.message 
+        : 'Ad failed to load. Please try again.'
+        
+      setState(prev => ({ 
+        ...prev, 
+        error: errorMessage,
+        isLoading: false 
+      }))
+      
+      // Try simulation as fallback
+      setTimeout(() => {
+        simulateAdExperience()
+      }, 2000)
+    }
+  }, [state.isReady, state.isLoading, placement, requiredViews, simulateAdExperience, startProgressAnimation])
+
+  const initializeAdSystem = useCallback(async () => {
+    console.log('[EnhancedVideoAdModal] Initializing ad system')
+    try {
+      setState(prev => ({ ...prev, isLoading: true, error: null }))
+      
+      // Initialize the ad service
+      await adService.initialize(import.meta.env.DEV) // Use test mode in development
+      
+      setState(prev => ({ ...prev, isReady: true, isLoading: false }))
+      
+      console.log('[EnhancedVideoAdModal] Ad system initialized, starting ad in 1 second')
+      // Auto-start first ad after initialization
+      setTimeout(() => {
+        console.log('[EnhancedVideoAdModal] Timeout reached, starting ad')
+        // Force start ad regardless of isReady state since we just initialized
+        forceStartAd()
+      }, 1000)
+      
+    } catch (error) {
+      console.error('[EnhancedVideoAdModal] Failed to initialize ad system:', error)
+      setState(prev => ({ 
+        ...prev, 
+        error: error instanceof Error ? error.message : 'Failed to initialize ads',
+        isLoading: false 
+      }))
+    }
+  }, [])
+
+  // Force start ad without state checks
+  const forceStartAd = useCallback(async () => {
+    console.log('[EnhancedVideoAdModal] forceStartAd called - bypassing ready check')
+    
+    try {
+      setState(prev => ({ 
+        ...prev, 
+        isLoading: true, 
+        isStarted: true, 
+        error: null,
+        watchStartTime: Date.now()
+      }))
+      
+      // Check if we're in test mode or should use simulation
+      if (import.meta.env.VITE_AD_TEST_MODE === 'true') {
+        console.log('[EnhancedVideoAdModal] Using simulation mode')
+        simulateAdExperience()
+      } else {
+        // Try to show real ad
+        const videoElement = videoRef.current
+        const containerElement = adContainerRef.current
+        
+        if (videoElement && containerElement && adService.isReady()) {
+          const result = await adService.showRewardedVideo(placement, videoElement, containerElement)
+          
+          setState(prev => {
+            const newViewCount = prev.viewCount + 1
+            const allAdsCompleted = newViewCount >= requiredViews
+            
+            return {
+              ...prev,
+              isLoading: false,
+              viewCount: newViewCount,
+              canClaim: allAdsCompleted,
+              adResult: result
+            }
+          })
+          
+          if (result.success) {
+            startProgressAnimation()
+          }
+          
+        } else {
+          // Fallback to simulation
+          simulateAdExperience()
+        }
+      }
+      
+    } catch (error) {
+      console.error('[EnhancedVideoAdModal] Error in forceStartAd:', error)
+      
+      const errorMessage = error instanceof AdError 
+        ? error.message 
+        : 'Ad failed to load. Please try again.'
+        
+      setState(prev => ({ 
+        ...prev, 
+        error: errorMessage,
+        isLoading: false 
+      }))
+      
+      // Try simulation as fallback
+      setTimeout(() => {
+        simulateAdExperience()
+      }, 2000)
+    }
+  }, [placement, requiredViews])
 
   const handleClaim = useCallback(() => {
     if (!state.canClaim || !state.adResult) return
@@ -408,7 +494,7 @@ const EnhancedVideoAdModal: React.FC<EnhancedVideoAdModalProps> = ({
               left: 0,
               width: '100vw',
               height: '100vh',
-              background: 'linear-gradient(45deg, #667eea 0%, #764ba2 100%)',
+              backgroundColor: '#0C54EA',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -442,7 +528,7 @@ const EnhancedVideoAdModal: React.FC<EnhancedVideoAdModalProps> = ({
               left: 0,
               width: '100vw',
               height: '100vh',
-              background: 'linear-gradient(45deg, #667eea 0%, #764ba2 100%)',
+              backgroundColor: '#0C54EA',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

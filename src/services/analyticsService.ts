@@ -58,6 +58,8 @@ class AnalyticsService {
    * Track an analytics event
    */
   trackEvent(eventType: string, eventData: Record<string, any> = {}): void {
+    console.log(`[Analytics] Creating event: ${eventType}`, eventData);
+    
     const event: AnalyticsEvent = {
       eventType,
       eventData: {
@@ -71,9 +73,11 @@ class AnalyticsService {
     };
 
     this.eventQueue.push(event);
+    console.log(`[Analytics] Event queued. Queue size: ${this.eventQueue.length}/${this.batchSize}`);
 
-    // Auto-flush if batch size reached
-    if (this.eventQueue.length >= this.batchSize) {
+    // Auto-flush if batch size reached OR if it's a critical event like ad_watch
+    if (this.eventQueue.length >= this.batchSize || eventType === 'ad_watch') {
+      console.log(`[Analytics] Auto-flushing due to ${eventType === 'ad_watch' ? 'ad_watch event' : 'batch size reached'}`);
       this.flushEvents();
     }
   }
@@ -244,11 +248,13 @@ class AnalyticsService {
    * Track tutorial/onboarding progress
    */
   trackTutorialProgress(step: string, action: 'start' | 'complete' | 'skip'): void {
+    console.log(`[Analytics] Tracking tutorial progress: ${action} for step: ${step}`);
     this.trackEvent('tutorial_progress', {
       step,
       action,
       timestamp: Date.now()
     });
+    console.log(`[Analytics] Tutorial event added to queue. Queue size: ${this.eventQueue.length}`);
   }
 
   /**
@@ -258,6 +264,21 @@ class AnalyticsService {
     this.trackEvent('monetization', {
       action, // 'premium_view', 'premium_purchase', 'ad_watched'
       ...data
+    });
+  }
+
+  /**
+   * Track advertisement viewing events
+   */
+  trackAdWatch(adId: string, placement: string, watchTime: number, isSimulation: boolean = false, rewardAmount: number = 0): void {
+    this.trackEvent('ad_watch', {
+      adId,
+      placement,
+      watchTime,
+      isSimulation,
+      rewardAmount,
+      revenue: isSimulation ? 0 : rewardAmount * 0.01, // For simulation revenue is 0, otherwise small amount
+      timestamp: Date.now()
     });
   }
 

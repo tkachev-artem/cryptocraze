@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../lib/i18n';
 import { useTaskTranslation } from '../lib/translationUtils';
+import AdContainer from './AdContainer';
 import type {
   Task,
   TaskState,
@@ -12,7 +13,6 @@ import type {
 
 // Constants for better maintainability
 const PROGRESS_UPDATE_DEBOUNCE_MS = 500;
-const VIDEO_AD_SIMULATION_DURATION_MS = 3000;
 const LOADING_ANIMATION_DURATION_MS = 500;
 const SLIDE_OUT_DELAY_MS = 1000;
 const SLIDE_IN_ANIMATION_DURATION_MS = 400;
@@ -38,9 +38,12 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
     apiError: null
   });
   
+  // Ad modal logic will be handled by AdContainer
+  
   // Refs for cleanup and preventing race conditions
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isUpdatingRef = useRef(false);
+  const showAdRef = useRef<(() => void) | null>(null);
 
   // Мемоизируем вычисляемые значения
   const progress = useMemo(() => {
@@ -125,7 +128,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
     }
   }, [isSlidingIn]);
 
-  // Stop ad simulation if task is no longer active
+  // Stop ad simulation if task is no longer active (kept for compatibility)
   useEffect(() => {
     if (!isActive && isSimulatingAd) {
       console.log(`[TaskCard] Task ${task.title} no longer active, stopping ad simulation`);
@@ -320,16 +323,17 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
     }
   }, [isLoading, isActive, task.id, task.title, task.reward, onComplete, onWheelOpen]);
 
-  // Fixed video task progress - ensure simulation accounts for completed tasks
-  const handleVideoStart = useCallback(async () => {
-    if (componentState.isLoading || !isActive || !onUpdateProgress || isUpdatingRef.current) {
-      console.log(`[TaskCard] Cannot start video - conditions not met for ${task.title}`);
-      return;
-    }
+  // Check if video ad can be started
+  const canStartVideo = useCallback(() => {
+    return !componentState.isLoading && isActive && !isUpdatingRef.current && !canClaimReward;
+  }, [componentState.isLoading, isActive, canClaimReward]);
+
+  // Handle video ad completion from AdContainer
+  const handleVideoAdCompleted = useCallback(async (result: { success: boolean; reward?: any }) => {
+    console.log(`[TaskCard] Video ad completed for ${task.title}:`, result);
     
-    // Prevent starting if already completed
-    if (canClaimReward) {
-      console.log(`[TaskCard] Task ${task.title} can claim reward, ignoring video start`);
+    if (!result.success || !onUpdateProgress || isUpdatingRef.current) {
+      console.log(`[TaskCard] Video ad not successful or conditions not met for ${task.title}`);
       return;
     }
     
@@ -337,16 +341,12 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
     isUpdatingRef.current = true;
     setComponentState(prev => ({
       ...prev,
-      isSimulatingAd: true,
       isLoading: true,
       apiError: null
     }));
     
     try {
-      console.log(`[TaskCard] Starting video ad simulation for ${task.title}`);
-      
-      // Simulate ad viewing with proper duration
-      await new Promise(resolve => setTimeout(resolve, VIDEO_AD_SIMULATION_DURATION_MS));
+      console.log(`[TaskCard] Video ad completed successfully for ${task.title}`);
       
       // Calculate next progress value safely
       const currentProgress = task.progress.current || 0;
@@ -357,29 +357,29 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
       
       await onUpdateProgress(task.id, nextProgress);
       
-      console.log(`[TaskCard] Video ad completed successfully for ${task.title}`);
+      console.log(`[TaskCard] Progress updated successfully for ${task.title}`);
       
       // Reset loading state after successful completion
       setComponentState(prev => ({
         ...prev,
-        isSimulatingAd: false,
         isLoading: false,
         apiError: null
       }));
       
     } catch (error) {
-      console.error(`[TaskCard] Error during video ad simulation:`, error);
-      const errorMessage = error instanceof Error ? error.message : 'Video ad failed';
+      console.error(`[TaskCard] Error updating progress after video ad:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Progress update failed';
       setComponentState(prev => ({
         ...prev,
         apiError: errorMessage,
-        isSimulatingAd: false,
         isLoading: false
       }));
     } finally {
       isUpdatingRef.current = false;
     }
-  }, [isLoading, isActive, onUpdateProgress, task.id, task.progress, task.title, canClaimReward]);
+  }, [onUpdateProgress, task.id, task.progress, task.title]);
+
+  // AdContainer handles modal close automatically
 
   // Claim reward for completed task (same as handleComplete for simplicity)
   const handleClaimReward = handleComplete;
@@ -627,7 +627,9 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                   if (getButtonConfig.action === 'claim') {
                     void handleComplete();
                   } else if (getButtonConfig.action === 'video') {
-                    void handleVideoStart();
+                    if (showAdRef.current) {
+                      showAdRef.current();
+                    }
                   } else if (getButtonConfig.action === 'navigate') {
                     handleNavigateToTrading();
                   } else if (getButtonConfig.action === 'daily') {
@@ -657,6 +659,26 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
         </div>
 
       </div>
+
+      {/* Unified Ad Container */}
+      {isVideoTask && (
+        <AdContainer
+          placement="task_completion"
+          reward={{
+            type: 'coins',
+            amount: 30,
+            description: task.reward?.description
+          }}
+          onAdCompleted={handleVideoAdCompleted}
+          disabled={!canStartVideo()}
+        >
+          {({ showAd, isAdShowing, canShowAd }) => {
+            // Store the showAd function in ref so button can access it
+            showAdRef.current = showAd;
+            return null; // This render prop doesn't render anything visible
+          }}
+        </AdContainer>
+      )}
 
     </div>
   );

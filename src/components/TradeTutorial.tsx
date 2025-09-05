@@ -19,6 +19,7 @@ import {
   focusElement,
   dispatchTutorialEvent
 } from '../lib/tutorialUtils';
+import { analyticsService } from '../services/analyticsService';
 import { TUTORIAL_CONFIG } from '../types/tutorial';
 import type { BaseTutorialStep, TutorialPlacement, PositioningResult } from '../types/tutorial';
 
@@ -116,6 +117,14 @@ export const TradeTutorial = ({ isActive, stepIndex }: TradeTutorialProps) => {
       cleanupManagerRef.current?.cleanup();
     };
   }, []);
+
+  // Track tutorial start when it becomes active
+  useEffect(() => {
+    if (isActive && clampedIndex === 0) {
+      analyticsService.trackTutorialProgress('trade_tutorial', 'start');
+      tutorialLogger.info('Trade tutorial started');
+    }
+  }, [isActive, clampedIndex]);
 
   // Positioning calculation with enhanced error handling
   const calculatePositioning = useCallback(() => {
@@ -219,11 +228,15 @@ export const TradeTutorial = ({ isActive, stepIndex }: TradeTutorialProps) => {
     if (clampedIndex === 10) {
       dispatchTutorialEvent('trade:tutorial:simulateCloseDeal');
       dispatch(completeTradeTutorial());
+      analyticsService.trackTutorialProgress('trade_tutorial', 'complete');
+      tutorialLogger.info('Trade tutorial completed');
       return;
     }
     
     if (clampedIndex === steps.length - 1) {
       dispatch(completeTradeTutorial());
+      analyticsService.trackTutorialProgress('trade_tutorial', 'complete');
+      tutorialLogger.info('Trade tutorial completed');
       return;
     }
     
@@ -240,6 +253,7 @@ export const TradeTutorial = ({ isActive, stepIndex }: TradeTutorialProps) => {
   const handleSkip = useCallback(() => {
     dispatch(skipTradeTutorial());
     dispatch(completeTradeTutorial());
+    analyticsService.trackTutorialProgress('trade_tutorial', 'skip');
     tutorialLogger.info('Tutorial skipped by user');
   }, [dispatch]);
 

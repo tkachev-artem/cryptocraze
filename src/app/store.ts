@@ -5,6 +5,7 @@ import userReducer from './userSlice'
 import binanceReducer from './binanceSlice'
 import dealModalReducer from './dealModalSlice'
 import tutorialReducer from './tutorialSlice'
+import newTutorialReducer from './newTutorialSlice'
 import coinExchangeReducer from './coinExchangeSlice'
 
 // `combineSlices` automatically combines the reducers using
@@ -14,6 +15,7 @@ const rootReducer = combineSlices({
   binance: binanceReducer,
   dealModal: dealModalReducer,
   tutorial: tutorialReducer,
+  newTutorial: newTutorialReducer,
   coinExchange: coinExchangeReducer,
 }) //сюда добавляем редюсеры
 // Infer the `RootState` type from the root reducer

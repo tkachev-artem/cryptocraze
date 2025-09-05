@@ -65,6 +65,9 @@ export class AnalyticsLogger {
           setImmediate(async () => {
             // Используем BigInt для больших ID, затем Number для ClickHouse
             const userIdNumber = Number(BigInt(body.user.id));
+            const sessionId = uuidv4();
+            
+            // Логируем login событие
             await AnalyticsLogger.logUserEvent(
               userIdNumber,
               'login',
@@ -73,8 +76,23 @@ export class AnalyticsLogger {
                 userAgent: req.get('User-Agent'),
                 timestamp: new Date().toISOString()
               },
-              uuidv4()
+              sessionId
             );
+            
+            // Если это новый пользователь (по наличию created или isNewUser флага), логируем user_register
+            if (body.user?.created || body.user?.isNewUser) {
+              await AnalyticsLogger.logUserEvent(
+                userIdNumber,
+                'user_register',
+                {
+                  ip: req.ip,
+                  userAgent: req.get('User-Agent'),
+                  registrationMethod: 'google_oauth',
+                  timestamp: new Date().toISOString()
+                },
+                sessionId
+              );
+            }
           });
         }
         return originalJson.call(this, body);

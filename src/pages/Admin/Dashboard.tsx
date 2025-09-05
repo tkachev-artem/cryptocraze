@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { config } from '../../lib/config';
 import BottomNavigation from '../../components/ui/BottomNavigation';
-import { ArrowLeft, Users, TrendingUp, UserRoundCheck, DollarSign, Zap, UserPlus, Megaphone, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Users, TrendingUp, UserRoundCheck, DollarSign, Zap, UserPlus, Megaphone, AlertCircle, Clock, Target, BookOpen } from 'lucide-react';
 import { useTranslation } from '../../lib/i18n';
 import PremiumStatsBlock from '../../components/admin/PremiumStatsBlock';
 
@@ -13,6 +13,11 @@ interface AdminOverview {
     daily_active_users: number;
     weekly_active_users: number;
     monthly_active_users: number;
+    // Retention metrics
+    retention_d1?: number;
+    retention_d3?: number;
+    retention_d7?: number;
+    retention_d30?: number;
   };
   trading: {
     totalTrades: number;
@@ -42,6 +47,19 @@ interface AdminOverview {
     tradesOpened: number;
     adsWatched: number;
     avgSessionsPerUser: string;
+    // New engagement metrics
+    avgSessionDuration?: number; // seconds
+    screensOpened?: number;
+    tutorialCompletionRate?: number;
+    tutorialSkipRate?: number;
+  };
+  // Advanced ad metrics
+  adMetrics?: {
+    clickToInstallRate?: number;
+    adEngagementRate?: number;
+    totalImpressions?: number;
+    totalClicks?: number;
+    avgCTR?: number;
   };
   dataSource?: 'clickhouse' | 'postgresql_fallback';
   version?: string;
@@ -121,12 +139,19 @@ const AdminDashboard: React.FC = () => {
     const num = Number(value);
     if (isNaN(num)) return '$0';
     
-    if (num >= 1000000) {
-      return '$' + (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'м';
-    } else if (num >= 1000) {
-      return '$' + (num / 1000).toFixed(1).replace(/\.0$/, '') + 'к';
+    const isNegative = num < 0;
+    const absNum = Math.abs(num);
+    
+    let formattedAmount;
+    if (absNum >= 1000000) {
+      formattedAmount = (absNum / 1000000).toFixed(1).replace(/\.0$/, '') + 'м';
+    } else if (absNum >= 1000) {
+      formattedAmount = (absNum / 1000).toFixed(1).replace(/\.0$/, '') + 'к';
+    } else {
+      formattedAmount = absNum.toFixed(2).replace(/\.00$/, '');
     }
-    return '$' + num.toFixed(2).replace(/\.00$/, '');
+    
+    return isNegative ? '-$' + formattedAmount : '$' + formattedAmount;
   };
 
   const formatDecimal = (value: number | string, decimals: number = 2): string => {
@@ -134,6 +159,21 @@ const AdminDashboard: React.FC = () => {
     if (isNaN(num)) return '0';
     
     return num.toFixed(decimals).replace(/\.?0+$/, '');
+  };
+
+  const formatDuration = (seconds: number | string): string => {
+    const num = Number(seconds);
+    if (isNaN(num)) return '0s';
+    
+    if (num < 60) {
+      return `${Math.round(num)}s`;
+    } else if (num < 3600) {
+      const minutes = Math.round(num / 60);
+      return `${minutes}m`;
+    } else {
+      const hours = Math.round(num / 3600);
+      return `${hours}h`;
+    }
   };
 
   const handleBack = () => {
@@ -374,12 +414,92 @@ const AdminDashboard: React.FC = () => {
               
               <div>
                 <div className="text-2xl font-bold text-gray-900 mb-1">
+                  {formatDuration(overview?.engagement?.avgSessionDuration || 0)}
+                </div>
+                <div className="text-sm text-gray-600">{tWithFallback('admin.dashboard.avgSessionDuration', 'Avg Session Duration')}</div>
+              </div>
+              
+              <div>
+                <div className="text-2xl font-bold text-gray-900 mb-1">
                   {formatNumber(overview?.trading?.totalTrades || 0)}
                 </div>
                 <div className="text-sm text-gray-600">{t('admin.dashboard.totalTrades')}</div>
               </div>
+              
+              <div>
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  {formatNumber(overview?.engagement?.screensOpened || 0)}
+                </div>
+                <div className="text-sm text-gray-600">{tWithFallback('admin.dashboard.screensOpened', 'Screens Opened')}</div>
+              </div>
             </div>
 
+          </div>
+
+          {/* Retention Metrics */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center">
+                <Clock className="w-5 h-5 text-amber-600" />
+              </div>
+              <h2 className="text-lg font-bold text-gray-900">{tWithFallback('admin.dashboard.retentionMetrics', 'Retention Metrics')}</h2>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div>
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  {formatDecimal(Number(overview?.users?.retention_d1 || 0) * 100, 1)}%
+                </div>
+                <div className="text-sm text-gray-600">{tWithFallback('admin.dashboard.retentionD1', 'Day 1 Retention')}</div>
+              </div>
+              
+              <div>
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  {formatDecimal(Number(overview?.users?.retention_d3 || 0) * 100, 1)}%
+                </div>
+                <div className="text-sm text-gray-600">{tWithFallback('admin.dashboard.retentionD3', 'Day 3 Retention')}</div>
+              </div>
+              
+              <div>
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  {formatDecimal(Number(overview?.users?.retention_d7 || 0) * 100, 1)}%
+                </div>
+                <div className="text-sm text-gray-600">{tWithFallback('admin.dashboard.retentionD7', 'Day 7 Retention')}</div>
+              </div>
+              
+              <div>
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  {formatDecimal(Number(overview?.users?.retention_d30 || 0) * 100, 1)}%
+                </div>
+                <div className="text-sm text-gray-600">{tWithFallback('admin.dashboard.retentionD30', 'Day 30 Retention')}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tutorial Metrics */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-indigo-600" />
+              </div>
+              <h2 className="text-lg font-bold text-gray-900">{tWithFallback('admin.dashboard.tutorialMetrics', 'Tutorial Metrics')}</h2>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div>
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  {formatDecimal(Number(overview?.engagement?.tutorialCompletionRate || 0) * 100, 1)}%
+                </div>
+                <div className="text-sm text-gray-600">{tWithFallback('admin.dashboard.tutorialCompletionRate', 'Tutorial Completion')}</div>
+              </div>
+              
+              <div>
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  {formatDecimal(Number(overview?.engagement?.tutorialSkipRate || 0) * 100, 1)}%
+                </div>
+                <div className="text-sm text-gray-600">{tWithFallback('admin.dashboard.tutorialSkipRate', 'Tutorial Skip Rate')}</div>
+              </div>
+            </div>
           </div>
 
           {/* Revenue Metrics */}
@@ -510,7 +630,54 @@ const AdminDashboard: React.FC = () => {
             </div>
           )}
 
-          {/* Ad Performance Metrics */}
+          {/* Enhanced Ad Performance Metrics */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center">
+                <Target className="w-5 h-5 text-red-600" />
+              </div>
+              <h2 className="text-lg font-bold text-gray-900">{tWithFallback('admin.dashboard.advancedAdMetrics', 'Advanced Ad Metrics')}</h2>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div>
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  {formatNumber(overview?.adMetrics?.totalImpressions || 0)}
+                </div>
+                <div className="text-sm text-gray-600">{tWithFallback('admin.dashboard.totalImpressions', 'Total Impressions')}</div>
+              </div>
+              
+              <div>
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  {formatNumber(overview?.adMetrics?.totalClicks || 0)}
+                </div>
+                <div className="text-sm text-gray-600">{tWithFallback('admin.dashboard.totalClicks', 'Total Clicks')}</div>
+              </div>
+              
+              <div>
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  {formatDecimal(Number(overview?.adMetrics?.avgCTR || 0) * 100, 2)}%
+                </div>
+                <div className="text-sm text-gray-600">{tWithFallback('admin.dashboard.avgCTR', 'Avg Click-Through Rate')}</div>
+              </div>
+              
+              <div>
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  {formatDecimal(Number(overview?.adMetrics?.clickToInstallRate || 0) * 100, 2)}%
+                </div>
+                <div className="text-sm text-gray-600">{tWithFallback('admin.dashboard.clickToInstallRate', 'Click-to-Install Rate')}</div>
+              </div>
+              
+              <div>
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  {formatDecimal(Number(overview?.adMetrics?.adEngagementRate || 0) * 100, 2)}%
+                </div>
+                <div className="text-sm text-gray-600">{tWithFallback('admin.dashboard.adEngagementRate', 'Ad Engagement Rate')}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Legacy Ad Performance Metrics - Keep for backward compatibility */}
           {adPerformanceData && (
             <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
               <div className="flex items-center gap-3 mb-6">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -10,6 +10,10 @@ import { useTranslation } from '../lib/i18n';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/use-toast';
 import { isUnauthorizedError } from '../lib/authUtils';
+import { analyticsService } from '../services/analyticsService';
+import UniversalTutorial from '../components/UniversalTutorial';
+import { useAppDispatch } from '../app/hooks';
+import { startTutorial } from '../app/newTutorialSlice';
 
 type TutorialStep = {
   id: string;
@@ -24,9 +28,17 @@ export function Tutorial() {
   const { isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const dispatch = useAppDispatch();
   
   const [currentStep, setCurrentStep] = useState(0);
   const [isCompleting, setIsCompleting] = useState(false);
+
+  // Track tutorial start when component mounts
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      analyticsService.trackTutorialProgress('main_tutorial', 'start');
+    }
+  }, [isAuthenticated, isLoading]);
 
   const tutorialSteps: TutorialStep[] = [
     {
@@ -128,10 +140,12 @@ export function Tutorial() {
 
   const handleComplete = () => {
     setIsCompleting(true);
+    analyticsService.trackTutorialProgress('main_tutorial', 'complete');
     completeTutorialMutation.mutate();
   };
 
   const handleSkip = () => {
+    analyticsService.trackTutorialProgress('main_tutorial', 'skip');
     completeTutorialMutation.mutate();
   };
 
@@ -151,8 +165,17 @@ export function Tutorial() {
   const currentTutorialStep = tutorialSteps[currentStep];
   const progress = ((currentStep + 1) / tutorialSteps.length) * 100;
 
+  // Auto-start new tutorial system
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      dispatch(startTutorial('main'));
+    }
+  }, [isAuthenticated, isLoading, dispatch]);
+
   return (
     <div>
+      {/* New Universal Tutorial */}
+      <UniversalTutorial type="main" autoStart={true} />
       {/* Header */}
       <header className="bg-white border-b">
         <div className="px-4 py-4">

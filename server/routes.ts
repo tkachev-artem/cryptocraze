@@ -2135,20 +2135,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId = ((req as any).user)?.claims?.sub ?? ((req as any).user)?.id ?? null;
       }
 
-      const { analyticsQueueService } = await import('./services/analyticsQueueService.js');
+      const { clickhouseAnalyticsService } = await import('./services/clickhouseAnalyticsService.js');
       
-      // Queue all events
-      await Promise.all(events.map(event => 
-        analyticsQueueService.queueEvent({
+      // Send directly to ClickHouse (bypassing Redis queue due to connection issues)
+      await Promise.all(events.map(async event => {
+        await clickhouseAnalyticsService.logUserEvent(
           userId,
-          eventType: event.eventType,
-          eventData: event.eventData,
-          sessionId: event.sessionId,
-          userAgent,
-          ipAddress,
-          priority: event.priority || 'normal'
-        })
-      ));
+          event.eventType,
+          event.eventData || {},
+          event.sessionId || 'batch_session'
+        );
+      }));
 
       res.json({ 
         success: true, 
@@ -5050,7 +5047,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    *       200:
    *         description: События записаны
    */
-  app.post('/api/analytics/batch', async (req: Request, res: Response) => {
+  app.post('/api/analytics/batch', async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { events } = req.body;
       if (!Array.isArray(events)) {
@@ -5061,12 +5058,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userAgent = req.get('User-Agent');
       const ipAddress = req.ip;
       
+      // Get user ID from session (Google OAuth or regular auth)
       let userId = null;
-      if (typeof (req as any).isAuthenticated === 'function' && (req as any).isAuthenticated()) {
-        userId = ((req as any).user)?.id ?? null;
+      if (req.user?.id) {
+        userId = req.user.id;
+      } else if (req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+      } else if (req.session?.userId) {
+        userId = req.session.userId;
       }
+      
+      console.log('[Analytics Batch] Processing events:', {
+        eventCount: events.length,
+        userId,
+        hasUser: !!req.user,
+        userClaims: req.user?.claims?.sub,
+        sessionUserId: req.session?.userId
+      });
 
-      // Batch insert all events
+      // Batch insert all events to PostgreSQL
       const analyticsData = events.map((event: any) => ({
         userId,
         eventType: event.eventType,
@@ -5078,6 +5088,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
 
       await db.insert(analytics).values(analyticsData);
+
+      // Also forward events to ClickHouse for analytics (use default user ID if not authenticated)
+      try {
+        const userIdNumber = userId ? Number(BigInt(userId)) : 999999999; // Default user ID for unauthenticated users
+        const promises = events.map(async (event: any) => {
+            // Forward important events to ClickHouse for dashboard metrics
+            if (event.eventType === 'tutorial_progress' || 
+                event.eventType === 'trade_open' || 
+                event.eventType === 'ad_watch' || 
+                event.eventType === 'page_view' ||
+                event.eventType === 'login' ||
+                event.eventType === 'engagement') {
+              
+              // Map event types for ClickHouse compatibility
+              let eventType = event.eventType;
+              if (event.eventType === 'page_view') {
+                eventType = 'screen_view';
+              } else if (event.eventType === 'ad_watch') {
+                eventType = 'ad_watch'; // Keep ad_watch as ad_watch for dashboard queries
+              } else if (event.eventType === 'engagement') {
+                eventType = 'ad_engagement';
+              }
+              
+              await clickhouseAnalyticsService.logUserEvent(
+                userIdNumber,
+                eventType,
+                event.eventData || {},
+                event.sessionId
+              );
+            }
+          });
+          
+          await Promise.allSettled(promises);
+          console.log(`[Analytics Batch] Forwarded ${events.length} events to ClickHouse for user ${userIdNumber}`);
+      } catch (clickhouseError) {
+        console.warn('[Analytics Batch] ClickHouse forwarding failed, but PostgreSQL insert succeeded:', clickhouseError);
+      }
+
       res.json({ success: true, processed: events.length });
     } catch (error: any) {
       console.error("Error recording batch analytics:", error);
@@ -5111,6 +5159,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           healthy: false,
           error: error.message
         },
+        timestamp: new Date()
+      });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/admin/clickhouse/cleanup:
+   *   post:
+   *     summary: Очистить тестовые данные ClickHouse
+   *     tags: [Admin ClickHouse]
+   *     responses:
+   *       200:
+   *         description: Данные очищены
+   */
+  app.post('/api/admin/clickhouse/cleanup', async (req: Request, res: Response) => {
+    try {
+      console.log('[ClickHouse] Cleanup requested - clearing all test data');
+      await clickhouseAnalyticsService.cleanupTestData();
+      res.json({
+        success: true,
+        message: 'All ClickHouse analytics data cleared',
+        timestamp: new Date()
+      });
+    } catch (error: any) {
+      console.error('[ClickHouse] Cleanup error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
         timestamp: new Date()
       });
     }

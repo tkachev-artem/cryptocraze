@@ -189,6 +189,19 @@ export class ClickHouseAnalyticsService {
         format: 'JSONEachRow'
       });
       console.log('[ClickHouse Service] ✅ Successfully inserted user event');
+      
+      // Специальная обработка событий просмотра рекламы
+      if (eventType === 'ad_watch') {
+        console.log('[ClickHouse Service] Processing ad_watch event for revenue tracking');
+        const adData = typeof eventData === 'object' ? eventData : {};
+        const revenue = adData.revenue || 0; // Для симуляции revenue = 0
+        
+        if (typeof revenue === 'number') {
+          console.log(`[ClickHouse Service] Logging ad revenue: $${revenue} (simulation: ${adData.isSimulation})`);
+          await this.logRevenueEvent(userId, 'ad', revenue, 'USD');
+        }
+      }
+      
     } catch (error) {
       console.error('[ClickHouse Service] ❌ Failed to log user event:', error);
       console.error('[ClickHouse Service] ❌ Error details:', error?.message);
@@ -210,7 +223,7 @@ export class ClickHouseAnalyticsService {
   ): Promise<void> {
     try {
       await this.client.insert({
-        table: 'revenue_events',
+        table: 'cryptocraze_analytics.revenue_events',
         values: [{
           event_id: uuidv4(),
           user_id: userId,
@@ -248,9 +261,9 @@ export class ClickHouseAnalyticsService {
           amount: parseFloat(deal.amount),
           leverage: deal.leverage || 1,
           multiplier: parseFloat(deal.multiplier || '1'),
-          entry_price: parseFloat(deal.entryPrice || '0'),
-          current_price: parseFloat(deal.currentPrice || deal.entryPrice || '0'),
-          pnl: parseFloat(deal.pnl || '0'),
+          entry_price: parseFloat(deal.openPrice || deal.entryPrice || '0'),
+          current_price: parseFloat(deal.closePrice || deal.currentPrice || deal.openPrice || '0'),
+          pnl: parseFloat(deal.profit || deal.pnl || '0'),
           status: deal.status,
           take_profit: deal.takeProfit ? parseFloat(deal.takeProfit) : null,
           stop_loss: deal.stopLoss ? parseFloat(deal.stopLoss) : null,
@@ -287,11 +300,15 @@ export class ClickHouseAnalyticsService {
         this.getEngagementMetrics()
       ]);
 
+      // Получение расширенных рекламных метрик
+      const adMetrics = await this.getAdvancedAdMetrics();
+
       return {
         users: userMetrics,
         trading: tradingMetrics,
         revenue: revenueMetrics,
         engagement: engagementMetrics,
+        adMetrics: adMetrics,
         lastUpdated: new Date()
       };
     } catch (error) {
@@ -301,11 +318,12 @@ export class ClickHouseAnalyticsService {
   }
 
   /**
-   * Получение метрик пользователей
+   * Получение метрик пользователей с retention
    */
   private async getUserMetrics(): Promise<any> {
     try {
-      const result = await this.client.query({
+      // Основные пользовательские метрики
+      const userResult = await this.client.query({
         query: `
           SELECT 
             uniq(user_id) as total_users,
@@ -319,22 +337,91 @@ export class ClickHouseAnalyticsService {
         format: 'JSONEachRow'
       });
 
-      const data = await result.json<any>();
-      return data[0] || {
-        total_users: 0,
-        new_users_today: 0,
-        daily_active_users: 0,
-        weekly_active_users: 0,
-        monthly_active_users: 0
+      // Расчет retention метрик
+      const retentionResult = await this.client.query({
+        query: `
+          WITH 
+            installs AS (
+              SELECT DISTINCT user_id, min(date) as install_date
+              FROM user_events
+              WHERE event_type = 'app_install' OR event_type = 'user_register'
+              GROUP BY user_id
+              HAVING install_date >= today() - INTERVAL 30 DAY
+            ),
+            day1_retention AS (
+              SELECT DISTINCT i.user_id
+              FROM installs i
+              JOIN user_events e ON i.user_id = e.user_id
+              WHERE e.date = i.install_date + INTERVAL 1 DAY
+            ),
+            day3_retention AS (
+              SELECT DISTINCT i.user_id
+              FROM installs i
+              JOIN user_events e ON i.user_id = e.user_id
+              WHERE e.date >= i.install_date + INTERVAL 3 DAY
+                AND e.date < i.install_date + INTERVAL 4 DAY
+            ),
+            day7_retention AS (
+              SELECT DISTINCT i.user_id
+              FROM installs i
+              JOIN user_events e ON i.user_id = e.user_id
+              WHERE e.date >= i.install_date + INTERVAL 7 DAY
+                AND e.date < i.install_date + INTERVAL 8 DAY
+            ),
+            day30_retention AS (
+              SELECT DISTINCT i.user_id
+              FROM installs i
+              JOIN user_events e ON i.user_id = e.user_id
+              WHERE e.date >= i.install_date + INTERVAL 30 DAY
+                AND e.date < i.install_date + INTERVAL 31 DAY
+            )
+          SELECT 
+            count(DISTINCT installs.user_id) as total_new_users,
+            count(DISTINCT day1_retention.user_id) as day1_retained,
+            count(DISTINCT day3_retention.user_id) as day3_retained,
+            count(DISTINCT day7_retention.user_id) as day7_retained,
+            count(DISTINCT day30_retention.user_id) as day30_retained
+          FROM installs
+          LEFT JOIN day1_retention ON installs.user_id = day1_retention.user_id
+          LEFT JOIN day3_retention ON installs.user_id = day3_retention.user_id
+          LEFT JOIN day7_retention ON installs.user_id = day7_retention.user_id
+          LEFT JOIN day30_retention ON installs.user_id = day30_retention.user_id
+        `,
+        format: 'JSONEachRow'
+      });
+
+      const userData = (await userResult.json<any>())[0] || {};
+      const retentionData = (await retentionResult.json<any>())[0] || {};
+
+      const totalNewUsers = parseInt(retentionData.total_new_users || '0');
+      const retention_d1 = totalNewUsers > 0 ? parseInt(retentionData.day1_retained || '0') / totalNewUsers : 0;
+      const retention_d3 = totalNewUsers > 0 ? parseInt(retentionData.day3_retained || '0') / totalNewUsers : 0;
+      const retention_d7 = totalNewUsers > 0 ? parseInt(retentionData.day7_retained || '0') / totalNewUsers : 0;
+      const retention_d30 = totalNewUsers > 0 ? parseInt(retentionData.day30_retained || '0') / totalNewUsers : 0;
+
+      return {
+        total_users: parseInt(userData.total_users || '0'),
+        new_users_today: parseInt(userData.new_users_today || '0'),
+        daily_active_users: parseInt(userData.daily_active_users || '0'),
+        weekly_active_users: parseInt(userData.weekly_active_users || '0'),
+        monthly_active_users: parseInt(userData.monthly_active_users || '0'),
+        retention_d1,
+        retention_d3,
+        retention_d7,
+        retention_d30
       };
     } catch (error) {
-      console.log('[ClickHouse] No user data found');
+      console.log('[ClickHouse] No user data found, using fallback');
       return {
         total_users: 0,
         new_users_today: 0,
         daily_active_users: 0,
         weekly_active_users: 0,
-        monthly_active_users: 0
+        monthly_active_users: 0,
+        retention_d1: 0,
+        retention_d3: 0,
+        retention_d7: 0,
+        retention_d30: 0
       };
     }
   }
@@ -443,10 +530,11 @@ export class ClickHouseAnalyticsService {
   }
 
   /**
-   * Получение метрик вовлеченности
+   * Получение метрик вовлеченности с дополнительными метриками
    */
   private async getEngagementMetrics(): Promise<any> {
-    const result = await this.client.query({
+    // Основные метрики вовлеченности
+    const mainResult = await this.client.query({
       query: `
         SELECT 
           count() as total_events,
@@ -454,26 +542,115 @@ export class ClickHouseAnalyticsService {
           uniq(session_id) as total_sessions,
           countIf(event_type = 'login') as logins,
           countIf(event_type = 'trade_open') as trades_opened,
-          countIf(event_type = 'ad_watch') as ads_watched
+          countIf(event_type = 'ad_watch') as ads_watched,
+          countIf(event_type = 'screen_view') as screens_opened
         FROM user_events
         WHERE date >= today() - INTERVAL 7 DAY
       `,
       format: 'JSONEachRow'
     });
 
-    const data = await result.json<any>();
-    const metrics = data[0] || {};
+    // Расчет среднего времени сессии
+    const sessionDurationResult = await this.client.query({
+      query: `
+        WITH session_durations AS (
+          SELECT 
+            session_id,
+            max(timestamp) - min(timestamp) as duration_seconds
+          FROM user_events
+          WHERE date >= today() - INTERVAL 7 DAY
+            AND session_id != ''
+          GROUP BY session_id
+          HAVING duration_seconds > 0
+        )
+        SELECT 
+          avg(duration_seconds) as avg_session_duration
+        FROM session_durations
+      `,
+      format: 'JSONEachRow'
+    });
+
+    // Метрики туториала
+    const tutorialResult = await this.client.query({
+      query: `
+        SELECT 
+          countIf(event_type = 'tutorial_progress' AND JSONExtractString(event_data, 'action') = 'start') as tutorial_starts,
+          countIf(event_type = 'tutorial_progress' AND JSONExtractString(event_data, 'action') = 'complete') as tutorial_completions,
+          countIf(event_type = 'tutorial_progress' AND JSONExtractString(event_data, 'action') = 'skip') as tutorial_skips
+        FROM user_events
+        WHERE date >= today() - INTERVAL 7 DAY
+      `,
+      format: 'JSONEachRow'
+    });
+
+    const mainData = (await mainResult.json<any>())[0] || {};
+    const sessionData = (await sessionDurationResult.json<any>())[0] || {};
+    const tutorialData = (await tutorialResult.json<any>())[0] || {};
+    
+    const tutorialStarts = parseInt(tutorialData.tutorial_starts || '0');
+    const tutorialCompletions = parseInt(tutorialData.tutorial_completions || '0');
+    const tutorialSkips = parseInt(tutorialData.tutorial_skips || '0');
     
     return {
-      totalEvents: parseInt(metrics.total_events || '0'),
-      activeUsers: parseInt(metrics.active_users || '0'),
-      totalSessions: parseInt(metrics.total_sessions || '0'),
-      logins: parseInt(metrics.logins || '0'),
-      tradesOpened: parseInt(metrics.trades_opened || '0'),
-      adsWatched: parseInt(metrics.ads_watched || '0'),
-      avgSessionsPerUser: metrics.active_users > 0 ? 
-        (parseFloat(metrics.total_sessions || '0') / parseFloat(metrics.active_users || '1')).toFixed(2) : '0'
+      totalEvents: parseInt(mainData.total_events || '0'),
+      activeUsers: parseInt(mainData.active_users || '0'),
+      totalSessions: parseInt(mainData.total_sessions || '0'),
+      logins: parseInt(mainData.logins || '0'),
+      tradesOpened: parseInt(mainData.trades_opened || '0'),
+      adsWatched: parseInt(mainData.ads_watched || '0'),
+      screensOpened: parseInt(mainData.screens_opened || '0'),
+      avgSessionsPerUser: mainData.active_users > 0 ? 
+        (parseFloat(mainData.total_sessions || '0') / parseFloat(mainData.active_users || '1')).toFixed(2) : '0',
+      avgSessionDuration: parseFloat(sessionData.avg_session_duration || '0'),
+      tutorialCompletionRate: tutorialStarts > 0 ? tutorialCompletions / tutorialStarts : 0,
+      tutorialSkipRate: tutorialStarts > 0 ? tutorialSkips / tutorialStarts : 0
     };
+  }
+
+  /**
+   * Получение расширенных рекламных метрик
+   */
+  private async getAdvancedAdMetrics(): Promise<any> {
+    try {
+      const result = await this.client.query({
+        query: `
+          SELECT 
+            countIf(event_type = 'ad_watch') as total_impressions,
+            countIf(event_type = 'ad_click') as total_clicks,
+            countIf(event_type = 'app_install') as total_installs,
+            countIf(event_type = 'ad_engagement') as total_engagements
+          FROM user_events
+          WHERE date >= today() - INTERVAL 7 DAY
+        `,
+        format: 'JSONEachRow'
+      });
+
+      const data = (await result.json<any>())[0] || {};
+      
+      const totalImpressions = parseInt(data.total_impressions || '0');
+      const totalClicks = parseInt(data.total_clicks || '0'); 
+      const totalInstalls = parseInt(data.total_installs || '0');
+      const totalEngagements = parseInt(data.total_engagements || '0');
+      
+      return {
+        totalImpressions,
+        totalClicks,
+        totalInstalls,
+        avgCTR: totalImpressions > 0 ? totalClicks / totalImpressions : 0,
+        clickToInstallRate: totalClicks > 0 ? totalInstalls / totalClicks : 0,
+        adEngagementRate: totalImpressions > 0 ? totalEngagements / totalImpressions : 0
+      };
+    } catch (error) {
+      console.log('[ClickHouse] No ad metrics data found, using fallback');
+      return {
+        totalImpressions: 0,
+        totalClicks: 0,
+        totalInstalls: 0,
+        avgCTR: 0,
+        clickToInstallRate: 0,
+        adEngagementRate: 0
+      };
+    }
   }
 
   /**

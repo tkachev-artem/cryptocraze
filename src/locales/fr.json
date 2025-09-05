@@ -440,7 +440,23 @@
       "daysGranted": "Jours Accordés",
       "activeUntil": "Actif Jusqu'à",
       "noPurchasedPremiumUsers": "Aucun utilisateur avec premium acheté",
-      "noRewardPremiumUsers": "Aucun utilisateur avec premium de récompense"
+      "noRewardPremiumUsers": "Aucun utilisateur avec premium de récompense",
+      "avgSessionDuration": "Durée Moyenne de Session",
+      "screensOpened": "Écrans Ouverts",
+      "retentionMetrics": "Métriques de Rétention",
+      "retentionD1": "Rétention J1",
+      "retentionD3": "Rétention J3",
+      "retentionD7": "Rétention J7",
+      "retentionD30": "Rétention J30",
+      "tutorialMetrics": "Métriques du Tutoriel",
+      "tutorialCompletionRate": "Taux de Finalisation du Tutoriel",
+      "tutorialSkipRate": "Taux d'Abandon du Tutoriel",
+      "advancedAdMetrics": "Métriques Publicitaires Avancées",
+      "totalImpressions": "Impressions Totales",
+      "totalClicks": "Clics Totaux",
+      "avgCTR": "CTR Moyen",
+      "clickToInstallRate": "Taux Clic-Installation",
+      "adEngagementRate": "Taux d'Engagement Publicitaire"
     }
   },
   "language": {

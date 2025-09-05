@@ -22,6 +22,7 @@ import { dealService } from '../../services/dealService';
 // import { useAppSelector as useSelector } from '../../app/hooks';
 import { startTradeTutorial, selectTradeTutorial } from '../../app/tutorialSlice';
 import TradeTutorial from '../../components/TradeTutorial';
+import UniversalTutorial from '../../components/UniversalTutorial';
 import { useTranslation } from '@/lib/i18n';
 import { useBottomNavigationHeight } from '@/hooks/useBottomNavigationHeight';
  
@@ -417,7 +418,10 @@ useEffect(() => {
       {/* EditDealModal выводим, только если DealInfo закрыт, чтобы исключить гонку и скрытие DealInfo */}
       {!isDealInfoOpen && <EditDealModal bottomOffset={bottomNavHeight} />}
 
-      {/* Trade Tutorial */}
+      {/* Trade Tutorial - New System */}
+      <UniversalTutorial type="trade" autoStart={false} />
+      
+      {/* Keep old tutorial for backwards compatibility */}
       <TradeTutorial isActive={tutorial.isTradeTutorialActive} stepIndex={tutorial.currentStepIndex} />
     </div>
     </div>

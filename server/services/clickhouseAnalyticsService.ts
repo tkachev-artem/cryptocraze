@@ -393,11 +393,21 @@ export class ClickHouseAnalyticsService {
       const userData = (await userResult.json<any>())[0] || {};
       const retentionData = (await retentionResult.json<any>())[0] || {};
 
+      console.log('[ClickHouse] Raw retention data:', retentionData);
+
       const totalNewUsers = parseInt(retentionData.total_new_users || '0');
       const retention_d1 = totalNewUsers > 0 ? parseInt(retentionData.day1_retained || '0') / totalNewUsers : 0;
       const retention_d3 = totalNewUsers > 0 ? parseInt(retentionData.day3_retained || '0') / totalNewUsers : 0;
       const retention_d7 = totalNewUsers > 0 ? parseInt(retentionData.day7_retained || '0') / totalNewUsers : 0;
       const retention_d30 = totalNewUsers > 0 ? parseInt(retentionData.day30_retained || '0') / totalNewUsers : 0;
+
+      console.log('[ClickHouse] Calculated retention:', {
+        totalNewUsers,
+        retention_d1,
+        retention_d3,
+        retention_d7,
+        retention_d30
+      });
 
       return {
         total_users: parseInt(userData.total_users || '0'),

@@ -28,7 +28,7 @@
     "welcome": "С возвращением!",
     "portfolio": "Стоимость портфеля",
     "todayPnl": "P&L за сегодня",
-    "totalTrades": "Всего сделок",
+    "totalTrades": "Сделки",
     "free": "Свободно",
     "trials": "Испытания",
     "analytics": "Аналитика",
@@ -105,10 +105,10 @@
     "title": "Профиль",
     "editTitle": "Редактировать профиль",
     "successRate": "Успешные",
-    "maxTradeAmount": "Макс. сумма",
+    "maxTradeAmount": "Сумма",
     "avgTradeAmount": "Средняя",
-    "maxProfit": "Макс. прибыль",
-    "maxLoss": "Макс. убыток",
+    "maxProfit": "Прибыль",
+    "maxLoss": "Убыток",
     "name": "Имя",
     "namePlaceholder": "Ваше имя",
     "phone": "Номер телефона",
@@ -236,6 +236,13 @@
       "personal_messages": "У вас новое личное сообщение",
       "maintenance": "Плановые работы по техническому обслуживанию",
       "system_alert": "Важное системное уведомление"
+    },
+    "titles": {
+      "daily_reward": "Ежедневная награда",
+      "trade_closed_profit": "Сделка закрыта с прибылью",
+      "trade_closed_loss": "Сделка закрыта с убытком",
+      "achievement_unlocked": "Новое достижение!",
+      "daily_task": "Новая ежедневная задача!"
     }
   },
   "language": {
@@ -285,7 +292,7 @@
       "title": "BI Панель Аналитики",
       "subtitle": "Бизнес-аналитика и метрики пользователей",
       "totalUsers": "Всего пользователей",
-      "activeDeals": "Активных сделок",
+      "activeDeals": "Живых сделок",
       "dailyActiveUsers": "Дневная активность",
       "totalRevenue": "Общий доход",
       "engagement": "Метрики вовлеченности",
@@ -294,7 +301,7 @@
       "weeklyActiveUsers": "Недельная активность",
       "monthlyActiveUsers": "Месячная активность", 
       "avgSessionDuration": "Средняя длительность сеанса",
-      "totalTrades": "Всего сделок",
+      "totalTrades": "Сделки",
       "arpu": "ARPU",
       "arppu": "ARPPU",
       "conversionRate": "Конверсия",
@@ -312,14 +319,14 @@
     "dashboard": {
       "title": "Панель управления",
       "totalUsers": "Всего пользователей",
-      "activeDeals": "Активные сделки",
+      "activeDeals": "Живые сделки",
       "dailyActiveUsers": "Активных за день",
       "totalRevenue": "Общий доход",
       "engagementMetrics": "Метрики вовлеченности",
       "weeklyActiveUsers": "Активных за неделю",
       "monthlyActiveUsers": "Активных за месяц",
       "avgSessionsPerUser": "Средних сессий на пользователя",
-      "totalTrades": "Всего сделок",
+      "totalTrades": "Сделки",
       "revenueMonetization": "Доходы и монетизация",
       "arpu": "ARPU",
       "arppu": "ARPPU",
@@ -358,7 +365,7 @@
       "adEngagementRate": "Вовлеченность в рекламе",
       "premiumStats": "Статистика Премиум",
       "allRegisteredUsers": "Все зарегистрированные пользователи",
-      "currentlyOpenPositions": "Открытые позиции на данный момент",
+      "currentlyOpenPositions": "Это статистика и открытых и закрытых сделок",
       "usersActiveToday": "Пользователи активны сегодня",
       "allTimeRevenue": "Доход за все время",
       "premiumPurchased": "Купили Premium",
@@ -427,10 +434,10 @@
       "6": { "title": "Создание ордера", "description": "Установите сумму сделки и выберите мультипликатор." },
       "7": { "title": "Take Profit и Stop Loss", "description": "Stop Loss — отложенный ордер для ограничения убытков. Take Profit фиксирует прибыль, автоматически закрывает сделку." },
       "8": { "title": "Редактировать сделку", "description": "Если вы считаете, что цена сменит направление, отредактируйте параметры сделки одним нажатием." },
-      "9": { "title": "Продать или купить", "description": "Когда вы задали все параметры сделки, нажмите «Купить» или «Продать» для подтверждения." },
-      "10": { "title": "Сделка открыта", "description": "Нажмите «Купить», и появится окно подтверждения — сделка открыта." },
+      "9": { "title": "В рост или в снижение", "description": "Когда вы задали все параметры сделки, выберите направление «В рост» или «В снижение» и нажмите для подтверждения." },
+      "10": { "title": "Сделка открыта", "description": "" },
       "11": { "title": "Закрыть сделку", "description": "Далее вы можете закрыть сделку и получить свою прибыль." },
-      "12": { "title": "Сделка закрыта", "description": "Нажмите «Закрыть сделку» и посмотрите результат в окне подтверждения." }
+      "12": { "title": "Сделка закрыта", "description": "" }
     }
   },
   "panda": {
@@ -863,7 +870,8 @@
     "dealNotFound": "Сделка не найдена",
     "noAccess": "Нет доступа к сделке",
     "dealAlreadyClosed": "Сделка уже закрыта",
-    "priceNotFound": "Не удалось получить цену"
+    "priceNotFound": "Не удалось получить цену",
+    "wheelSpinError": "Ошибка при вращении рулетки"
   },
   "tasks": {
     "videoWheel": {

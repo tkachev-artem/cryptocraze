@@ -398,70 +398,70 @@ const UserAnalytics: React.FC = () => {
             {t('analytics.tradingStatistics')}
           </h2>
           
-          <div className="grid grid-cols-2 gap-8">
+          <div className="grid grid-cols-2 gap-4">
             {/* Total Trades */}
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-[#0C54EA] rounded-full flex items-center justify-center flex-shrink-0">
-                <ChartNoAxesCombined className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 bg-[#0C54EA] rounded-full flex items-center justify-center flex-shrink-0">
+                <ChartNoAxesCombined className="w-4 h-4 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xl font-bold text-gray-900 truncate">{totalTrades}</p>
-                <p className="text-sm text-gray-600 truncate">{t('home.totalTrades')}</p>
+                <p className="text-lg font-bold text-gray-900 truncate">{totalTrades}</p>
+                <p className="text-xs text-gray-600 truncate">{t('home.totalTrades')}</p>
               </div>
             </div>
 
             {/* Success Rate */}
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-[#10B981] rounded-full flex items-center justify-center flex-shrink-0">
-                <DiamondPlus className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 bg-[#10B981] rounded-full flex items-center justify-center flex-shrink-0">
+                <DiamondPlus className="w-4 h-4 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xl font-bold text-gray-900 truncate">{successRate}</p>
-                <p className="text-sm text-gray-600 truncate">{t('profile.successRate') || 'Success Rate'}</p>
+                <p className="text-lg font-bold text-gray-900 truncate">{successRate}</p>
+                <p className="text-xs text-gray-600 truncate">{t('profile.successRate') || 'Success Rate'}</p>
               </div>
             </div>
 
             {/* Max Trade Amount */}
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-[#8B5CF6] rounded-full flex items-center justify-center flex-shrink-0">
-                <ArrowUpRight className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 bg-[#8B5CF6] rounded-full flex items-center justify-center flex-shrink-0">
+                <ArrowUpRight className="w-4 h-4 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xl font-bold text-gray-900 truncate">{maxTradeAmount}</p>
-                <p className="text-sm text-gray-600 truncate">{t('profile.maxTradeAmount') || 'Max Trade Amount'}</p>
+                <p className="text-lg font-bold text-gray-900 truncate">{maxTradeAmount}</p>
+                <p className="text-xs text-gray-600 truncate">{t('profile.maxTradeAmount') || 'Max Trade Amount'}</p>
               </div>
             </div>
 
             {/* Avg Trade Amount */}
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-[#F59E0B] rounded-full flex items-center justify-center flex-shrink-0">
-                <ChevronsLeftRight className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 bg-[#F59E0B] rounded-full flex items-center justify-center flex-shrink-0">
+                <ChevronsLeftRight className="w-4 h-4 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xl font-bold text-gray-900 truncate">{avgTradeAmount}</p>
-                <p className="text-sm text-gray-600 truncate">{t('profile.avgTradeAmount') || 'Avg Trade Amount'}</p>
+                <p className="text-lg font-bold text-gray-900 truncate">{avgTradeAmount}</p>
+                <p className="text-xs text-gray-600 truncate">{t('profile.avgTradeAmount') || 'Avg Trade Amount'}</p>
               </div>
             </div>
 
             {/* Max Profit */}
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-[#2EBD85] rounded-full flex items-center justify-center flex-shrink-0">
-                <TrendingUp className="w-6 h-6 text-white" />
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 bg-[#2EBD85] rounded-full flex items-center justify-center flex-shrink-0">
+                <TrendingUp className="w-4 h-4 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xl font-bold text-gray-900 truncate">{maxProfit}</p>
-                <p className="text-sm text-gray-600 truncate">{t('profile.maxProfit') || 'Max Profit'}</p>
+                <p className="text-lg font-bold text-gray-900 truncate">{maxProfit}</p>
+                <p className="text-xs text-gray-600 truncate">{t('profile.maxProfit') || 'Max Profit'}</p>
               </div>
             </div>
 
             {/* Max Loss */}
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-[#F6465D] rounded-full flex items-center justify-center flex-shrink-0">
-                <TrendingDown className="w-6 h-6 text-white" />
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 bg-[#F6465D] rounded-full flex items-center justify-center flex-shrink-0">
+                <TrendingDown className="w-4 h-4 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xl font-bold text-gray-900 truncate">{maxLoss}</p>
-                <p className="text-sm text-gray-600 truncate">{t('profile.maxLoss') || 'Max Loss'}</p>
+                <p className="text-lg font-bold text-gray-900 truncate">{maxLoss}</p>
+                <p className="text-xs text-gray-600 truncate">{t('profile.maxLoss') || 'Max Loss'}</p>
               </div>
             </div>
           </div>
@@ -478,16 +478,16 @@ const UserAnalytics: React.FC = () => {
           
           <div className="grid grid-cols-1 gap-4">
             {/* Total P/L */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div>
-                <p className="text-sm text-gray-600">{t('analytics.totalPL')}</p>
-                <p className={`text-2xl font-bold ${totalPLColor}`}>{totalPLFormatted}</p>
+                <p className="text-xs text-gray-600">{t('analytics.totalPL')}</p>
+                <p className={`text-xl font-bold ${totalPLColor}`}>{totalPLFormatted}</p>
               </div>
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${totalPL >= 0 ? 'bg-[#2EBD85]' : 'bg-[#F6465D]'}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${totalPL >= 0 ? 'bg-[#2EBD85]' : 'bg-[#F6465D]'}`}>
                 {totalPL >= 0 ? (
-                  <TrendingUp className="w-6 h-6 text-white" />
+                  <TrendingUp className="w-5 h-5 text-white" />
                 ) : (
-                  <TrendingDown className="w-6 h-6 text-white" />
+                  <TrendingDown className="w-5 h-5 text-white" />
                 )}
               </div>
             </div>
@@ -561,58 +561,6 @@ const UserAnalytics: React.FC = () => {
           )}
         </div>
 
-        {/* Daily Performance Stats */}
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <div className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center">
-              <TrendingUpDown className="w-4 h-4 text-[#0C54EA]" />
-            </div>
-{t('analytics.performanceTrends')}
-          </h2>
-          
-          {chartDataSource.length > 0 ? (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-gray-50 rounded-lg text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <div className="w-8 h-8 bg-[#2EBD85] rounded-full flex items-center justify-center">
-                    <TrendingUp className="w-4 h-4 text-white" />
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600">{t('analytics.bestDay')}</p>
-                <p className={`text-xl font-bold ${
-                  Math.max(...chartDataSource.map(d => d.pnl)) >= 0 ? 'text-[#2EBD85]' : 'text-[#F6465D]'
-                }`}>
-                  {(() => {
-                    const best = Math.max(...chartDataSource.map(d => d.pnl));
-                    return best >= 0 ? `+${formatMoneyShort(best)}` : formatMoneyShort(best);
-                  })()}
-                </p>
-              </div>
-              
-              <div className="p-4 bg-gray-50 rounded-lg text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <div className="w-8 h-8 bg-[#F6465D] rounded-full flex items-center justify-center">
-                    <TrendingDown className="w-4 h-4 text-white" />
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600">{t('analytics.worstDay')}</p>
-                <p className={`text-xl font-bold ${
-                  Math.min(...chartDataSource.map(d => d.pnl)) >= 0 ? 'text-[#2EBD85]' : 'text-[#F6465D]'
-                }`}>
-                  {(() => {
-                    const worst = Math.min(...chartDataSource.map(d => d.pnl));
-                    return worst >= 0 ? `+${formatMoneyShort(worst)}` : formatMoneyShort(worst);
-                  })()}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              <TrendingUpDown className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p>{t('analytics.noTradingActivity')}</p>
-            </div>
-          )}
-        </div>
         </div>
       </div>
       

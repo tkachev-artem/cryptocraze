@@ -322,17 +322,30 @@ export class ClickHouseAnalyticsService {
    */
   private async getUserMetrics(): Promise<any> {
     try {
+      console.log('[ClickHouse] Getting user metrics with NEW query...');
       // Основные пользовательские метрики
       const userResult = await this.client.query({
         query: `
+          WITH 
+            registered_users AS (
+              SELECT DISTINCT user_id, min(date) as registration_date
+              FROM user_events
+              WHERE event_type IN ('user_register', 'app_install')
+              GROUP BY user_id
+            ),
+            active_users AS (
+              SELECT DISTINCT user_id, date
+              FROM user_events
+              WHERE date >= today() - INTERVAL 30 DAY
+            )
           SELECT 
-            uniq(user_id) as total_users,
-            uniqIf(user_id, date = today()) as new_users_today,
-            uniqIf(user_id, date >= today() - INTERVAL 1 DAY) as daily_active_users,
-            uniqIf(user_id, date >= today() - INTERVAL 7 DAY) as weekly_active_users,
-            uniqIf(user_id, date >= today() - INTERVAL 30 DAY) as monthly_active_users
-          FROM user_events
-          WHERE date >= today() - INTERVAL 30 DAY
+            count(DISTINCT registered_users.user_id) as total_users,
+            count(DISTINCT CASE WHEN registered_users.registration_date = today() THEN registered_users.user_id END) as new_users_today,
+            count(DISTINCT CASE WHEN active_users.date >= today() - INTERVAL 1 DAY THEN active_users.user_id END) as daily_active_users,
+            count(DISTINCT CASE WHEN active_users.date >= today() - INTERVAL 7 DAY THEN active_users.user_id END) as weekly_active_users,
+            count(DISTINCT CASE WHEN active_users.date >= today() - INTERVAL 30 DAY THEN active_users.user_id END) as monthly_active_users
+          FROM registered_users
+          LEFT JOIN active_users ON registered_users.user_id = active_users.user_id
         `,
         format: 'JSONEachRow'
       });
@@ -393,6 +406,7 @@ export class ClickHouseAnalyticsService {
       const userData = (await userResult.json<any>())[0] || {};
       const retentionData = (await retentionResult.json<any>())[0] || {};
 
+      console.log('[ClickHouse] Raw user data:', userData);
       console.log('[ClickHouse] Raw retention data:', retentionData);
 
       const totalNewUsers = parseInt(retentionData.total_new_users || '0');
@@ -486,7 +500,7 @@ export class ClickHouseAnalyticsService {
             sum(revenue) as total_revenue,
             sumIf(revenue, revenue_type = 'premium') as premium_revenue,
             sumIf(revenue, revenue_type = 'ad') as ad_revenue,
-            count(DISTINCT user_id) as paying_users
+            count(DISTINCT CASE WHEN revenue > 0 THEN user_id END) as paying_users
           FROM revenue_events
           WHERE date >= today() - INTERVAL 30 DAY
         `,
@@ -495,6 +509,8 @@ export class ClickHouseAnalyticsService {
       
       const data = await revenueResult.json<any>();
       const revenue = data[0] || {};
+      
+      console.log('[ClickHouse] Raw revenue data:', revenue);
       
       // Вычисляем ARPU и ARPPU
       const totalUsers = await this.getUsersCount();

@@ -6,41 +6,22 @@ const schema_1 = require("../../shared/schema");
 const drizzle_orm_1 = require("drizzle-orm");
 const energyService_js_1 = require("./energyService.js");
 const taskTemplates_js_1 = require("./taskTemplates.js");
+const notifications_js_1 = require("./notifications.js");
 class TaskService {
     static MAX_ACTIVE_TASKS = 3;
     static AUTO_FILL_INTERVAL = 60000; // 1 минута в миллисекундах
     /**
-     * Get all active tasks for user and auto-fill if needed
+     * Get all active tasks for user (READ ONLY - no auto-creation)
      */
     static async getUserTasks(userId) {
         console.log(`[TaskService] Getting tasks for user: ${userId}`);
         // First, expire old tasks
         await this.expireOldTasks(userId);
-        // Auto-fill tasks to maintain 3 active tasks (temporarily disabled to debug)
-        // await this.autoFillTasks(userId);
         let tasks = await db_js_1.db.select()
             .from(schema_1.userTasks)
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.userTasks.userId, userId), (0, drizzle_orm_1.eq)(schema_1.userTasks.status, 'active')))
             .orderBy((0, drizzle_orm_1.desc)(schema_1.userTasks.createdAt));
         console.log(`[TaskService] Found ${tasks.length} active tasks`);
-        // If no tasks exist, create some initial tasks
-        if (tasks.length === 0) {
-            console.log(`[TaskService] No tasks found, creating initial tasks`);
-            await this.createInitialTasks(userId);
-        }
-        else if (tasks.length < 3) {
-            console.log(`[TaskService] Only ${tasks.length} tasks found, adding more test tasks`);
-            await this.createTestWheelTask(userId);
-        }
-        // Re-fetch tasks after potential creation
-        if (tasks.length === 0) {
-            const newTasks = await db_js_1.db.select()
-                .from(schema_1.userTasks)
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.userTasks.userId, userId), (0, drizzle_orm_1.eq)(schema_1.userTasks.status, 'active')))
-                .orderBy((0, drizzle_orm_1.desc)(schema_1.userTasks.createdAt));
-            console.log(`[TaskService] Re-fetched ${newTasks.length} tasks after creation`);
-            tasks = newTasks;
-        }
         const now = new Date();
         return tasks.map(task => {
             const expiresAt = task.expiresAt ? new Date(task.expiresAt) : null;
@@ -58,63 +39,60 @@ class TaskService {
                     current: task.progressCurrent || 0,
                     total: task.progressTotal
                 },
-                status: 'active',
+                status: task.status,
                 icon: task.icon || '/trials/energy.svg',
+                // Add completion flags
+                isCompleted: task.progressCurrent >= task.progressTotal && task.status === 'active',
+                rewardClaimed: task.status === 'completed',
                 expiresAt: expiresAt?.toISOString(),
                 timeRemaining: timeRemaining || undefined
             };
         });
     }
     /**
+     * Ensure user has tasks (create if needed) - call this explicitly when needed
+     */
+    static async ensureUserHasTasks(userId) {
+        console.log(`[TaskService] 🎯 Ensuring user has tasks: ${userId}`);
+        // First get current tasks
+        const currentTasks = await this.getUserTasks(userId);
+        console.log(`[TaskService] 📊 Current tasks count: ${currentTasks.length}/${this.MAX_ACTIVE_TASKS}`);
+        // If no tasks, create initial set
+        if (currentTasks.length === 0) {
+            console.log(`[TaskService] 🆕 No tasks found, creating initial tasks`);
+            await this.createInitialTasks(userId);
+        }
+        else if (currentTasks.length < this.MAX_ACTIVE_TASKS) {
+            // Auto-fill to maintain 3 active tasks
+            console.log(`[TaskService] 🔧 Auto-filling tasks (need ${this.MAX_ACTIVE_TASKS - currentTasks.length} more)`);
+            await this.autoFillTasks(userId);
+        }
+        else {
+            console.log(`[TaskService] ✅ User already has max tasks (${currentTasks.length})`);
+        }
+        // Return updated tasks
+        const finalTasks = await this.getUserTasks(userId);
+        console.log(`[TaskService] 🏁 Final tasks count: ${finalTasks.length}`);
+        return finalTasks;
+    }
+    /**
      * Create initial tasks for new users or when no tasks exist
      */
     static async createInitialTasks(userId) {
         console.log(`[TaskService] Creating initial tasks for user: ${userId}`);
-        // Create 3 tasks including wheel tasks for testing
-        const initialTasks = [
-            {
-                taskType: 'quick_bonus',
-                title: 'Быстрый бонус',
-                description: 'Получите быструю награду',
-                rewardType: 'money',
-                rewardAmount: '500',
-                progressTotal: 1,
-                icon: '/trials/energy.svg',
-                expiresInHours: 6,
-                cooldownMinutes: 0, // No cooldown for initial tasks
-                maxPerDay: null
-            },
-            {
-                taskType: 'lucky_wheel_test',
-                title: 'Тест рулетки',
-                description: 'Нажмите и испытайте удачу в рулетке!',
-                rewardType: 'wheel',
-                rewardAmount: 'random',
-                progressTotal: 1,
-                icon: '/wheel/coins.svg',
-                expiresInHours: 12,
-                cooldownMinutes: 0,
-                maxPerDay: null
-            },
-            {
-                taskType: 'mega_wheel_test',
-                title: 'Мега рулетка',
-                description: 'Выполните 2 действия для большого шанса выигрыша!',
-                rewardType: 'wheel',
-                rewardAmount: 'premium_random',
-                progressTotal: 2,
-                icon: '/wheel/coins.svg',
-                expiresInHours: 8,
-                cooldownMinutes: 0,
-                maxPerDay: null
-            }
-        ];
-        for (const taskOptions of initialTasks) {
+        // Create 3 random tasks using the template system
+        for (let i = 0; i < this.MAX_ACTIVE_TASKS; i++) {
             try {
-                await this.createTask(userId, taskOptions);
+                const newTask = await this.createRandomTask(userId);
+                if (!newTask) {
+                    console.log(`[TaskService] Could not create initial task ${i + 1}`);
+                }
+                else {
+                    console.log(`[TaskService] Created initial task: ${newTask.title}`);
+                }
             }
             catch (error) {
-                console.error(`[TaskService] Error creating initial task: ${taskOptions.taskType}`, error);
+                console.error(`[TaskService] Error creating initial task ${i + 1}:`, error);
             }
         }
     }
@@ -132,12 +110,20 @@ class TaskService {
         }
     }
     /**
-     * Check if user can receive task of this type (cooldown check)
+     * Check if user can receive task of this type (cooldown and active task checks)
      */
     static async canUserReceiveTask(userId, taskType, cooldownMinutes, maxPerDay) {
         const now = new Date();
         const cooldownStart = new Date(now.getTime() - cooldownMinutes * 60 * 1000);
-        // Check cooldown period
+        // Check if there's already an active task of this type
+        const activeTasks = await db_js_1.db.select()
+            .from(schema_1.userTasks)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.userTasks.userId, userId), (0, drizzle_orm_1.eq)(schema_1.userTasks.taskType, taskType), (0, drizzle_orm_1.eq)(schema_1.userTasks.status, 'active')));
+        if (activeTasks.length > 0) {
+            console.log(`[TaskService] User ${userId} already has active task of type ${taskType}`);
+            return false;
+        }
+        // Check cooldown period on completed tasks
         const recentTasks = await db_js_1.db.select()
             .from(schema_1.userTasks)
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.userTasks.userId, userId), (0, drizzle_orm_1.eq)(schema_1.userTasks.taskType, taskType), (0, drizzle_orm_1.gte)(schema_1.userTasks.completedAt, cooldownStart)));
@@ -197,6 +183,20 @@ class TaskService {
             expiresAt: expiresAt
         }).returning();
         console.log(`[TaskService] Created task with ID: ${newTask.id}, expires: ${expiresAt?.toISOString()}`);
+        // Create notification for new daily and premium tasks (with 3-hour cooldown)
+        const notifiableTaskTypes = [
+            'daily_bonus', 'daily_trader', 'premium_login', 'premium_vip'
+        ];
+        if (notifiableTaskTypes.includes(options.taskType)) {
+            try {
+                await notifications_js_1.notificationService.createDailyTaskNotification(userId, options.title, options.description);
+                console.log(`[TaskService] Created notification for new task: ${options.title}`);
+            }
+            catch (error) {
+                console.error(`[TaskService] Failed to create notification for task:`, error);
+                // Don't fail the task creation, just log the error
+            }
+        }
         const timeRemaining = expiresAt ? Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)) : null;
         return {
             id: newTask.id.toString(),
@@ -221,6 +221,8 @@ class TaskService {
      * Complete a task and give rewards
      */
     static async completeTask(taskId, userId) {
+        console.log(`[TaskService] 🚨🚨🚨 === CRITICAL ALERT === completeTask called: taskId=${taskId}, userId=${userId} - THIS SHOULD NOT HAPPEN!`);
+        console.log(`[TaskService] 🚨🚨🚨 Call stack:`, new Error().stack);
         console.log(`[TaskService] Completing task ${taskId} for user ${userId}`);
         try {
             // Find the task
@@ -229,8 +231,19 @@ class TaskService {
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.userTasks.id, taskId), (0, drizzle_orm_1.eq)(schema_1.userTasks.userId, userId), (0, drizzle_orm_1.eq)(schema_1.userTasks.status, 'active')))
                 .limit(1);
             if (!task) {
-                console.log(`[TaskService] Task not found: ${taskId}`);
-                return { success: false, error: 'Task not found' };
+                // DEBUG: Check if task exists with different status
+                const [anyTask] = await db_js_1.db.select()
+                    .from(schema_1.userTasks)
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.userTasks.id, taskId), (0, drizzle_orm_1.eq)(schema_1.userTasks.userId, userId)))
+                    .limit(1);
+                if (anyTask) {
+                    console.log(`[TaskService] Task ${taskId} exists but status is '${anyTask.status}', not 'active'. Progress: ${anyTask.progressCurrent}/${anyTask.progressTotal}, rewardClaimed: ${anyTask.rewardClaimed || 'undefined'}`);
+                    return { success: false, error: 'Task already completed or not active' };
+                }
+                else {
+                    console.log(`[TaskService] Task ${taskId} does not exist at all for user ${userId}`);
+                    return { success: false, error: 'Task not found' };
+                }
             }
             // Mark as completed
             const [completedTask] = await db_js_1.db.update(schema_1.userTasks)
@@ -410,43 +423,56 @@ class TaskService {
      */
     static async createRandomTask(userId) {
         console.log(`[TaskService] Creating random task for user: ${userId}`);
-        // Get random template
-        const template = taskTemplates_js_1.TaskTemplateService.getRandomTemplateByRarity();
-        if (!template) {
-            console.log(`[TaskService] No template available`);
-            return null;
+        // Try up to 10 times to find a suitable template
+        for (let attempt = 0; attempt < 10; attempt++) {
+            // Get random template
+            const template = taskTemplates_js_1.TaskTemplateService.getRandomTemplateByRarity();
+            if (!template) {
+                console.log(`[TaskService] No template available on attempt ${attempt + 1}`);
+                continue;
+            }
+            console.log(`[TaskService] Attempt ${attempt + 1}: trying template ${template.id} (${template.taskType})`);
+            const options = {
+                taskType: template.taskType,
+                title: template.title,
+                description: template.description,
+                rewardType: template.rewardType,
+                rewardAmount: template.rewardAmount,
+                progressTotal: template.progressTotal,
+                icon: template.icon || '/trials/energy.svg',
+                expiresInHours: template.expiresInHours,
+                cooldownMinutes: template.cooldownMinutes,
+                maxPerDay: template.maxPerDay
+            };
+            const task = await this.createTask(userId, options);
+            if (task) {
+                console.log(`[TaskService] Successfully created task: ${task.taskType}`);
+                return task;
+            }
+            console.log(`[TaskService] Failed to create task ${template.taskType}, trying again...`);
         }
-        const options = {
-            taskType: template.taskType,
-            title: template.title,
-            description: template.description,
-            rewardType: template.rewardType,
-            rewardAmount: template.rewardAmount,
-            progressTotal: template.progressTotal,
-            icon: template.icon || '/trials/energy.svg',
-            expiresInHours: template.expiresInHours,
-            cooldownMinutes: template.cooldownMinutes,
-            maxPerDay: template.maxPerDay
-        };
-        return this.createTask(userId, options);
+        console.log(`[TaskService] Could not create any task after 10 attempts`);
+        return null;
     }
     /**
      * Auto-fill tasks to maximum
      */
     static async autoFillTasks(userId) {
         console.log(`[TaskService] Auto-filling tasks for user: ${userId}`);
-        const currentTasks = await this.getUserTasks(userId);
-        const tasksToCreate = this.MAX_ACTIVE_TASKS - currentTasks.length;
-        console.log(`[TaskService] Current tasks: ${currentTasks.length}, need to create: ${tasksToCreate}`);
-        const newTasks = [];
-        for (let i = 0; i < tasksToCreate; i++) {
-            const newTask = await this.createRandomTask(userId);
-            if (newTask) {
-                newTasks.push(newTask);
+        const activeCount = await this.getActiveTasksCount(userId);
+        const tasksToCreate = this.MAX_ACTIVE_TASKS - activeCount;
+        console.log(`[TaskService] Current tasks: ${activeCount}, need to create: ${tasksToCreate}`);
+        if (tasksToCreate > 0) {
+            for (let i = 0; i < tasksToCreate; i++) {
+                const newTask = await this.createRandomTask(userId);
+                if (newTask) {
+                    console.log(`[TaskService] Auto-created task: ${newTask.title}`);
+                }
+                else {
+                    console.log(`[TaskService] Could not auto-create task ${i + 1} (cooldowns or limits)`);
+                }
             }
         }
-        console.log(`[TaskService] Created ${newTasks.length} new tasks`);
-        return [...currentTasks, ...newTasks];
     }
     /**
      * Delete/replace a task
@@ -488,6 +514,8 @@ class TaskService {
      * Legacy method for backward compatibility
      */
     static async updateTaskProgress(taskId, userId, progress) {
+        console.log(`[TaskService] 🚨 === CRITICAL DEBUG === updateTaskProgress called: taskId=${taskId}, userId=${userId}, progress=${progress}`);
+        console.log(`[TaskService] 🚨 Call stack:`, new Error().stack);
         // For backward compatibility, redirect to completeTask if progress is complete
         const [task] = await db_js_1.db.select()
             .from(schema_1.userTasks)
@@ -497,39 +525,45 @@ class TaskService {
             return null;
         }
         if (progress >= task.progressTotal) {
-            // Check if this is a video bonus task - they should not auto-complete
-            const isVideoBonus = task.taskType === 'video_bonus' || task.taskType === 'video_bonus_2';
-            if (isVideoBonus) {
-                // For video bonus tasks, update progress but don't complete - user must click pickup
-                const [updatedTask] = await db_js_1.db.update(schema_1.userTasks)
-                    .set({ progressCurrent: progress })
-                    .where((0, drizzle_orm_1.eq)(schema_1.userTasks.id, taskId))
-                    .returning();
-                return {
-                    task: {
-                        id: updatedTask.id.toString(),
-                        taskType: updatedTask.taskType,
-                        title: updatedTask.title,
-                        description: updatedTask.description || '',
-                        reward: {
-                            type: updatedTask.rewardType,
-                            amount: updatedTask.rewardAmount
-                        },
-                        progress: {
-                            current: updatedTask.progressCurrent || 0,
-                            total: updatedTask.progressTotal
-                        },
-                        status: 'active', // Keep as active so it stays in the list
-                        icon: updatedTask.icon || '/trials/energy.svg'
+            // UNIVERSAL FIX: ALL TASKS should not auto-complete - user must click pickup
+            console.log(`[TaskService] 🚨 Task ${taskId} progress complete (${progress}>=${task.progressTotal}), but NOT auto-completing. User must pickup manually.`);
+            console.log(`[TaskService] 🚨 Task details before update:`, {
+                id: task.id,
+                taskType: task.taskType,
+                title: task.title,
+                status: task.status,
+                progressCurrent: task.progressCurrent,
+                progressTotal: task.progressTotal,
+                rewardType: task.rewardType,
+                rewardAmount: task.rewardAmount
+            });
+            // For ALL tasks, update progress but don't complete - user must click pickup
+            const [updatedTask] = await db_js_1.db.update(schema_1.userTasks)
+                .set({ progressCurrent: progress })
+                .where((0, drizzle_orm_1.eq)(schema_1.userTasks.id, taskId))
+                .returning();
+            const responseData = {
+                task: {
+                    id: updatedTask.id.toString(),
+                    taskType: updatedTask.taskType,
+                    title: updatedTask.title,
+                    description: updatedTask.description || '',
+                    reward: {
+                        type: updatedTask.rewardType,
+                        amount: updatedTask.rewardAmount
                     },
-                    isCompleted: true, // But mark as completed for UI
-                    rewardClaimed: false
-                };
-            }
-            else {
-                // For other tasks, complete normally
-                return await this.completeTask(taskId, userId);
-            }
+                    progress: {
+                        current: updatedTask.progressCurrent || 0,
+                        total: updatedTask.progressTotal
+                    },
+                    status: 'active', // Keep as active so it stays in the list
+                    icon: updatedTask.icon || '/trials/energy.svg'
+                },
+                isCompleted: true, // But mark as completed for UI
+                rewardClaimed: false // Task is NOT claimed yet - user must click pickup
+            };
+            console.log(`[TaskService] 🚨 Returning updateTaskProgress response:`, responseData);
+            return responseData;
         }
         else {
             // Just update progress without completing

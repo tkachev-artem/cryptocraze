@@ -23,10 +23,10 @@ if (NODE_ENV === 'development') {
 }
 
 console.log(`🚀 Starting CryptoCraze server in ${NODE_ENV} mode`);
-console.log(`📡 Server will run on port ${process.env.PORT || 3001}`);
+console.log(`📡 Server will run on port ${process.env.PORT || 1111}`);
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 1111;
 
 // Compression middleware for better performance (exclude static assets)
 app.use(compression({
@@ -64,6 +64,7 @@ app.use(helmet({
 
 // CORS configuration
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
+  'http://localhost:1111',
   'http://localhost:5173',
   'http://localhost:8080',
   'http://localhost:3000'

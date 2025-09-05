@@ -40,12 +40,24 @@ export class OrderMonitorWorker {
       'orderMonitor',
       this.processOrder.bind(this),
       {
-        connection: {
-          host: process.env.REDIS_HOST || 'localhost',
-          port: parseInt(process.env.REDIS_PORT || '6379'),
-          password: process.env.REDIS_PASSWORD,
-          db: parseInt(process.env.REDIS_DB || '0'),
-        },
+        connection: (() => {
+          if (process.env.REDIS_URL && process.env.REDIS_URL.startsWith('redis://')) {
+            const url = new URL(process.env.REDIS_URL);
+            return {
+              host: url.hostname,
+              port: parseInt(url.port) || 6379,
+              password: url.password || undefined,
+              db: parseInt(url.pathname.slice(1)) || 0,
+            };
+          } else {
+            return {
+              host: process.env.REDIS_HOST || 'localhost',
+              port: parseInt(process.env.REDIS_PORT || '6379'),
+              password: process.env.REDIS_PASSWORD,
+              db: parseInt(process.env.REDIS_DB || '0'),
+            };
+          }
+        })(),
         concurrency: parseInt(process.env.WORKER_CONCURRENCY || '5'),
         removeOnComplete: 100,
         removeOnFail: 50,

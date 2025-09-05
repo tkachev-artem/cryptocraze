@@ -45,6 +45,7 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const routes_1 = require("./routes");
 const migrator_1 = require("drizzle-orm/node-postgres/migrator");
 const db_1 = require("./db");
+const index_js_1 = require("./services/workers/index.js");
 // Load environment variables with environment-specific file support
 const NODE_ENV = process.env.NODE_ENV || 'development';
 // Load base .env file first
@@ -57,9 +58,9 @@ else if (NODE_ENV === 'production') {
     dotenv_1.default.config({ path: '.env.production', override: true });
 }
 console.log(`🚀 Starting CryptoCraze server in ${NODE_ENV} mode`);
-console.log(`📡 Server will run on port ${process.env.PORT || 3001}`);
+console.log(`📡 Server will run on port ${process.env.PORT || 1111}`);
 const app = (0, express_1.default)();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 1111;
 // Compression middleware for better performance (exclude static assets)
 app.use((0, compression_1.default)({
     level: 6, // Balance between compression ratio and speed
@@ -94,6 +95,7 @@ app.use((0, helmet_1.default)({
 }));
 // CORS configuration
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
+    'http://localhost:1111',
     'http://localhost:5173',
     'http://localhost:8080',
     'http://localhost:3000'
@@ -121,6 +123,16 @@ async function bootstrap() {
         const staticOnly = (process.env.STATIC_ONLY || '').toLowerCase() === 'true';
         if (!staticOnly) {
             await Promise.resolve().then(() => __importStar(require('./services/dealsAutoCloser')));
+            // Initialize the TP/SL worker system
+            console.log('🔧 Initializing TP/SL worker system...');
+            try {
+                await (0, index_js_1.initializeWorkerSystem)();
+                console.log('✅ TP/SL worker system initialized');
+            }
+            catch (error) {
+                console.error('❌ Failed to initialize TP/SL worker system:', error);
+                console.log('⚠️  Server will continue without worker system');
+            }
         }
         const server = await (0, routes_1.registerRoutes)(app);
         // Serve static files AFTER routes are registered
@@ -143,6 +155,18 @@ async function bootstrap() {
                     res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour
                 }
                 // Let compression middleware handle encoding automatically
+            }
+        }));
+        // Serve uploaded files (avatars)
+        const uploadsDir = path_1.default.resolve(process.cwd(), 'uploads');
+        app.use('/uploads', express_1.default.static(uploadsDir, {
+            etag: true,
+            lastModified: true,
+            setHeaders: (res, filePath) => {
+                // Cache uploaded images for a reasonable time
+                if (filePath.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
+                    res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
+                }
             }
         }));
         // Fallback to index.html for any non-API route without using path patterns (avoids path-to-regexp issues)
@@ -169,6 +193,23 @@ async function bootstrap() {
             }
             console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
         });
+        // Graceful shutdown handlers (worker system has its own handlers)
+        const gracefulShutdown = async (signal) => {
+            console.log(`\n📡 ${signal} received. Starting graceful shutdown...`);
+            try {
+                // Close HTTP server
+                server.close(() => {
+                    console.log('✅ HTTP server closed');
+                });
+                // Worker system will handle its own shutdown via its own handlers
+            }
+            catch (error) {
+                console.error('❌ Error during graceful shutdown:', error);
+                process.exit(1);
+            }
+        };
+        process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+        process.on('SIGINT', () => gracefulShutdown('SIGINT'));
     }
     catch (error) {
         console.error("❌ Failed to start server:", error);

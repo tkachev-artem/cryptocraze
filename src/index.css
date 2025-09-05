@@ -41,6 +41,47 @@ html, body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Принудительная блокировка landscape ориентации на мобильных устройствах */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+  .landscape-blocked {
+    display: none !important;
+  }
+  .landscape-warning {
+    display: flex !important;
+  }
+}
+
+/* Альтернативный подход - CSS transform для поворота в landscape режиме */
+@media screen and (orientation: landscape) and (max-device-width: 768px) {
+  body.force-portrait {
+    transform: rotate(90deg);
+    transform-origin: left top;
+    width: 100vh;
+    height: 100vw;
+    overflow-x: hidden;
+    position: absolute;
+    top: 100%;
+    left: 0;
+  }
+  
+  body.force-portrait #root {
+    width: 100vh;
+    height: 100vw;
+  }
+}
+
+/* По умолчанию скрываем предупреждение о landscape */
+.landscape-warning {
+  display: none !important;
+}
+
+/* Показываем предупреждение только в landscape */
+@media screen and (orientation: landscape) and (max-device-width: 768px) {
+  .landscape-warning {
+    display: flex !important;
+  }
+}
+
 /* Не позволяем изображениями и ссылкам быть перетаскиваемыми/выделяемыми */
 img, svg, a, button {
   -webkit-user-drag: none;

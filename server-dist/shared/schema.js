@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.userDailyStatsRelations = exports.adPerformanceMetrics = exports.revenueMetrics = exports.engagementMetrics = exports.userAcquisitionMetrics = exports.cohortAnalysis = exports.userDailyStats = exports.boxOpeningsRelations = exports.prizesRelations = exports.boxTypesRelations = exports.analyticsRelations = exports.usersRelations = exports.boxOpenings = exports.prizes = exports.boxTypes = exports.prizeTypeEnum = exports.boxTypeEnum = exports.taskTemplates = exports.userTasks = exports.deals = exports.rewardTiers = exports.premiumPlans = exports.premiumSubscriptions = exports.userCohorts = exports.dailyMetrics = exports.adEvents = exports.userAcquisition = exports.userSessions = exports.analytics = exports.userNotifications = exports.notificationTypeEnum = exports.users = exports.sessions = void 0;
+exports.userDailyStatsRelations = exports.adPerformanceAnalytics = exports.revenueMetrics = exports.engagementMetrics = exports.userAcquisitionMetrics = exports.cohortAnalysis = exports.userDailyStats = exports.boxOpeningsRelations = exports.prizesRelations = exports.boxTypesRelations = exports.analyticsRelations = exports.usersRelations = exports.boxOpenings = exports.prizes = exports.boxTypes = exports.prizeTypeEnum = exports.boxTypeEnum = exports.taskTemplates = exports.userTasks = exports.deals = exports.rewardTiers = exports.premiumPlans = exports.premiumSubscriptions = exports.userCohorts = exports.dailyMetrics = exports.adEvents = exports.userAcquisition = exports.adPerformanceMetrics = exports.adRewards = exports.adSessions = exports.adRewardTypeEnum = exports.adProviderEnum = exports.adPlacementEnum = exports.adTypeEnum = exports.userSessions = exports.analytics = exports.userNotifications = exports.notificationTypeEnum = exports.users = exports.sessions = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 const drizzle_orm_1 = require("drizzle-orm");
 // Session storage table for Replit Auth
@@ -104,6 +104,98 @@ exports.userSessions = (0, pg_core_1.pgTable)("user_sessions", {
     (0, pg_core_1.index)("idx_user_sessions_session_id").on(table.sessionId),
 ]);
 // User acquisition tracking
+// Ad system types
+exports.adTypeEnum = (0, pg_core_1.pgEnum)("ad_type", [
+    'rewarded_video',
+    'interstitial',
+    'banner',
+    'native'
+]);
+exports.adPlacementEnum = (0, pg_core_1.pgEnum)("ad_placement", [
+    'task_completion',
+    'wheel_spin',
+    'box_opening',
+    'trading_bonus',
+    'screen_transition'
+]);
+exports.adProviderEnum = (0, pg_core_1.pgEnum)("ad_provider", [
+    'google_admob',
+    'google_adsense',
+    'simulation'
+]);
+exports.adRewardTypeEnum = (0, pg_core_1.pgEnum)("ad_reward_type", [
+    'money',
+    'coins',
+    'energy',
+    'trading_bonus'
+]);
+// Ad sessions tracking table
+exports.adSessions = (0, pg_core_1.pgTable)("ad_sessions", {
+    id: (0, pg_core_1.uuid)("id").primaryKey().defaultRandom(),
+    userId: (0, pg_core_1.varchar)("user_id").notNull().references(() => exports.users.id, { onDelete: 'cascade' }),
+    adId: (0, pg_core_1.varchar)("ad_id", { length: 100 }).notNull(),
+    adType: (0, exports.adTypeEnum)("ad_type").notNull(),
+    placement: (0, exports.adPlacementEnum)("placement").notNull(),
+    provider: (0, exports.adProviderEnum)("provider").notNull().default('simulation'),
+    startTime: (0, pg_core_1.timestamp)("start_time").notNull().defaultNow(),
+    endTime: (0, pg_core_1.timestamp)("end_time"),
+    watchTime: (0, pg_core_1.integer)("watch_time"), // Duration in milliseconds
+    completed: (0, pg_core_1.boolean)("completed").default(false),
+    rewardClaimed: (0, pg_core_1.boolean)("reward_claimed").default(false),
+    fraudDetected: (0, pg_core_1.boolean)("fraud_detected").default(false),
+    fraudReason: (0, pg_core_1.text)("fraud_reason"),
+    ipAddress: (0, pg_core_1.varchar)("ip_address", { length: 45 }),
+    userAgent: (0, pg_core_1.text)("user_agent"),
+    deviceInfo: (0, pg_core_1.jsonb)("device_info"),
+    createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow(),
+    updatedAt: (0, pg_core_1.timestamp)("updated_at").defaultNow(),
+}, (table) => [
+    (0, pg_core_1.index)("idx_ad_sessions_user_id").on(table.userId),
+    (0, pg_core_1.index)("idx_ad_sessions_ad_id").on(table.adId),
+    (0, pg_core_1.index)("idx_ad_sessions_placement").on(table.placement),
+    (0, pg_core_1.index)("idx_ad_sessions_start_time").on(table.startTime),
+    (0, pg_core_1.index)("idx_ad_sessions_completed").on(table.completed),
+    (0, pg_core_1.index)("idx_ad_sessions_fraud_detected").on(table.fraudDetected),
+]);
+// Ad rewards tracking table
+exports.adRewards = (0, pg_core_1.pgTable)("ad_rewards", {
+    id: (0, pg_core_1.uuid)("id").primaryKey().defaultRandom(),
+    sessionId: (0, pg_core_1.uuid)("session_id").notNull().references(() => exports.adSessions.id, { onDelete: 'cascade' }),
+    userId: (0, pg_core_1.varchar)("user_id").notNull().references(() => exports.users.id, { onDelete: 'cascade' }),
+    rewardType: (0, exports.adRewardTypeEnum)("reward_type").notNull(),
+    amount: (0, pg_core_1.decimal)("amount", { precision: 18, scale: 8 }).notNull(),
+    multiplier: (0, pg_core_1.decimal)("multiplier", { precision: 5, scale: 2 }).default("1.00"),
+    bonusPercentage: (0, pg_core_1.integer)("bonus_percentage"), // For trading bonus ads
+    processed: (0, pg_core_1.boolean)("processed").default(false),
+    processedAt: (0, pg_core_1.timestamp)("processed_at"),
+    errorMessage: (0, pg_core_1.text)("error_message"),
+    createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow(),
+}, (table) => [
+    (0, pg_core_1.index)("idx_ad_rewards_session_id").on(table.sessionId),
+    (0, pg_core_1.index)("idx_ad_rewards_user_id").on(table.userId),
+    (0, pg_core_1.index)("idx_ad_rewards_processed").on(table.processed),
+    (0, pg_core_1.index)("idx_ad_rewards_created_at").on(table.createdAt),
+]);
+// Ad performance metrics table
+exports.adPerformanceMetrics = (0, pg_core_1.pgTable)("ad_performance_metrics", {
+    id: (0, pg_core_1.serial)("id").primaryKey(),
+    date: (0, pg_core_1.timestamp)("date").notNull().defaultNow(),
+    adType: (0, exports.adTypeEnum)("ad_type").notNull(),
+    placement: (0, exports.adPlacementEnum)("placement").notNull(),
+    provider: (0, exports.adProviderEnum)("provider").notNull(),
+    impressions: (0, pg_core_1.integer)("impressions").default(0),
+    completions: (0, pg_core_1.integer)("completions").default(0),
+    rewards: (0, pg_core_1.integer)("rewards").default(0),
+    fraudAttempts: (0, pg_core_1.integer)("fraud_attempts").default(0),
+    totalWatchTime: (0, pg_core_1.bigint)("total_watch_time", { mode: 'number' }).default(0), // Total watch time in milliseconds
+    totalRewardAmount: (0, pg_core_1.decimal)("total_reward_amount", { precision: 18, scale: 8 }).default("0"),
+    revenue: (0, pg_core_1.decimal)("revenue", { precision: 18, scale: 8 }).default("0"), // Estimated ad revenue
+    createdAt: (0, pg_core_1.timestamp)("created_at").defaultNow(),
+    updatedAt: (0, pg_core_1.timestamp)("updated_at").defaultNow(),
+}, (table) => [
+    (0, pg_core_1.index)("idx_ad_performance_date").on(table.date),
+    (0, pg_core_1.index)("idx_ad_performance_type_placement").on(table.adType, table.placement),
+]);
 exports.userAcquisition = (0, pg_core_1.pgTable)("user_acquisition", {
     id: (0, pg_core_1.serial)("id").primaryKey(),
     userId: (0, pg_core_1.varchar)("user_id").notNull().references(() => exports.users.id, { onDelete: 'cascade' }).unique(),
@@ -428,6 +520,7 @@ exports.revenueMetrics = (0, pg_core_1.pgTable)("revenue_metrics", {
     premiumRevenue: (0, pg_core_1.decimal)("premium_revenue", { precision: 18, scale: 2 }).default("0"),
     adRevenue: (0, pg_core_1.decimal)("ad_revenue", { precision: 18, scale: 2 }).default("0"),
     totalPayingUsers: (0, pg_core_1.integer)("total_paying_users").default(0),
+    activePayingUsers: (0, pg_core_1.integer)("active_paying_users").default(0),
     newPayingUsers: (0, pg_core_1.integer)("new_paying_users").default(0),
     arpu: (0, pg_core_1.decimal)("arpu", { precision: 18, scale: 2 }).default("0"), // Average Revenue Per User
     arppu: (0, pg_core_1.decimal)("arppu", { precision: 18, scale: 2 }).default("0"), // Average Revenue Per Paying User
@@ -437,8 +530,8 @@ exports.revenueMetrics = (0, pg_core_1.pgTable)("revenue_metrics", {
 }, (table) => [
     (0, pg_core_1.index)("idx_revenue_date").on(table.date),
 ]);
-// Ad Performance Metrics Table
-exports.adPerformanceMetrics = (0, pg_core_1.pgTable)("ad_performance_metrics", {
+// Ad Performance Analytics Table (BI)
+exports.adPerformanceAnalytics = (0, pg_core_1.pgTable)("ad_performance_analytics", {
     id: (0, pg_core_1.serial)("id").primaryKey(),
     date: (0, pg_core_1.timestamp)("date").notNull(),
     totalAdSpend: (0, pg_core_1.decimal)("total_ad_spend", { precision: 18, scale: 2 }).default("0"),
@@ -454,7 +547,7 @@ exports.adPerformanceMetrics = (0, pg_core_1.pgTable)("ad_performance_metrics", 
     conversionRate: (0, pg_core_1.decimal)("conversion_rate", { precision: 5, scale: 4 }).default("0"),
     avgRevenuePerInstall: (0, pg_core_1.decimal)("avg_revenue_per_install", { precision: 8, scale: 2 }).default("0"),
 }, (table) => [
-    (0, pg_core_1.index)("idx_ad_performance_date").on(table.date),
+    (0, pg_core_1.index)("idx_ad_performance_analytics_date").on(table.date),
 ]);
 // Relations for BI Analytics
 exports.userDailyStatsRelations = (0, drizzle_orm_1.relations)(exports.userDailyStats, ({ one }) => ({

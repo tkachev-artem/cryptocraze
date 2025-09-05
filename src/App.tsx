@@ -10,6 +10,8 @@ import DealInfo from './components/DealInfo';
 import CoinExchangeModal from './components/CoinExchangeModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
+import { DeviceGuard } from './components/DeviceGuard';
+import { OrientationGuard } from './components/OrientationGuard';
 import { useAppSelector, useAppDispatch } from './app/hooks';
 import { selectIsAuthenticated } from './app/userSlice';
 import { closeCoinExchange } from './app/coinExchangeSlice';
@@ -110,17 +112,19 @@ export const App: React.FC = () => {
   }
 
   return (
-    <ErrorBoundary>
-      <GlobalLoading initialLoadingTime={3000}>
-        <ScrollLock enabled={true} allowScrollWithinRef={appScrollRef as unknown as React.RefObject<HTMLElement>} />
-        <AppContainer>
-          <div
-            ref={appScrollRef}
-            data-app-scroll="true"
-            className="h-dvh overflow-y-auto overscroll-y-contain allow-pan-y"
-          >
-            <div className="w-full h-full">
-          <BrowserRouter>
+    <DeviceGuard>
+      <OrientationGuard>
+        <ErrorBoundary>
+          <GlobalLoading initialLoadingTime={3000}>
+            <ScrollLock enabled={true} allowScrollWithinRef={appScrollRef as unknown as React.RefObject<HTMLElement>} />
+            <AppContainer>
+              <div
+                ref={appScrollRef}
+                data-app-scroll="true"
+                className="h-dvh overflow-y-auto overscroll-y-contain allow-pan-y"
+              >
+                <div className="w-full h-full">
+              <BrowserRouter>
             <Suspense fallback={<RouteLoading />}>
               <Routes>
                   {/* Главная точка входа: авторизованных ведем сразу на /home, неавторизованным показываем Welcome */}
@@ -172,8 +176,10 @@ export const App: React.FC = () => {
             onClose={() => dispatch(closeCoinExchange())} 
           />
         </ErrorBoundary>
-      </GlobalLoading>
-    </ErrorBoundary>
+          </GlobalLoading>
+        </ErrorBoundary>
+      </OrientationGuard>
+    </DeviceGuard>
   )
 }
 

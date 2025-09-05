@@ -9,6 +9,7 @@ const storage_js_1 = require("./storage.js");
 const autoRewards_js_1 = require("./services/autoRewards.js");
 const express_session_1 = __importDefault(require("express-session"));
 const connect_pg_simple_1 = __importDefault(require("connect-pg-simple"));
+const analyticsLogger_js_1 = __importDefault(require("./middleware/analyticsLogger.js"));
 // Simple OAuth without Passport.js
 function setupSimpleOAuth(app) {
     console.log('🔐 Setting up Simple OAuth...');
@@ -105,13 +106,14 @@ function setupSimpleOAuth(app) {
             let user = await storage_js_1.storage.getUser(profile.id);
             if (user) {
                 console.log('👋 Existing user logging in');
-                // Update profile data
+                // Update profile data, but keep custom avatar if user uploaded one
                 user = await storage_js_1.storage.upsertUser({
                     ...user,
                     email: profile.email,
                     firstName: profile.given_name,
                     lastName: profile.family_name,
-                    profileImageUrl: profile.picture,
+                    // Only update profileImageUrl if user doesn't have a custom one (uploaded to /uploads)
+                    profileImageUrl: user.profileImageUrl?.startsWith('/uploads') ? user.profileImageUrl : profile.picture,
                     updatedAt: new Date(),
                 });
             }
@@ -144,6 +146,26 @@ function setupSimpleOAuth(app) {
             // Store user ID in session
             req.session.userId = user.id;
             console.log(`✅ User authenticated: ${user.id}`);
+            // Логируем событие логина в ClickHouse
+            console.log(`[Analytics Debug] About to log login event for user ${user.id}`);
+            try {
+                // Используем BigInt для больших ID, затем Number для ClickHouse
+                const userIdNumber = Number(BigInt(user.id));
+                console.log(`[Analytics Debug] Calling logUserEvent with userId: ${userIdNumber}, eventType: login`);
+                await analyticsLogger_js_1.default.logUserEvent(userIdNumber, 'login', {
+                    email: profile.email,
+                    firstName: profile.given_name,
+                    lastName: profile.family_name,
+                    ip: req.ip,
+                    userAgent: req.get('User-Agent'),
+                    isNewUser: !user // true если пользователь был создан только что
+                }, `oauth-session-${Date.now()}`);
+                console.log(`[Analytics] ✅ Login event logged successfully for user ${user.id}`);
+            }
+            catch (error) {
+                console.error('[Analytics] ❌ Failed to log login event:', error);
+                console.error('[Analytics] ❌ Error details:', error?.message, error?.stack);
+            }
             // Clean up OAuth state
             delete req.session.oauth_state;
             // Redirect to frontend

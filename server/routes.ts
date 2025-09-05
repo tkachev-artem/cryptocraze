@@ -18,6 +18,7 @@ import { premiumService } from "./services/premium";
 import swaggerUi from 'swagger-ui-express';
 import { specs, swaggerUiOptions, swaggerAuth } from './swagger';
 import { getCoinGeckoIcon } from './services/coingeckoIconCache';
+import { serverTranslations } from './lib/translations.js';
 import { dealsService } from './services/dealsService';
 import { EnergyService } from './services/energyService';
 import { TaskService } from './services/taskService';
@@ -26,7 +27,7 @@ import { TaskTemplateService as DatabaseTaskTemplateService } from './services/t
 import { PrizeService } from './services/prizeService';
 import { spinWheel, getWheelPrizes } from './wheel';
 import { db } from './db';
-import { deals, users, premiumSubscriptions, rewardTiers, analytics, userDailyStats, cohortAnalysis, userAcquisitionMetrics, engagementMetrics, revenueMetrics, adPerformanceMetrics, adSessions, adRewards } from '../shared/schema';
+import { deals, users, premiumSubscriptions, rewardTiers, analytics, userDailyStats, cohortAnalysis, userAcquisitionMetrics, engagementMetrics, revenueMetrics, adPerformanceMetrics, adSessions, adRewards } from '../shared/schema.js';
 import { applyAutoRewards } from './services/autoRewards';
 import { biAnalyticsService } from './services/biAnalyticsService';
 import { clickhouseAnalyticsService } from './services/clickhouseAnalyticsService.js';
@@ -3524,7 +3525,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
       if (!user) {
-        res.status(404).json({ error: 'Пользователь не найден' });
+        res.status(404).json({ error: serverTranslations.error('userNotFound') });
         return;
       }
       res.json({
@@ -3542,7 +3543,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
       if (!user) {
-        res.status(404).json({ error: 'Пользователь не найден' });
+        res.status(404).json({ error: serverTranslations.error('userNotFound') });
         return;
       }
       
@@ -5091,7 +5092,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Also forward events to ClickHouse for analytics (use default user ID if not authenticated)
       try {
-        const userIdNumber = userId ? Number(BigInt(userId)) : 999999999; // Default user ID for unauthenticated users
+        const userIdNumber = userId ? AnalyticsLogger.stringToNumericId(userId) : 999999999; // Default user ID for unauthenticated users
         const promises = events.map(async (event: any) => {
             // Forward important events to ClickHouse for dashboard metrics
             if (event.eventType === 'tutorial_progress' || 
@@ -6305,7 +6306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.getUser(userId);
       if (!user) {
-        res.status(404).json({ success: false, error: 'Пользователь не найден' });
+        res.status(404).json({ success: false, error: serverTranslations.error('userNotFound') });
         return;
       }
 
@@ -6636,12 +6637,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (takeProfit !== undefined && (typeof takeProfit !== 'number' || takeProfit <= 0)) {
-        res.status(400).json({ success: false, error: 'Некорректное значение Take Profit' });
+        res.status(400).json({ success: false, error: serverTranslations.error('invalidTakeProfit') });
         return;
       }
       
       if (stopLoss !== undefined && (typeof stopLoss !== 'number' || stopLoss <= 0)) {
-        res.status(400).json({ success: false, error: 'Некорректное значение Stop Loss' });
+        res.status(400).json({ success: false, error: serverTranslations.error('invalidStopLoss') });
         return;
       }
 
@@ -6681,7 +6682,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNaN(dealId) || dealId <= 0) {
         res.status(400).json({ 
           success: false, 
-          error: 'Некорректный ID сделки' 
+          error: serverTranslations.error('dealNotFound') 
         });
         return;
       }

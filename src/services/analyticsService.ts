@@ -144,6 +144,50 @@ class AnalyticsService {
   }
 
   /**
+   * Track device blocking event
+   */
+  trackDeviceBlocked(deviceType: string, userAgent: string): void {
+    this.trackEvent('device_blocked', {
+      device_type: deviceType,
+      user_agent: userAgent,
+      screen_width: window.screen?.width || 0,
+      screen_height: window.screen?.height || 0,
+      inner_width: window.innerWidth,
+      inner_height: window.innerHeight,
+      pixel_ratio: window.devicePixelRatio || 1
+    });
+  }
+
+  /**
+   * Track orientation blocking event
+   */
+  trackOrientationBlocked(orientation: string): void {
+    this.trackEvent('orientation_blocked', {
+      orientation,
+      screen_width: window.innerWidth,
+      screen_height: window.innerHeight,
+      screen_orientation: (screen.orientation?.angle ?? (window as any).orientation ?? 0),
+      is_landscape: window.innerWidth > window.innerHeight
+    });
+  }
+
+  /**
+   * Track successful device and orientation check
+   */
+  trackDeviceAccepted(): void {
+    this.trackEvent('device_accepted', {
+      device_type: 'mobile',
+      user_agent: navigator.userAgent,
+      screen_width: window.screen?.width || 0,
+      screen_height: window.screen?.height || 0,
+      inner_width: window.innerWidth,
+      inner_height: window.innerHeight,
+      pixel_ratio: window.devicePixelRatio || 1,
+      orientation: window.innerWidth > window.innerHeight ? 'landscape' : 'portrait'
+    });
+  }
+
+  /**
    * Force flush all pending events
    */
   flush(): void {

@@ -59,38 +59,44 @@ class BiAnalyticsService {
     async calculateDailyEngagement(date) {
         const startOfDay = new Date(date.setHours(0, 0, 0, 0));
         const endOfDay = new Date(date.setHours(23, 59, 59, 999));
-        const weekAgo = new Date(startOfDay.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const monthAgo = new Date(startOfDay.getTime() - 30 * 24 * 60 * 60 * 1000);
+        // Calculate proper week boundaries (Monday to Sunday)
+        const currentWeekStart = new Date(startOfDay);
+        currentWeekStart.setDate(startOfDay.getDate() - startOfDay.getDay() + 1); // Start of current week
+        const currentWeekEnd = new Date(currentWeekStart);
+        currentWeekEnd.setDate(currentWeekStart.getDate() + 6); // End of current week
+        // Calculate proper month boundaries (1st to last day of month)
+        const currentMonthStart = new Date(startOfDay.getFullYear(), startOfDay.getMonth(), 1);
+        const currentMonthEnd = new Date(startOfDay.getFullYear(), startOfDay.getMonth() + 1, 0);
         // Daily Active Users - users who did any activity today
         const dauResult = await db_js_1.db
             .select({ count: (0, drizzle_orm_1.sql) `COUNT(DISTINCT user_id)` })
             .from(schema_js_1.analytics)
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.gte)(schema_js_1.analytics.timestamp, startOfDay), (0, drizzle_orm_1.lte)(schema_js_1.analytics.timestamp, endOfDay)));
-        // Weekly Active Users  
+        // Weekly Active Users - users active this week
         const wauResult = await db_js_1.db
             .select({ count: (0, drizzle_orm_1.sql) `COUNT(DISTINCT user_id)` })
             .from(schema_js_1.analytics)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.gte)(schema_js_1.analytics.timestamp, weekAgo), (0, drizzle_orm_1.lte)(schema_js_1.analytics.timestamp, endOfDay)));
-        // Monthly Active Users
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.gte)(schema_js_1.analytics.timestamp, currentWeekStart), (0, drizzle_orm_1.lte)(schema_js_1.analytics.timestamp, currentWeekEnd)));
+        // Monthly Active Users - users active this month
         const mauResult = await db_js_1.db
             .select({ count: (0, drizzle_orm_1.sql) `COUNT(DISTINCT user_id)` })
             .from(schema_js_1.analytics)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.gte)(schema_js_1.analytics.timestamp, monthAgo), (0, drizzle_orm_1.lte)(schema_js_1.analytics.timestamp, endOfDay)));
-        // Average session duration (from analytics events)
-        const sessionDurationResult = await db_js_1.db
-            .select({
-            avgDuration: (0, drizzle_orm_1.sql) `AVG(session_duration_minutes)`
-        })
-            .from((0, drizzle_orm_1.sql) `(
-          SELECT 
-            user_id,
-            session_id,
-            EXTRACT(EPOCH FROM (MAX(timestamp) - MIN(timestamp))) / 60 as session_duration_minutes
-          FROM analytics 
-          WHERE timestamp >= ${startOfDay} AND timestamp <= ${endOfDay}
-            AND session_id IS NOT NULL
-          GROUP BY user_id, session_id
-        ) sessions`);
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.gte)(schema_js_1.analytics.timestamp, currentMonthStart), (0, drizzle_orm_1.lte)(schema_js_1.analytics.timestamp, currentMonthEnd)));
+        // Average session duration (from analytics events) - using safer parameterized query
+        const sessionDurationResult = await db_js_1.db.execute((0, drizzle_orm_1.sql) `
+      SELECT AVG(session_duration_minutes) as avg_duration
+      FROM (
+        SELECT 
+          user_id,
+          session_id,
+          EXTRACT(EPOCH FROM (MAX(timestamp) - MIN(timestamp))) / 60 as session_duration_minutes
+        FROM analytics 
+        WHERE timestamp >= ${startOfDay} AND timestamp <= ${endOfDay}
+          AND session_id IS NOT NULL
+        GROUP BY user_id, session_id
+        HAVING EXTRACT(EPOCH FROM (MAX(timestamp) - MIN(timestamp))) / 60 BETWEEN 1 AND 480
+      ) sessions
+    `);
         // Trading metrics for the day
         const tradingMetrics = await db_js_1.db
             .select({
@@ -104,7 +110,7 @@ class BiAnalyticsService {
         const dau = dauResult[0]?.count || 0;
         const wau = wauResult[0]?.count || 0;
         const mau = mauResult[0]?.count || 0;
-        const avgSessionDuration = Math.round(sessionDurationResult[0]?.avgDuration || 0);
+        const avgSessionDuration = Math.round(Number(sessionDurationResult.rows[0]?.avg_duration) || 0);
         const trading = tradingMetrics[0];
         await db_js_1.db.insert(schema_js_1.engagementMetrics).values({
             date: startOfDay,
@@ -189,7 +195,8 @@ class BiAnalyticsService {
     async calculateDailyRevenue(date) {
         const startOfDay = new Date(date.setHours(0, 0, 0, 0));
         const endOfDay = new Date(date.setHours(23, 59, 59, 999));
-        // Premium subscription revenue
+        const monthAgo = new Date(startOfDay.getTime() - 30 * 24 * 60 * 60 * 1000);
+        // Premium subscription revenue for the day
         const premiumRevenueResult = await db_js_1.db
             .select({
             totalRevenue: (0, drizzle_orm_1.sql) `COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`,
@@ -197,29 +204,47 @@ class BiAnalyticsService {
         })
             .from(schema_js_1.premiumSubscriptions)
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.gte)(schema_js_1.premiumSubscriptions.startDate, startOfDay), (0, drizzle_orm_1.lte)(schema_js_1.premiumSubscriptions.startDate, endOfDay)));
-        // Total active users for ARPU calculation
-        const totalActiveUsersResult = await db_js_1.db
+        // Monthly Active Users for proper ARPU calculation
+        const monthlyActiveUsersResult = await db_js_1.db
             .select({ count: (0, drizzle_orm_1.sql) `COUNT(DISTINCT user_id)` })
             .from(schema_js_1.analytics)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.gte)(schema_js_1.analytics.timestamp, startOfDay), (0, drizzle_orm_1.lte)(schema_js_1.analytics.timestamp, endOfDay)));
-        // Total paying users (ever)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.gte)(schema_js_1.analytics.timestamp, monthAgo), (0, drizzle_orm_1.lte)(schema_js_1.analytics.timestamp, endOfDay)));
+        // Total users for conversion rate calculation
+        const totalUsersResult = await db_js_1.db
+            .select({ count: (0, drizzle_orm_1.count)() })
+            .from(schema_js_1.users);
+        // Active paying users (users with active subscriptions)
+        const activePayingUsersResult = await db_js_1.db
+            .select({ count: (0, drizzle_orm_1.sql) `COUNT(DISTINCT user_id)` })
+            .from(schema_js_1.premiumSubscriptions)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.lte)(schema_js_1.premiumSubscriptions.startDate, endOfDay), (0, drizzle_orm_1.gte)(schema_js_1.premiumSubscriptions.endDate, startOfDay)));
+        // Total paying users (all time) for historical data
         const totalPayingUsersResult = await db_js_1.db
             .select({ count: (0, drizzle_orm_1.sql) `COUNT(DISTINCT user_id)` })
             .from(schema_js_1.premiumSubscriptions);
         const premiumRevenue = Number(premiumRevenueResult[0]?.totalRevenue || 0);
         const newPayingUsers = premiumRevenueResult[0]?.newPayingUsers || 0;
-        const totalActiveUsers = totalActiveUsersResult[0]?.count || 0;
+        const monthlyActiveUsers = monthlyActiveUsersResult[0]?.count || 0;
+        const totalUsers = totalUsersResult[0]?.count || 0;
+        const activePayingUsers = activePayingUsersResult[0]?.count || 0;
         const totalPayingUsers = totalPayingUsersResult[0]?.count || 0;
         const totalRevenue = premiumRevenue; // + adRevenue when implemented
-        const arpu = totalActiveUsers > 0 ? totalRevenue / totalActiveUsers : 0;
-        const arppu = totalPayingUsers > 0 ? totalRevenue / totalPayingUsers : 0;
-        const conversionRate = totalActiveUsers > 0 ? totalPayingUsers / totalActiveUsers : 0;
+        // Data validation and safe calculations
+        const safeDivide = (numerator, denominator, decimals = 4) => {
+            if (denominator === 0 || !isFinite(denominator) || !isFinite(numerator))
+                return 0;
+            return Number((numerator / denominator).toFixed(decimals));
+        };
+        const arpu = safeDivide(totalRevenue, monthlyActiveUsers, 2);
+        const arppu = safeDivide(totalRevenue, activePayingUsers, 2);
+        const conversionRate = safeDivide(totalPayingUsers, totalUsers);
         await db_js_1.db.insert(schema_js_1.revenueMetrics).values({
             date: startOfDay,
             totalRevenue: totalRevenue,
             premiumRevenue: premiumRevenue,
             adRevenue: 0, // To be implemented
             totalPayingUsers: totalPayingUsers,
+            activePayingUsers: activePayingUsers,
             newPayingUsers: newPayingUsers,
             arpu: arpu,
             arppu: arppu,
@@ -232,6 +257,7 @@ class BiAnalyticsService {
                 totalRevenue: totalRevenue,
                 premiumRevenue: premiumRevenue,
                 totalPayingUsers: totalPayingUsers,
+                activePayingUsers: activePayingUsers,
                 newPayingUsers: newPayingUsers,
                 arpu: arpu,
                 arppu: arppu,
@@ -324,21 +350,56 @@ class BiAnalyticsService {
         const today = new Date();
         const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
         const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-        // Get latest metrics
-        const [latestEngagement, latestRevenue, latestAcquisition] = await Promise.all([
-            db_js_1.db.select().from(schema_js_1.engagementMetrics).orderBy((0, drizzle_orm_1.desc)(schema_js_1.engagementMetrics.date)).limit(1),
-            db_js_1.db.select().from(schema_js_1.revenueMetrics).orderBy((0, drizzle_orm_1.desc)(schema_js_1.revenueMetrics.date)).limit(1),
-            db_js_1.db.select().from(schema_js_1.userAcquisitionMetrics).orderBy((0, drizzle_orm_1.desc)(schema_js_1.userAcquisitionMetrics.date)).limit(1)
-        ]);
-        return {
-            engagement: latestEngagement[0] || null,
-            revenue: latestRevenue[0] || null,
-            acquisition: latestAcquisition[0] || null,
-            overview: {
-                totalUsers: await db_js_1.db.select({ count: (0, drizzle_orm_1.count)() }).from(schema_js_1.users).then(r => r[0]?.count || 0),
-                activeDeals: await db_js_1.db.select({ count: (0, drizzle_orm_1.count)() }).from(schema_js_1.deals).where((0, drizzle_orm_1.eq)(schema_js_1.deals.status, 'active')).then(r => r[0]?.count || 0),
-            }
-        };
+        try {
+            // Use raw SQL queries to bypass Drizzle schema cache issues
+            const [latestEngagementResult, latestRevenueResult, latestAcquisitionResult, totalUsersResult, activeDealsResult] = await Promise.all([
+                db_js_1.db.execute((0, drizzle_orm_1.sql) `
+          SELECT * FROM engagement_metrics 
+          ORDER BY date DESC 
+          LIMIT 1
+        `),
+                db_js_1.db.execute((0, drizzle_orm_1.sql) `
+          SELECT * FROM revenue_metrics 
+          ORDER BY date DESC 
+          LIMIT 1
+        `),
+                db_js_1.db.execute((0, drizzle_orm_1.sql) `
+          SELECT * FROM user_acquisition_metrics 
+          ORDER BY date DESC 
+          LIMIT 1
+        `),
+                db_js_1.db.execute((0, drizzle_orm_1.sql) `SELECT COUNT(*) as count FROM users`),
+                db_js_1.db.execute((0, drizzle_orm_1.sql) `SELECT COUNT(*) as count FROM deals WHERE status = 'active'`)
+            ]);
+            // Extract rows from result objects
+            const latestEngagement = latestEngagementResult.rows || [];
+            const latestRevenue = latestRevenueResult.rows || [];
+            const latestAcquisition = latestAcquisitionResult.rows || [];
+            const totalUsers = totalUsersResult.rows || [];
+            const activeDeals = activeDealsResult.rows || [];
+            return {
+                engagement: latestEngagement[0] || null,
+                revenue: latestRevenue[0] || null,
+                acquisition: latestAcquisition[0] || null,
+                overview: {
+                    totalUsers: Number(totalUsers[0]?.count || 0),
+                    activeDeals: Number(activeDeals[0]?.count || 0),
+                }
+            };
+        }
+        catch (error) {
+            console.error('Error in getAdminOverview:', error);
+            // Return fallback data to prevent complete failure
+            return {
+                engagement: null,
+                revenue: null,
+                acquisition: null,
+                overview: {
+                    totalUsers: 0,
+                    activeDeals: 0,
+                }
+            };
+        }
     }
     /**
      * BATCH PROCESS - Run all daily calculations

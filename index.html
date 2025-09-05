@@ -7,6 +7,15 @@
     <link rel="shortcut icon" href="/favicon.svg" />
     <meta http-equiv="content-language" content="ru" />
     <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    
+    <!-- Orientation lock meta tags -->
+    <meta name="screen-orientation" content="portrait">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-orientation" content="portrait">
+    <meta name="theme-color" content="#ffffff">
+    
     <!-- Cache busting meta tags -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
@@ -19,6 +28,7 @@
   <body>
     <noscript>You need to enable JavaScript to run this app. / Вам необходимо включить JavaScript для работы приложения.</noscript>
     <div id="root"></div>
+    <script src="/ngrok-bypass.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

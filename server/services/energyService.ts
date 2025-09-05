@@ -1,6 +1,7 @@
 import { db } from '../db.js';
 import { users } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
+import { serverTranslations } from '../lib/translations.js';
 
 export interface EnergyTaskResult {
   newProgress: number;
@@ -23,7 +24,7 @@ export class EnergyService {
       .limit(1);
 
     if (!user.length) {
-      throw new Error('Пользователь не найден');
+      throw new Error(serverTranslations.error('userNotFound'));
     }
 
     const currentProgress = user[0].energyTasksBonus || 0;
@@ -67,7 +68,7 @@ export class EnergyService {
       .limit(1);
 
     if (!user.length) {
-      throw new Error('Пользователь не найден');
+      throw new Error(serverTranslations.error('userNotFound'));
     }
 
     return user[0].energyTasksBonus || 0;

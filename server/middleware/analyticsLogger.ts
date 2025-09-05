@@ -23,6 +23,21 @@ interface AuthenticatedRequest extends Request {
 export class AnalyticsLogger {
   
   /**
+   * Преобразует строковый user ID в числовой hash для ClickHouse
+   * Использует простую hash функцию для стабильного преобразования
+   */
+  private static stringToNumericId(strId: string): number {
+    let hash = 0;
+    for (let i = 0; i < strId.length; i++) {
+      const char = strId.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    // Делаем положительным и ограничиваем размером
+    return Math.abs(hash) % Number.MAX_SAFE_INTEGER;
+  }
+
+  /**
    * Логирует событие пользователя
    */
   static async logUserEvent(
@@ -63,8 +78,8 @@ export class AnalyticsLogger {
         // Если успешная авторизация
         if (res.statusCode === 200 && body.user?.id) {
           setImmediate(async () => {
-            // Используем BigInt для больших ID, затем Number для ClickHouse
-            const userIdNumber = Number(BigInt(body.user.id));
+            // Используем hash функцию для безопасного преобразования строкового ID
+            const userIdNumber = AnalyticsLogger.stringToNumericId(body.user.id);
             const sessionId = uuidv4();
             
             // Логируем login событие
@@ -134,8 +149,8 @@ export class AnalyticsLogger {
               };
             }
 
-            // Используем BigInt для больших ID, затем Number для ClickHouse
-            const userIdNumber = Number(BigInt(userId));
+            // Используем hash функцию для безопасного преобразования строкового ID
+            const userIdNumber = AnalyticsLogger.stringToNumericId(userId);
             // Используем sessionId из HTTP сессии или создаем один на основе userId для консистентности
             const sessionId = (req as any).session?.id || `user-session-${userId}`;
             await AnalyticsLogger.logUserEvent(
@@ -166,8 +181,8 @@ export class AnalyticsLogger {
         
         if (res.statusCode === 200 && userId && body.success) {
           setImmediate(async () => {
-            // Используем BigInt для больших ID, затем Number для ClickHouse
-            const userIdNumber = Number(BigInt(userId));
+            // Используем hash функцию для безопасного преобразования строкового ID
+            const userIdNumber = AnalyticsLogger.stringToNumericId(userId);
             // Используем sessionId из HTTP сессии или создаем один на основе userId для консистентности
             const sessionId = (req as any).session?.id || `user-session-${userId}`;
             await AnalyticsLogger.logUserEvent(
@@ -204,8 +219,8 @@ export class AnalyticsLogger {
         req.path.includes('/api/deals/user')
       )) {
         setImmediate(async () => {
-          // Используем BigInt для больших ID, затем Number для ClickHouse
-          const userIdNumber = Number(BigInt(userId));
+          // Используем hash функцию для безопасного преобразования строкового ID
+          const userIdNumber = AnalyticsLogger.stringToNumericId(userId);
           // Используем sessionId из HTTP сессии или создаем один на основе userId для консистентности
           const sessionId = (req as any).session?.id || `user-session-${userId}`;
           await AnalyticsLogger.logUserEvent(

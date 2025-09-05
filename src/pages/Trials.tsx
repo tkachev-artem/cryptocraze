@@ -279,7 +279,7 @@ export function Trials() {
         throw new Error(result.error || 'Wheel API error');
       }
     } catch (error) {
-      console.error('🎰 Trials: Ошибка при вращении рулетки:', error);
+      console.error(`🎰 Trials: ${t('errors.wheelSpinError')}:`, error);
       throw error;
     }
   };

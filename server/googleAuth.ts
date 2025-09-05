@@ -49,6 +49,9 @@ export async function setupAuth(app: Express) {
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
     
+    // Добавляем заголовок для обхода ngrok предупреждения
+    res.header('ngrok-skip-browser-warning', 'true');
+    
     if (req.method === 'OPTIONS') {
       res.sendStatus(200);
     } else {
@@ -147,10 +150,17 @@ export async function setupAuth(app: Express) {
   app.get('/api/auth/google', passport.authenticate('google'));
 
   app.get('/api/auth/google/callback', 
-    passport.authenticate('google', { 
-      failureRedirect: (process.env.FRONTEND_URL || 'http://localhost:5173') + '/login',
-      successRedirect: (process.env.FRONTEND_URL || 'http://localhost:5173') + '/'
-    })
+    passport.authenticate('google', { failureRedirect: '/login' }),
+    (req, res) => {
+      // Успешная авторизация - перенаправляем на главную с заголовком для ngrok
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      
+      res.writeHead(302, {
+        'Location': frontendUrl + '/',
+        'ngrok-skip-browser-warning': 'true'
+      });
+      res.end();
+    }
   );
 
   // Logout route (clears session and cookies)

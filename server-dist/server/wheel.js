@@ -5,16 +5,17 @@ exports.getWheelPrizes = getWheelPrizes;
 const db_js_1 = require("./db.js");
 const schema_1 = require("../shared/schema");
 const drizzle_orm_1 = require("drizzle-orm");
+// Prize order MUST EXACTLY match client-side PRIZE_AMOUNTS: [100, 200, 500, 700, 1000, 1500, 2000, 150, 10000]
 const WHEEL_PRIZES = [
-    { value: 100, label: '100$', weight: 25 }, // 25% шанс
-    { value: 150, label: '150$', weight: 20 }, // 20% шанс  
-    { value: 200, label: '200$', weight: 15 }, // 15% шанс
-    { value: 500, label: '500$', weight: 12 }, // 12% шанс
-    { value: 700, label: '700$', weight: 10 }, // 10% шанс
-    { value: 1000, label: '1000$', weight: 8 }, // 8% шанс
-    { value: 1500, label: '1500$', weight: 5 }, // 5% шанс
-    { value: 2000, label: '2000$', weight: 3 }, // 3% шанс
-    { value: 10000, label: '10000$', weight: 2 }, // 2% шанс
+    { value: 100, label: '100$', weight: 200 }, // index 0 - ~20% шанс
+    { value: 200, label: '200$', weight: 180 }, // index 1 - ~18% шанс  
+    { value: 500, label: '500$', weight: 150 }, // index 2 - ~15% шанс
+    { value: 700, label: '700$', weight: 120 }, // index 3 - ~12% шанс
+    { value: 1000, label: '1000$', weight: 100 }, // index 4 - ~10% шанс
+    { value: 1500, label: '1500$', weight: 80 }, // index 5 - ~8% шанс
+    { value: 2000, label: '2000$', weight: 60 }, // index 6 - ~6% шанс
+    { value: 150, label: '150$', weight: 109 }, // index 7 - ~10.9% шанс
+    { value: 10000, label: '10000$', weight: 1 }, // index 8 - 0.1% шанс
 ];
 /**
  * Выбирает случайный приз на основе весов

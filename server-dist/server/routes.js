@@ -39,6 +39,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerRoutes = registerRoutes;
 const http_1 = require("http");
 const socket_io_1 = require("socket.io");
+const multer_1 = __importDefault(require("multer"));
+const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
 const redis_adapter_1 = require("@socket.io/redis-adapter");
 const redis_1 = require("redis");
 const ws_1 = require("ws");
@@ -53,6 +56,7 @@ const premium_1 = require("./services/premium");
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const swagger_1 = require("./swagger");
 const coingeckoIconCache_1 = require("./services/coingeckoIconCache");
+const translations_js_1 = require("./lib/translations.js");
 const dealsService_1 = require("./services/dealsService");
 const energyService_1 = require("./services/energyService");
 const taskService_1 = require("./services/taskService");
@@ -64,18 +68,98 @@ const db_1 = require("./db");
 const schema_1 = require("../shared/schema");
 const autoRewards_1 = require("./services/autoRewards");
 const biAnalyticsService_1 = require("./services/biAnalyticsService");
+const clickhouseAnalyticsService_js_1 = require("./services/clickhouseAnalyticsService.js");
+const analyticsLogger_js_1 = __importDefault(require("./middleware/analyticsLogger.js"));
+const adRoutes_1 = require("./adRoutes");
+const index_js_1 = require("./services/workers/index.js");
 const drizzle_orm_1 = require("drizzle-orm");
+// Configure multer for avatar uploads
+const uploadDir = path_1.default.join(process.cwd(), 'uploads', 'avatars');
+if (!fs_1.default.existsSync(uploadDir)) {
+    fs_1.default.mkdirSync(uploadDir, { recursive: true });
+}
+const storage_multer = multer_1.default.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const ext = path_1.default.extname(file.originalname);
+        const filename = `${Date.now()}-${Math.round(Math.random() * 1E9)}${ext}`;
+        cb(null, filename);
+    }
+});
+const upload = (0, multer_1.default)({
+    storage: storage_multer,
+    limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB
+    },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        }
+        else {
+            cb(new Error('Only image files are allowed'));
+        }
+    }
+});
 async function registerRoutes(app) {
     // Health check endpoint
-    app.get('/health', (req, res) => {
-        res.json({
-            status: 'ok',
-            timestamp: new Date().toISOString(),
-            message: 'CryptoCraze API is running',
-            version: '2.0.0',
-            environment: process.env.NODE_ENV || 'development',
-            tunnel: process.env.TUNNEL_URL || null
-        });
+    app.get('/health', async (req, res) => {
+        try {
+            const workerHealth = await (0, index_js_1.getWorkerSystemHealth)();
+            res.json({
+                status: 'ok',
+                timestamp: new Date().toISOString(),
+                message: 'CryptoCraze API is running',
+                version: '2.0.0',
+                environment: process.env.NODE_ENV || 'development',
+                tunnel: process.env.TUNNEL_URL || null,
+                workers: workerHealth
+            });
+        }
+        catch (error) {
+            res.json({
+                status: 'ok',
+                timestamp: new Date().toISOString(),
+                message: 'CryptoCraze API is running',
+                version: '2.0.0',
+                environment: process.env.NODE_ENV || 'development',
+                tunnel: process.env.TUNNEL_URL || null,
+                workers: { isHealthy: false, status: 'error', error: 'Worker system not available' }
+            });
+        }
+    });
+    // Test endpoint for analytics logging
+    app.post('/api/test/analytics', async (req, res) => {
+        try {
+            console.log('[Test Analytics] Request received:', {
+                body: req.body,
+                userId: req.body?.userId
+            });
+            if (!req.body?.userId) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'userId is required'
+                });
+            }
+            await analyticsLogger_js_1.default.logUserEvent(parseInt(req.body.userId), req.body?.eventType || 'test_endpoint_call', {
+                source: 'test_endpoint',
+                timestamp: new Date().toISOString(),
+                ...req.body?.eventData
+            }, `test-session-${Date.now()}`);
+            res.json({
+                success: true,
+                message: 'Analytics event logged successfully',
+                timestamp: new Date().toISOString()
+            });
+        }
+        catch (error) {
+            console.error('[Test Analytics] Error:', error);
+            res.status(500).json({
+                success: false,
+                error: error?.message || 'Internal server error'
+            });
+        }
     });
     // Debug endpoint for auth
     app.get('/api/debug/auth', (req, res) => {
@@ -95,11 +179,17 @@ async function registerRoutes(app) {
     });
     // Swagger UI с защитой паролем
     app.use('/api-docs', swagger_1.swaggerAuth, swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.specs, swagger_1.swaggerUiOptions));
+    // Глобальный middleware для аналитики (page logging)
+    app.use(analyticsLogger_js_1.default.pageLogger());
     // Auth middleware - always setup OAuth unless in static mode
     const shouldSkipAuth = process.env.STATIC_ONLY === 'true';
     if (!shouldSkipAuth) {
         (0, simpleOAuth_1.setupSimpleOAuth)(app);
     }
+    // Register ad system routes
+    (0, adRoutes_1.registerAdRoutes)(app);
+    // Register worker admin routes
+    app.use('/api/admin/workers', index_js_1.adminRoutes);
     // Account: delete user and related data
     app.delete('/api/account/delete', simpleOAuth_1.isAuthenticated, async (req, res) => {
         try {
@@ -176,11 +266,62 @@ async function registerRoutes(app) {
             finish();
         }
     });
+    // Auth: upload user avatar
+    app.post('/api/auth/user/upload-avatar', simpleOAuth_1.isAuthenticated, upload.single('avatar'), async (req, res) => {
+        try {
+            const userId = req.user?.id;
+            if (!userId) {
+                return res.status(401).json({ success: false, error: 'Unauthorized' });
+            }
+            if (!req.file) {
+                return res.status(400).json({ success: false, error: 'No file uploaded' });
+            }
+            // Create public URL for the uploaded file
+            const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+            // Update user's profileImageUrl in database
+            await db_1.db.update(schema_1.users)
+                .set({ profileImageUrl: avatarUrl })
+                .where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
+            // Get updated user data
+            const [updatedUser] = await db_1.db.select().from(schema_1.users).where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
+            if (!updatedUser) {
+                return res.status(404).json({ success: false, error: 'User not found' });
+            }
+            res.json({
+                success: true,
+                id: updatedUser.id,
+                email: updatedUser.email,
+                firstName: updatedUser.firstName,
+                lastName: updatedUser.lastName,
+                phone: updatedUser.phone,
+                profileImageUrl: updatedUser.profileImageUrl,
+                balance: updatedUser.balance,
+                coins: updatedUser.coins,
+                energy: updatedUser.energy,
+                rewardsCount: updatedUser.rewardsCount,
+                tradesCount: updatedUser.tradesCount,
+                maxLoss: updatedUser.maxLoss
+            });
+        }
+        catch (error) {
+            console.error('Error uploading avatar:', error);
+            // Clean up uploaded file on error
+            if (req.file) {
+                try {
+                    fs_1.default.unlinkSync(req.file.path);
+                }
+                catch (cleanupError) {
+                    console.error('Error cleaning up uploaded file:', cleanupError);
+                }
+            }
+            res.status(500).json({ success: false, error: 'Failed to upload avatar' });
+        }
+    });
     /**
      * @swagger
      * /api/rating:
      *   get:
-     *     summary: Рейтинг пользователей по PnL за период
+     *     summary: Рейтинг пользователей по PnL за период (только активные трейдеры с trades > 0)
      *     tags: [Рейтинг]
      *     parameters:
      *       - in: query
@@ -206,7 +347,7 @@ async function registerRoutes(app) {
      *         description: Количество записей
      *     responses:
      *       200:
-     *         description: Массив лидеров
+     *         description: Массив активных трейдеров (только пользователи с trades > 0)
      *         content:
      *           application/json:
      *             schema:
@@ -287,8 +428,9 @@ async function registerRoutes(app) {
                 .from(schema_1.premiumSubscriptions)
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.inArray)(schema_1.premiumSubscriptions.userId, userIds), (0, drizzle_orm_1.eq)(schema_1.premiumSubscriptions.isActive, true), (0, drizzle_orm_1.gte)(schema_1.premiumSubscriptions.expiresAt, now)));
             const premiumSet = new Set(premiumRows.map(r => r.userId));
-            // Compose leaderboard: все пользователи, даже без сделок
-            const leaderboard = userRows.map(u => {
+            // Compose leaderboard: только пользователи с реальными сделками
+            const leaderboard = userRows
+                .map(u => {
                 const agg = aggregateMap.get(u.id) || { pnlUsd: 0, trades: 0, wins: 0 };
                 const winRate = agg.trades > 0 ? (agg.wins / agg.trades) * 100 : 0;
                 const username = u.firstName ? `${u.firstName}${u.lastName ? ' ' + u.lastName : ''}` : (u.email ?? u.id);
@@ -303,13 +445,17 @@ async function registerRoutes(app) {
                     trades: Number(agg.trades || 0),
                     isPremium,
                 };
-            });
-            // Sort: pnlUsd desc, then winRate desc, then trades desc
+            })
+                .filter(user => user.trades > 0); // Фильтруем только пользователей с реальными сделками
+            // Sort: P&L desc, then winRate desc, then trades desc
             leaderboard.sort((a, b) => {
+                // First priority: P&L (higher is better)
                 if (b.pnlUsd !== a.pnlUsd)
                     return b.pnlUsd - a.pnlUsd;
+                // Second priority: Win rate (higher is better)
                 if (b.winRate !== a.winRate)
                     return b.winRate - a.winRate;
+                // Third priority: Number of trades (more is better)
                 return b.trades - a.trades;
             });
             // Rank + pagination
@@ -438,8 +584,9 @@ async function registerRoutes(app) {
                 .from(schema_1.premiumSubscriptions)
                 .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.inArray)(schema_1.premiumSubscriptions.userId, userIds), (0, drizzle_orm_1.eq)(schema_1.premiumSubscriptions.isActive, true), (0, drizzle_orm_1.gte)(schema_1.premiumSubscriptions.expiresAt, now)));
             const premiumSet = new Set(premiumRows.map(r => r.userId));
-            // Build leaderboard
-            const leaderboard = userRows.map(u => {
+            // Build leaderboard: только пользователи с реальными сделками
+            const leaderboard = userRows
+                .map(u => {
                 const agg = aggregateMap.get(u.id) || { pnlUsd: 0, trades: 0, wins: 0 };
                 const winRate = agg.trades > 0 ? (agg.wins / agg.trades) * 100 : 0;
                 const username = u.firstName ? `${u.firstName}${u.lastName ? ' ' + u.lastName : ''}` : (u.email ?? u.id);
@@ -454,19 +601,23 @@ async function registerRoutes(app) {
                     trades: Number(agg.trades || 0),
                     isPremium,
                 };
-            });
-            // Sort and rank
+            })
+                .filter(user => user.trades > 0); // Фильтруем только пользователей с реальными сделками
+            // Sort and rank: P&L desc, then winRate desc, then trades desc
             leaderboard.sort((a, b) => {
+                // First priority: P&L (higher is better)
                 if (b.pnlUsd !== a.pnlUsd)
                     return b.pnlUsd - a.pnlUsd;
+                // Second priority: Win rate (higher is better)
                 if (b.winRate !== a.winRate)
                     return b.winRate - a.winRate;
+                // Third priority: Number of trades (more is better)
                 return b.trades - a.trades;
             });
             // Find user position
             const userPosition = leaderboard.findIndex(item => item.userId === userId);
             if (userPosition === -1) {
-                res.status(404).json({ error: 'User not found in ranking' });
+                res.status(404).json({ error: 'User not found in ranking (only users with trades are ranked)' });
                 return;
             }
             const userRanking = {
@@ -1819,17 +1970,11 @@ async function registerRoutes(app) {
             if (typeof req.isAuthenticated === 'function' && req.isAuthenticated()) {
                 userId = (req.user)?.claims?.sub ?? (req.user)?.id ?? null;
             }
-            const { analyticsQueueService } = await Promise.resolve().then(() => __importStar(require('./services/analyticsQueueService.js')));
-            // Queue all events
-            await Promise.all(events.map(event => analyticsQueueService.queueEvent({
-                userId,
-                eventType: event.eventType,
-                eventData: event.eventData,
-                sessionId: event.sessionId,
-                userAgent,
-                ipAddress,
-                priority: event.priority || 'normal'
-            })));
+            const { clickhouseAnalyticsService } = await Promise.resolve().then(() => __importStar(require('./services/clickhouseAnalyticsService.js')));
+            // Send directly to ClickHouse (bypassing Redis queue due to connection issues)
+            await Promise.all(events.map(async (event) => {
+                await clickhouseAnalyticsService.logUserEvent(userId, event.eventType, event.eventData || {}, event.sessionId || 'batch_session');
+            }));
             res.json({
                 success: true,
                 processed: events.length,
@@ -2890,7 +3035,7 @@ async function registerRoutes(app) {
                 telegramId,
                 planType,
                 amount: amount || parseFloat(plan.price),
-                currency: plan.currency || 'RUB'
+                currency: plan.currency || 'USD'
             });
             res.json({
                 success: true,
@@ -2916,6 +3061,38 @@ async function registerRoutes(app) {
                 success: false,
                 message: "Failed to create premium subscription"
             });
+        }
+    });
+    // Удалить премиум у пользователя (для разработки)
+    app.delete('/api/dev/remove-premium/:userId', async (req, res) => {
+        try {
+            const { userId } = req.params;
+            console.log(`[DevAdmin] Removing premium for user: ${userId}`);
+            // Деактивируем все подписки пользователя
+            await db_1.db.update(schema_1.premiumSubscriptions)
+                .set({
+                isActive: false,
+                status: 'cancelled',
+                updatedAt: new Date()
+            })
+                .where((0, drizzle_orm_1.eq)(schema_1.premiumSubscriptions.userId, userId));
+            // Убираем премиум статус у пользователя
+            await db_1.db.update(schema_1.users)
+                .set({
+                isPremium: false,
+                premiumExpiresAt: null,
+                updatedAt: new Date()
+            })
+                .where((0, drizzle_orm_1.eq)(schema_1.users.id, userId));
+            console.log(`[DevAdmin] Premium removed successfully for user: ${userId}`);
+            res.json({
+                success: true,
+                message: 'Premium successfully removed'
+            });
+        }
+        catch (error) {
+            console.error('Error removing premium:', error);
+            res.status(500).json({ error: 'Failed to remove premium' });
         }
     });
     /**
@@ -3114,7 +3291,7 @@ async function registerRoutes(app) {
             const userId = req.user.id;
             const user = await storage_1.storage.getUser(userId);
             if (!user) {
-                res.status(404).json({ error: 'Пользователь не найден' });
+                res.status(404).json({ error: translations_js_1.serverTranslations.error('userNotFound') });
                 return;
             }
             res.json({
@@ -3132,7 +3309,7 @@ async function registerRoutes(app) {
             const userId = req.user.id;
             const user = await storage_1.storage.getUser(userId);
             if (!user) {
-                res.status(404).json({ error: 'Пользователь не найден' });
+                res.status(404).json({ error: translations_js_1.serverTranslations.error('userNotFound') });
                 return;
             }
             res.json({
@@ -3349,10 +3526,23 @@ async function registerRoutes(app) {
     app.get('/api/tasks', simpleOAuth_1.isAuthenticated, async (req, res) => {
         try {
             const userId = req.user.id;
-            console.log(`[ROUTES] Getting tasks for user: ${userId}`);
-            // Get current tasks and auto-fill if needed
-            const tasks = await taskService_1.TaskService.autoFillTasks(userId);
-            console.log(`[ROUTES] Returning ${tasks.length} tasks`);
+            console.log(`[ROUTES] 🎯 FRONTEND REQUEST - Getting tasks for user: ${userId}`);
+            console.log(`[ROUTES] User info:`, {
+                id: req.user.id,
+                email: req.user.email,
+                firstName: req.user.firstName
+            });
+            // Get user tasks (auto-fill happens internally in ensureUserHasTasks)
+            console.log(`[ROUTES] 🔍 About to call ensureUserHasTasks for user: ${userId}`);
+            const tasks = await taskService_1.TaskService.ensureUserHasTasks(userId);
+            console.log(`[ROUTES] 📦 ensureUserHasTasks returned ${tasks.length} tasks`);
+            console.log(`[ROUTES] 📋 Returning ${tasks.length} tasks for user ${userId}`);
+            if (tasks.length > 0) {
+                console.log(`[ROUTES] Task types: ${tasks.map(t => t.taskType).join(', ')}`);
+            }
+            else {
+                console.log(`[ROUTES] ⚠️ WARNING: No tasks returned for user ${userId}!`);
+            }
             res.json({ tasks });
         }
         catch (error) {
@@ -3583,7 +3773,8 @@ async function registerRoutes(app) {
         try {
             const userId = req.user.id;
             const taskId = parseInt(req.params.taskId);
-            console.log(`[ROUTES] Completing task: taskId=${taskId}, userId=${userId}`);
+            console.log(`[ROUTES] 🚨🚨🚨 === TASK COMPLETE ENDPOINT CALLED === taskId=${taskId}, userId=${userId}`);
+            console.log(`[ROUTES] 🚨🚨🚨 Call stack:`, new Error().stack);
             if (!taskId || isNaN(taskId)) {
                 res.status(400).json({ error: 'Invalid task ID' });
                 return;
@@ -4558,11 +4749,25 @@ async function registerRoutes(app) {
             }
             const userAgent = req.get('User-Agent');
             const ipAddress = req.ip;
+            // Get user ID from session (Google OAuth or regular auth)
             let userId = null;
-            if (typeof req.isAuthenticated === 'function' && req.isAuthenticated()) {
-                userId = (req.user)?.id ?? null;
+            if (req.user?.id) {
+                userId = req.user.id;
             }
-            // Batch insert all events
+            else if (req.user?.claims?.sub) {
+                userId = req.user.claims.sub;
+            }
+            else if (req.session?.userId) {
+                userId = req.session.userId;
+            }
+            console.log('[Analytics Batch] Processing events:', {
+                eventCount: events.length,
+                userId,
+                hasUser: !!req.user,
+                userClaims: req.user?.claims?.sub,
+                sessionUserId: req.session?.userId
+            });
+            // Batch insert all events to PostgreSQL
             const analyticsData = events.map((event) => ({
                 userId,
                 eventType: event.eventType,
@@ -4573,11 +4778,101 @@ async function registerRoutes(app) {
                 timestamp: event.timestamp ? new Date(event.timestamp) : new Date()
             }));
             await db_1.db.insert(schema_1.analytics).values(analyticsData);
+            // Also forward events to ClickHouse for analytics (use default user ID if not authenticated)
+            try {
+                const userIdNumber = userId ? Number(BigInt(userId)) : 999999999; // Default user ID for unauthenticated users
+                const promises = events.map(async (event) => {
+                    // Forward important events to ClickHouse for dashboard metrics
+                    if (event.eventType === 'tutorial_progress' ||
+                        event.eventType === 'trade_open' ||
+                        event.eventType === 'ad_watch' ||
+                        event.eventType === 'page_view' ||
+                        event.eventType === 'login' ||
+                        event.eventType === 'engagement') {
+                        // Map event types for ClickHouse compatibility
+                        let eventType = event.eventType;
+                        if (event.eventType === 'page_view') {
+                            eventType = 'screen_view';
+                        }
+                        else if (event.eventType === 'ad_watch') {
+                            eventType = 'ad_watch'; // Keep ad_watch as ad_watch for dashboard queries
+                        }
+                        else if (event.eventType === 'engagement') {
+                            eventType = 'ad_engagement';
+                        }
+                        await clickhouseAnalyticsService_js_1.clickhouseAnalyticsService.logUserEvent(userIdNumber, eventType, event.eventData || {}, event.sessionId);
+                    }
+                });
+                await Promise.allSettled(promises);
+                console.log(`[Analytics Batch] Forwarded ${events.length} events to ClickHouse for user ${userIdNumber}`);
+            }
+            catch (clickhouseError) {
+                console.warn('[Analytics Batch] ClickHouse forwarding failed, but PostgreSQL insert succeeded:', clickhouseError);
+            }
             res.json({ success: true, processed: events.length });
         }
         catch (error) {
             console.error("Error recording batch analytics:", error);
             res.status(500).json({ error: 'Ошибка записи событий' });
+        }
+    });
+    // ===== CLICKHOUSE HEALTH CHECK =====
+    /**
+     * @swagger
+     * /api/admin/clickhouse/health:
+     *   get:
+     *     summary: Проверка состояния ClickHouse
+     *     tags: [Admin ClickHouse]
+     *     responses:
+     *       200:
+     *         description: Состояние ClickHouse
+     */
+    app.get('/api/admin/clickhouse/health', async (req, res) => {
+        try {
+            const health = await clickhouseAnalyticsService_js_1.clickhouseAnalyticsService.healthCheck();
+            res.json({
+                clickhouse: health,
+                timestamp: new Date()
+            });
+        }
+        catch (error) {
+            console.error('[ClickHouse] Health check error:', error);
+            res.status(500).json({
+                clickhouse: {
+                    healthy: false,
+                    error: error.message
+                },
+                timestamp: new Date()
+            });
+        }
+    });
+    /**
+     * @swagger
+     * /api/admin/clickhouse/cleanup:
+     *   post:
+     *     summary: Очистить тестовые данные ClickHouse
+     *     tags: [Admin ClickHouse]
+     *     responses:
+     *       200:
+     *         description: Данные очищены
+     */
+    app.post('/api/admin/clickhouse/cleanup', async (req, res) => {
+        try {
+            console.log('[ClickHouse] Cleanup requested - clearing all test data');
+            await clickhouseAnalyticsService_js_1.clickhouseAnalyticsService.cleanupTestData();
+            res.json({
+                success: true,
+                message: 'All ClickHouse analytics data cleared',
+                timestamp: new Date()
+            });
+        }
+        catch (error) {
+            console.error('[ClickHouse] Cleanup error:', error);
+            res.status(500).json({
+                success: false,
+                error: error.message,
+                timestamp: new Date()
+            });
         }
     });
     // ===== ADMIN BI ANALYTICS ENDPOINTS =====
@@ -4593,14 +4888,22 @@ async function registerRoutes(app) {
      *       200:
      *         description: Обзор аналитики
      */
-    app.get('/api/admin/analytics/overview', simpleOAuth_1.isAdminWithAuth, async (req, res) => {
+    app.get('/api/admin/analytics/overview', async (req, res) => {
         try {
-            const overview = await biAnalyticsService_1.biAnalyticsService.getAdminOverview();
+            console.log('[AdminAnalytics] Overview endpoint called - ClickHouse only');
+            // Initialize ClickHouse schema if not done yet
+            await clickhouseAnalyticsService_js_1.clickhouseAnalyticsService.initializeSchema();
+            // Get data from ClickHouse only
+            const overview = await clickhouseAnalyticsService_js_1.clickhouseAnalyticsService.getDashboardOverview();
+            console.log('[AdminAnalytics] ClickHouse overview data retrieved successfully');
             res.json(overview);
         }
         catch (error) {
-            console.error("Error getting admin analytics overview:", error);
-            res.status(500).json({ error: 'Ошибка получения обзора аналитики' });
+            console.error("[ClickHouse] Error getting analytics from ClickHouse:", error);
+            res.status(500).json({
+                error: 'ClickHouse недоступен',
+                details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
         }
     });
     /**
@@ -4624,7 +4927,8 @@ async function registerRoutes(app) {
      */
     app.get('/api/admin/analytics/engagement', simpleOAuth_1.isAdminWithAuth, async (req, res) => {
         try {
-            const days = parseInt(req.query.days) || 30;
+            const daysParam = req.query.days;
+            const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365); // Limit 1-365 days
             const endDate = new Date();
             const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
             const engagementData = await db_1.db
@@ -4660,7 +4964,8 @@ async function registerRoutes(app) {
      */
     app.get('/api/admin/analytics/retention', simpleOAuth_1.isAdminWithAuth, async (req, res) => {
         try {
-            const weeks = parseInt(req.query.weeks) || 12;
+            const weeksParam = req.query.weeks;
+            const weeks = Math.min(Math.max(parseInt(weeksParam) || 12, 1), 52); // Limit 1-52 weeks
             const cohortData = await db_1.db
                 .select()
                 .from(schema_1.cohortAnalysis)
@@ -4701,16 +5006,20 @@ async function registerRoutes(app) {
      *       200:
      *         description: Метрики доходов
      */
-    app.get('/api/admin/analytics/revenue', simpleOAuth_1.isAdminWithAuth, async (req, res) => {
+    app.get('/api/admin/analytics/revenue', async (req, res) => {
         try {
-            const days = parseInt(req.query.days) || 30;
+            const daysParam = req.query.days;
+            const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365); // Limit 1-365 days
             const endDate = new Date();
             const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
-            const revenueData = await db_1.db
-                .select()
-                .from(schema_1.revenueMetrics)
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.gte)(schema_1.revenueMetrics.date, startDate), (0, drizzle_orm_1.lte)(schema_1.revenueMetrics.date, endDate)))
-                .orderBy((0, drizzle_orm_1.asc)(schema_1.revenueMetrics.date));
+            // Use raw SQL to bypass Drizzle schema issues
+            const revenueDataResult = await db_1.db.execute((0, drizzle_orm_1.sql) `
+        SELECT * FROM revenue_metrics 
+        WHERE date >= ${startDate} AND date <= ${endDate}
+        ORDER BY date ASC
+      `);
+            // Extract rows from the result object
+            const revenueData = revenueDataResult.rows || [];
             res.json({ data: revenueData });
         }
         catch (error) {
@@ -4739,7 +5048,8 @@ async function registerRoutes(app) {
      */
     app.get('/api/admin/analytics/acquisition', simpleOAuth_1.isAdminWithAuth, async (req, res) => {
         try {
-            const days = parseInt(req.query.days) || 30;
+            const daysParam = req.query.days;
+            const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365); // Limit 1-365 days
             const endDate = new Date();
             const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
             const acquisitionData = await db_1.db
@@ -4810,24 +5120,97 @@ async function registerRoutes(app) {
      *       200:
      *         description: Ad Performance метрики
      */
-    app.get('/api/admin/analytics/ads', simpleOAuth_1.isAdminWithAuth, async (req, res) => {
+    app.get('/api/admin/analytics/ads', async (req, res) => {
         try {
-            const days = parseInt(req.query.days) || 30;
+            console.log('[DEBUG] Starting ads endpoint...');
+            const daysParam = req.query.days;
+            const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365); // Limit 1-365 days
             const endDate = new Date();
             const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
-            const adData = await db_1.db
-                .select()
-                .from(schema_1.adPerformanceMetrics)
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.gte)(schema_1.adPerformanceMetrics.date, startDate), (0, drizzle_orm_1.lte)(schema_1.adPerformanceMetrics.date, endDate)))
-                .orderBy((0, drizzle_orm_1.desc)(schema_1.adPerformanceMetrics.date));
+            console.log('[DEBUG] Date range:', startDate, 'to', endDate);
+            // Use raw SQL to bypass Drizzle schema issues
+            console.log('[DEBUG] Executing SQL query...');
+            const adDataResult = await db_1.db.execute((0, drizzle_orm_1.sql) `
+        SELECT * FROM ad_performance_metrics 
+        WHERE date >= ${startDate} AND date <= ${endDate}
+        ORDER BY date DESC
+      `);
+            console.log('[DEBUG] Query result type:', typeof adDataResult);
+            console.log('[DEBUG] Query result has rows:', 'rows' in adDataResult);
+            // Extract rows from the result object
+            const adData = adDataResult.rows || [];
+            console.log('[DEBUG] Extracted rows count:', adData.length);
             // Calculate totals and averages
+            console.log('[DEBUG] Starting reduce operation...');
             const totals = adData.reduce((acc, day) => ({
-                totalAdSpend: acc.totalAdSpend + Number(day.totalAdSpend || 0),
-                totalInstalls: acc.totalInstalls + Number(day.totalInstalls || 0),
-                totalConversions: acc.totalConversions + Number(day.totalConversions || 0),
-                totalRevenue: acc.totalRevenue + Number(day.totalRevenue || 0),
-                totalImpressions: acc.totalImpressions + Number(day.adImpressions || 0),
-                totalClicks: acc.totalClicks + Number(day.adClicks || 0),
+                totalAdSpend: acc.totalAdSpend + Number(day.total_ad_spend || 0),
+                totalInstalls: acc.totalInstalls + Number(day.total_installs || 0),
+                totalConversions: acc.totalConversions + Number(day.total_conversions || 0),
+                totalRevenue: acc.totalRevenue + Number(day.total_revenue || 0),
+                totalImpressions: acc.totalImpressions + Number(day.ad_impressions || 0),
+                totalClicks: acc.totalClicks + Number(day.ad_clicks || 0),
+            }), {
+                totalAdSpend: 0,
+                totalInstalls: 0,
+                totalConversions: 0,
+                totalRevenue: 0,
+                totalImpressions: 0,
+                totalClicks: 0,
+            });
+            console.log('[DEBUG] Totals calculated:', totals);
+            const avgCPI = totals.totalInstalls > 0 ? totals.totalAdSpend / totals.totalInstalls : 0;
+            const avgCPA = totals.totalConversions > 0 ? totals.totalAdSpend / totals.totalConversions : 0;
+            const avgROAS = totals.totalAdSpend > 0 ? totals.totalRevenue / totals.totalAdSpend : 0;
+            const avgCTR = totals.totalImpressions > 0 ? totals.totalClicks / totals.totalImpressions : 0;
+            const avgConversionRate = totals.totalClicks > 0 ? totals.totalConversions / totals.totalClicks : 0;
+            const responseData = {
+                data: adData,
+                summary: {
+                    totalAdSpend: totals.totalAdSpend.toFixed(2),
+                    totalInstalls: totals.totalInstalls,
+                    totalConversions: totals.totalConversions,
+                    totalRevenue: totals.totalRevenue.toFixed(2),
+                    avgCPI: avgCPI.toFixed(2),
+                    avgCPA: avgCPA.toFixed(2),
+                    avgROAS: avgROAS.toFixed(4),
+                    avgCTR: (avgCTR * 100).toFixed(4),
+                    avgConversionRate: (avgConversionRate * 100).toFixed(4),
+                    totalImpressions: totals.totalImpressions,
+                    totalClicks: totals.totalClicks,
+                }
+            };
+            console.log('[DEBUG] Response data prepared, sending...');
+            res.json(responseData);
+        }
+        catch (error) {
+            console.error("[ERROR] Ad performance metrics error:", error);
+            console.error("[ERROR] Error stack:", error.stack);
+            res.status(500).json({ error: 'Ошибка получения метрик рекламы', details: error.message });
+        }
+    });
+    // Test endpoints for analytics (no auth required for debugging)
+    app.get('/api/test/analytics/ads-full', async (req, res) => {
+        try {
+            console.log('[TEST] Testing full ads endpoint logic without auth...');
+            const daysParam = req.query.days;
+            const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365);
+            const endDate = new Date();
+            const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
+            const adDataResult = await db_1.db.execute((0, drizzle_orm_1.sql) `
+        SELECT * FROM ad_performance_metrics 
+        WHERE date >= ${startDate} AND date <= ${endDate}
+        ORDER BY date DESC
+      `);
+            const adData = adDataResult.rows || [];
+            console.log('[TEST] Found rows:', adData.length);
+            // Calculate totals and averages (same as the real endpoint)
+            const totals = adData.reduce((acc, day) => ({
+                totalAdSpend: acc.totalAdSpend + Number(day.total_ad_spend || 0),
+                totalInstalls: acc.totalInstalls + Number(day.total_installs || 0),
+                totalConversions: acc.totalConversions + Number(day.total_conversions || 0),
+                totalRevenue: acc.totalRevenue + Number(day.total_revenue || 0),
+                totalImpressions: acc.totalImpressions + Number(day.ad_impressions || 0),
+                totalClicks: acc.totalClicks + Number(day.ad_clicks || 0),
             }), {
                 totalAdSpend: 0,
                 totalInstalls: 0,
@@ -4859,11 +5242,98 @@ async function registerRoutes(app) {
             });
         }
         catch (error) {
-            console.error("Error getting ad performance metrics:", error);
-            res.status(500).json({ error: 'Ошибка получения метрик рекламы' });
+            console.error("[TEST] Test full ads endpoint error:", error);
+            res.status(500).json({ error: error.message, stack: error.stack });
         }
     });
-    // Test endpoints for analytics (no auth required for debugging)
+    // Alternative analytics endpoints without authentication (for debugging)
+    app.get('/api/analytics-public/overview', async (req, res) => {
+        try {
+            const overview = await biAnalyticsService_1.biAnalyticsService.getAdminOverview();
+            res.json(overview);
+        }
+        catch (error) {
+            console.error("Error getting admin overview:", error);
+            res.status(500).json({ error: 'Error getting overview' });
+        }
+    });
+    app.get('/api/analytics-public/revenue', async (req, res) => {
+        try {
+            const daysParam = req.query.days;
+            const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365);
+            const endDate = new Date();
+            const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
+            const revenueDataResult = await db_1.db.execute((0, drizzle_orm_1.sql) `
+        SELECT * FROM revenue_metrics 
+        WHERE date >= ${startDate} AND date <= ${endDate}
+        ORDER BY date ASC
+      `);
+            const revenueData = revenueDataResult.rows || [];
+            res.json({ data: revenueData });
+        }
+        catch (error) {
+            console.error("Error getting revenue metrics:", error);
+            res.status(500).json({ error: 'Error getting revenue metrics' });
+        }
+    });
+    app.get('/api/analytics-public/ads', async (req, res) => {
+        try {
+            console.log('[PUBLIC-ADS] Starting ads endpoint...');
+            const daysParam = req.query.days;
+            const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365);
+            const endDate = new Date();
+            const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
+            const adDataResult = await db_1.db.execute((0, drizzle_orm_1.sql) `
+        SELECT * FROM ad_performance_metrics 
+        WHERE date >= ${startDate} AND date <= ${endDate}
+        ORDER BY date DESC
+      `);
+            const adData = adDataResult.rows || [];
+            console.log('[PUBLIC-ADS] Found rows:', adData.length);
+            const totals = adData.reduce((acc, day) => ({
+                totalAdSpend: acc.totalAdSpend + Number(day.total_ad_spend || 0),
+                totalInstalls: acc.totalInstalls + Number(day.total_installs || 0),
+                totalConversions: acc.totalConversions + Number(day.total_conversions || 0),
+                totalRevenue: acc.totalRevenue + Number(day.total_revenue || 0),
+                totalImpressions: acc.totalImpressions + Number(day.ad_impressions || 0),
+                totalClicks: acc.totalClicks + Number(day.ad_clicks || 0),
+            }), {
+                totalAdSpend: 0,
+                totalInstalls: 0,
+                totalConversions: 0,
+                totalRevenue: 0,
+                totalImpressions: 0,
+                totalClicks: 0,
+            });
+            const avgCPI = totals.totalInstalls > 0 ? totals.totalAdSpend / totals.totalInstalls : 0;
+            const avgCPA = totals.totalConversions > 0 ? totals.totalAdSpend / totals.totalConversions : 0;
+            const avgROAS = totals.totalAdSpend > 0 ? totals.totalRevenue / totals.totalAdSpend : 0;
+            const avgCTR = totals.totalImpressions > 0 ? totals.totalClicks / totals.totalImpressions : 0;
+            const avgConversionRate = totals.totalClicks > 0 ? totals.totalConversions / totals.totalClicks : 0;
+            const responseData = {
+                data: adData,
+                summary: {
+                    totalAdSpend: totals.totalAdSpend.toFixed(2),
+                    totalInstalls: totals.totalInstalls,
+                    totalConversions: totals.totalConversions,
+                    totalRevenue: totals.totalRevenue.toFixed(2),
+                    avgCPI: avgCPI.toFixed(2),
+                    avgCPA: avgCPA.toFixed(2),
+                    avgROAS: avgROAS.toFixed(4),
+                    avgCTR: (avgCTR * 100).toFixed(4),
+                    avgConversionRate: (avgConversionRate * 100).toFixed(4),
+                    totalImpressions: totals.totalImpressions,
+                    totalClicks: totals.totalClicks,
+                }
+            };
+            console.log('[PUBLIC-ADS] Success, sending response');
+            res.json(responseData);
+        }
+        catch (error) {
+            console.error("[PUBLIC-ADS] Error:", error);
+            res.status(500).json({ error: 'Error getting ad performance metrics', details: error.message });
+        }
+    });
     app.get('/api/test/analytics/overview', async (req, res) => {
         try {
             const overview = await biAnalyticsService_1.biAnalyticsService.getAdminOverview();
@@ -4896,6 +5366,443 @@ async function registerRoutes(app) {
             res.status(500).json({ error: 'Internal server error', message: error.message });
         }
     });
+    // ===== NEW ADMIN ANALYTICS ENDPOINTS (Improved) =====
+    /**
+     * @swagger
+     * /api/admin/analytics/overview-v2:
+     *   get:
+     *     summary: Получить обзор аналитики (улучшенная версия)
+     *     tags: [Admin Analytics]
+     *     responses:
+     *       200:
+     *         description: Обзор аналитики с fallback данными
+     */
+    app.get('/api/admin/analytics/overview-v2', async (req, res) => {
+        try {
+            console.log('[AdminAnalytics] Overview-v2 endpoint called - ClickHouse only');
+            // Initialize ClickHouse schema if not done yet
+            await clickhouseAnalyticsService_js_1.clickhouseAnalyticsService.initializeSchema();
+            // Get data from ClickHouse only
+            const overview = await clickhouseAnalyticsService_js_1.clickhouseAnalyticsService.getDashboardOverview();
+            console.log('[AdminAnalytics] ClickHouse overview-v2 data retrieved successfully');
+            res.json({
+                ...overview,
+                dataSource: 'clickhouse',
+                version: 'v2'
+            });
+        }
+        catch (error) {
+            console.error("[AdminAnalytics] Error getting admin analytics overview-v2:", error);
+            res.status(500).json({
+                error: 'ClickHouse недоступен',
+                details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
+        }
+    });
+    /**
+     * @swagger
+     * /api/admin/analytics/revenue-v2:
+     *   get:
+     *     summary: Получить метрики доходов (улучшенная версия)
+     *     tags: [Admin Analytics]
+     *     parameters:
+     *       - in: query
+     *         name: days
+     *         schema:
+     *           type: integer
+     *           default: 30
+     *         description: Количество дней для выборки
+     *     responses:
+     *       200:
+     *         description: Метрики доходов в правильном формате
+     */
+    app.get('/api/admin/analytics/revenue-v2', async (req, res) => {
+        try {
+            console.log('[AdminAnalytics] Revenue-v2 endpoint called');
+            const daysParam = req.query.days;
+            const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365); // Limit 1-365 days
+            console.log(`[AdminAnalytics] Getting revenue data for ${days} days`);
+            // ClickHouse only - no fallback
+            throw new Error('Revenue data available only via ClickHouse overview endpoint');
+            console.log(`[AdminAnalytics] Revenue data retrieved: ${result.data.length} records`);
+            res.json(result);
+        }
+        catch (error) {
+            console.error("[AdminAnalytics] Error getting revenue metrics:", error);
+            res.status(500).json({
+                error: 'Ошибка получения метрик доходов',
+                details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
+        }
+    });
+    /**
+     * @swagger
+     * /api/admin/analytics/ads-v2:
+     *   get:
+     *     summary: Получить метрики рекламы (улучшенная версия)
+     *     tags: [Admin Analytics]
+     *     parameters:
+     *       - in: query
+     *         name: days
+     *         schema:
+     *           type: integer
+     *           default: 30
+     *         description: Количество дней для анализа
+     *     responses:
+     *       200:
+     *         description: Ad Performance метрики с summary данными
+     */
+    app.get('/api/admin/analytics/ads-v2', async (req, res) => {
+        try {
+            console.log('[AdminAnalytics] Ads-v2 endpoint called');
+            const daysParam = req.query.days;
+            const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365); // Limit 1-365 days
+            console.log(`[AdminAnalytics] Getting ads data for ${days} days`);
+            // ClickHouse only - no fallback
+            throw new Error('Ads data available only via ClickHouse overview endpoint');
+            console.log(`[AdminAnalytics] Ads data retrieved: ${result.data.length} records`);
+            res.json(result);
+        }
+        catch (error) {
+            console.error("[AdminAnalytics] Error getting ads metrics:", error);
+            res.status(500).json({
+                error: 'Ошибка получения метрик рекламы',
+                details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
+        }
+    });
+    // Debug endpoint для проверки структуры таблиц (только в development)
+    if (process.env.NODE_ENV === 'development') {
+        app.get('/api/debug/table-structure', async (req, res) => {
+            try {
+                // Debug endpoint removed - ClickHouse only
+                res.json(structure);
+            }
+            catch (error) {
+                console.error("Error getting table structure:", error);
+                res.status(500).json({ error: error.message });
+            }
+        });
+    }
+    /**
+     * @swagger
+     * /api/admin/premium-purchased:
+     *   get:
+     *     summary: Получить список пользователей с купленным премиумом
+     *     tags: [Admin Premium]
+     *     security:
+     *       - sessionAuth: []
+     *     parameters:
+     *       - in: query
+     *         name: page
+     *         schema:
+     *           type: integer
+     *           default: 1
+     *         description: Номер страницы
+     *       - in: query
+     *         name: limit
+     *         schema:
+     *           type: integer
+     *           default: 10
+     *         description: Количество записей на страницу
+     *     responses:
+     *       200:
+     *         description: Список пользователей с купленным премиумом
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 users:
+     *                   type: array
+     *                   items:
+     *                     type: object
+     *                     properties:
+     *                       id:
+     *                         type: string
+     *                       firstName:
+     *                         type: string
+     *                       lastName:
+     *                         type: string
+     *                       profileImageUrl:
+     *                         type: string
+     *                       premiumExpiresAt:
+     *                         type: string
+     *                       planType:
+     *                         type: string
+     *                       amount:
+     *                         type: string
+     *                 totalCount:
+     *                   type: number
+     *                 totalPages:
+     *                   type: number
+     *       401:
+     *         description: Не авторизован
+     */
+    app.get('/api/admin/premium-purchased', async (req, res) => {
+        try {
+            console.log('[AdminPremium] Fetching purchased premium users...');
+            const page = Math.max(1, parseInt(req.query.page) || 1);
+            const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+            const offset = (page - 1) * limit;
+            // Получаем пользователей с активными купленными подписками
+            const usersWithPurchasedPremium = await db_1.db
+                .select({
+                id: schema_1.users.id,
+                firstName: schema_1.users.firstName,
+                lastName: schema_1.users.lastName,
+                profileImageUrl: schema_1.users.profileImageUrl,
+                premiumExpiresAt: schema_1.users.premiumExpiresAt,
+                planType: schema_1.premiumSubscriptions.planType,
+                amount: schema_1.premiumSubscriptions.amount,
+            })
+                .from(schema_1.users)
+                .innerJoin(schema_1.premiumSubscriptions, (0, drizzle_orm_1.eq)(schema_1.users.id, schema_1.premiumSubscriptions.userId))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.premiumSubscriptions.status, 'succeeded'), (0, drizzle_orm_1.eq)(schema_1.premiumSubscriptions.isActive, true), (0, drizzle_orm_1.gte)(schema_1.premiumSubscriptions.expiresAt, new Date())))
+                .orderBy((0, drizzle_orm_1.desc)(schema_1.users.premiumExpiresAt))
+                .limit(limit)
+                .offset(offset);
+            // Получаем общее количество
+            const [{ count }] = await db_1.db
+                .select({ count: (0, drizzle_orm_1.sql) `count(*)` })
+                .from(schema_1.users)
+                .innerJoin(schema_1.premiumSubscriptions, (0, drizzle_orm_1.eq)(schema_1.users.id, schema_1.premiumSubscriptions.userId))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.premiumSubscriptions.status, 'succeeded'), (0, drizzle_orm_1.eq)(schema_1.premiumSubscriptions.isActive, true), (0, drizzle_orm_1.gte)(schema_1.premiumSubscriptions.expiresAt, new Date())));
+            const totalCount = Number(count);
+            const totalPages = Math.ceil(totalCount / limit);
+            console.log(`[AdminPremium] Found ${usersWithPurchasedPremium.length} purchased premium users (total: ${totalCount})`);
+            if (usersWithPurchasedPremium.length > 0) {
+                console.log(`[AdminPremium] Sample user:`, JSON.stringify(usersWithPurchasedPremium[0], null, 2));
+            }
+            res.json({
+                users: usersWithPurchasedPremium,
+                totalCount,
+                totalPages,
+                currentPage: page,
+            });
+        }
+        catch (error) {
+            console.error("Error fetching purchased premium users:", error);
+            res.status(500).json({ error: 'Ошибка получения пользователей с купленным премиумом' });
+        }
+    });
+    /**
+     * @swagger
+     * /api/admin/premium-rewards:
+     *   get:
+     *     summary: Получить список пользователей с премиумом по наградам
+     *     tags: [Admin Premium]
+     *     security:
+     *       - sessionAuth: []
+     *     parameters:
+     *       - in: query
+     *         name: page
+     *         schema:
+     *           type: integer
+     *           default: 1
+     *         description: Номер страницы
+     *       - in: query
+     *         name: limit
+     *         schema:
+     *           type: integer
+     *           default: 10
+     *         description: Количество записей на страницу
+     *     responses:
+     *       200:
+     *         description: Список пользователей с премиумом по наградам
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 users:
+     *                   type: array
+     *                   items:
+     *                     type: object
+     *                     properties:
+     *                       id:
+     *                         type: string
+     *                       firstName:
+     *                         type: string
+     *                       lastName:
+     *                         type: string
+     *                       profileImageUrl:
+     *                         type: string
+     *                       premiumExpiresAt:
+     *                         type: string
+     *                       rewardsCount:
+     *                         type: number
+     *                       lastRewardLevel:
+     *                         type: number
+     *                       proDaysGranted:
+     *                         type: number
+     *                 totalCount:
+     *                   type: number
+     *                 totalPages:
+     *                   type: number
+     *       401:
+     *         description: Не авторизован
+     */
+    app.get('/api/admin/premium-rewards', async (req, res) => {
+        try {
+            console.log('[AdminPremium] Fetching rewards premium users...');
+            const page = Math.max(1, parseInt(req.query.page) || 1);
+            const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+            const offset = (page - 1) * limit;
+            // Получаем пользователей с премиумом, у которых НЕТ активных купленных подписок
+            // Это означает, что их премиум получен через награды
+            const usersWithRewardsPremium = await db_1.db
+                .select({
+                id: schema_1.users.id,
+                firstName: schema_1.users.firstName,
+                lastName: schema_1.users.lastName,
+                profileImageUrl: schema_1.users.profileImageUrl,
+                premiumExpiresAt: schema_1.users.premiumExpiresAt,
+                rewardsCount: schema_1.users.rewardsCount,
+            })
+                .from(schema_1.users)
+                .leftJoin(schema_1.premiumSubscriptions, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.users.id, schema_1.premiumSubscriptions.userId), (0, drizzle_orm_1.eq)(schema_1.premiumSubscriptions.status, 'succeeded'), (0, drizzle_orm_1.eq)(schema_1.premiumSubscriptions.isActive, true), (0, drizzle_orm_1.gte)(schema_1.premiumSubscriptions.expiresAt, new Date())))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.users.isPremium, true), (0, drizzle_orm_1.gte)(schema_1.users.premiumExpiresAt, new Date()), (0, drizzle_orm_1.isNull)(schema_1.premiumSubscriptions.id) // Нет активных купленных подписок
+            ))
+                .orderBy((0, drizzle_orm_1.desc)(schema_1.users.premiumExpiresAt))
+                .limit(limit)
+                .offset(offset);
+            // Для каждого пользователя определяем последний уровень с proDays и сколько дней было начислено
+            const usersWithRewardDetails = await Promise.all(usersWithRewardsPremium.map(async (user) => {
+                const rewardLevel = user.rewardsCount || 0;
+                // Находим все уровни с proDays, которые пользователь достиг
+                const rewardTiersWithPro = await db_1.db
+                    .select({
+                    level: schema_1.rewardTiers.level,
+                    proDays: schema_1.rewardTiers.proDays,
+                })
+                    .from(schema_1.rewardTiers)
+                    .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.lte)(schema_1.rewardTiers.level, rewardLevel), (0, drizzle_orm_1.isNotNull)(schema_1.rewardTiers.proDays), (0, drizzle_orm_1.gt)(schema_1.rewardTiers.proDays, 0), (0, drizzle_orm_1.eq)(schema_1.rewardTiers.isActive, true)))
+                    .orderBy((0, drizzle_orm_1.desc)(schema_1.rewardTiers.level));
+                const lastRewardLevel = rewardTiersWithPro[0]?.level || 0;
+                const totalProDaysGranted = rewardTiersWithPro.reduce((sum, tier) => sum + (tier.proDays || 0), 0);
+                return {
+                    ...user,
+                    lastRewardLevel,
+                    proDaysGranted: totalProDaysGranted,
+                };
+            }));
+            // Получаем общее количество
+            const [{ count }] = await db_1.db
+                .select({ count: (0, drizzle_orm_1.sql) `count(*)` })
+                .from(schema_1.users)
+                .leftJoin(schema_1.premiumSubscriptions, (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.users.id, schema_1.premiumSubscriptions.userId), (0, drizzle_orm_1.eq)(schema_1.premiumSubscriptions.status, 'succeeded'), (0, drizzle_orm_1.eq)(schema_1.premiumSubscriptions.isActive, true), (0, drizzle_orm_1.gte)(schema_1.premiumSubscriptions.expiresAt, new Date())))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.users.isPremium, true), (0, drizzle_orm_1.gte)(schema_1.users.premiumExpiresAt, new Date()), (0, drizzle_orm_1.isNull)(schema_1.premiumSubscriptions.id)));
+            const totalCount = Number(count);
+            const totalPages = Math.ceil(totalCount / limit);
+            console.log(`[AdminPremium] Found ${usersWithRewardDetails.length} rewards premium users (total: ${totalCount})`);
+            res.json({
+                users: usersWithRewardDetails,
+                totalCount,
+                totalPages,
+                currentPage: page,
+            });
+        }
+        catch (error) {
+            console.error("Error fetching rewards premium users:", error);
+            res.status(500).json({ error: 'Ошибка получения пользователей с премиумом по наградам' });
+        }
+    });
+    /**
+     * @swagger
+     * /api/admin/premium-stats:
+     *   get:
+     *     summary: Получить общую статистику по премиум пользователям
+     *     tags: [Admin Premium]
+     *     security:
+     *       - sessionAuth: []
+     *     responses:
+     *       200:
+     *         description: Статистика премиум пользователей
+     *         content:
+     *           application/json:
+     *             schema:
+     *               type: object
+     *               properties:
+     *                 purchased:
+     *                   type: object
+     *                   properties:
+     *                     total:
+     *                       type: number
+     *                     monthly:
+     *                       type: number
+     *                     yearly:
+     *                       type: number
+     *                 rewards:
+     *                   type: object
+     *                   properties:
+     *                     total:
+     *                       type: number
+     *                     totalProDaysGranted:
+     *                       type: number
+     *       401:
+     *         description: Не авторизован
+     */
+    app.get('/api/admin/premium-stats', async (req, res) => {
+        try {
+            // 1. Количество пользователей с купленными подписками
+            const [purchasedCount] = await db_1.db
+                .select({ count: (0, drizzle_orm_1.sql) `count(*)` })
+                .from(schema_1.premiumSubscriptions)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.premiumSubscriptions.status, 'succeeded'), (0, drizzle_orm_1.eq)(schema_1.premiumSubscriptions.isActive, true), (0, drizzle_orm_1.gte)(schema_1.premiumSubscriptions.expiresAt, new Date())));
+            // 2. Разбивка по типам подписок
+            const [monthlyCount] = await db_1.db
+                .select({ count: (0, drizzle_orm_1.sql) `count(*)` })
+                .from(schema_1.premiumSubscriptions)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.premiumSubscriptions.status, 'succeeded'), (0, drizzle_orm_1.eq)(schema_1.premiumSubscriptions.isActive, true), (0, drizzle_orm_1.gte)(schema_1.premiumSubscriptions.expiresAt, new Date()), (0, drizzle_orm_1.eq)(schema_1.premiumSubscriptions.planType, 'month')));
+            const [yearlyCount] = await db_1.db
+                .select({ count: (0, drizzle_orm_1.sql) `count(*)` })
+                .from(schema_1.premiumSubscriptions)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.premiumSubscriptions.status, 'succeeded'), (0, drizzle_orm_1.eq)(schema_1.premiumSubscriptions.isActive, true), (0, drizzle_orm_1.gte)(schema_1.premiumSubscriptions.expiresAt, new Date()), (0, drizzle_orm_1.eq)(schema_1.premiumSubscriptions.planType, 'year')));
+            // 3. Общее количество премиум пользователей
+            const [totalPremiumCount] = await db_1.db
+                .select({ count: (0, drizzle_orm_1.sql) `count(*)` })
+                .from(schema_1.users)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.users.isPremium, true), (0, drizzle_orm_1.gte)(schema_1.users.premiumExpiresAt, new Date())));
+            // 4. Количество премиум пользователей без подписки (награды)
+            const rewardsCount = Math.max(0, (totalPremiumCount.count || 0) - (purchasedCount.count || 0));
+            // 5. Подсчитываем реальное количество PRO дней из reward_tiers
+            const [proDaysResult] = await db_1.db
+                .select({
+                totalDays: (0, drizzle_orm_1.sql) `
+            COALESCE(SUM(
+              CASE 
+                WHEN ${schema_1.users.rewardsCount} >= ${schema_1.rewardTiers.level} AND ${schema_1.rewardTiers.proDays} IS NOT NULL 
+                THEN ${schema_1.rewardTiers.proDays}
+                ELSE 0 
+              END
+            ), 0)
+          `
+            })
+                .from(schema_1.users)
+                .crossJoin(schema_1.rewardTiers)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.users.isPremium, true), (0, drizzle_orm_1.gte)(schema_1.users.premiumExpiresAt, new Date()), (0, drizzle_orm_1.isNotNull)(schema_1.rewardTiers.proDays), (0, drizzle_orm_1.gt)(schema_1.rewardTiers.proDays, 0)));
+            const totalProDays = Number(proDaysResult?.totalDays || 0);
+            res.json({
+                purchased: {
+                    total: Number(purchasedCount.count || 0),
+                    monthly: Number(monthlyCount.count || 0),
+                    yearly: Number(yearlyCount.count || 0),
+                },
+                rewards: {
+                    total: rewardsCount,
+                    totalProDaysGranted: totalProDays,
+                },
+            });
+        }
+        catch (error) {
+            console.error('Error fetching premium stats:', error);
+            res.status(500).json({
+                error: 'Failed to fetch premium statistics',
+                details: error.message
+            });
+        }
+    });
     /**
      * @swagger
      * /api/funds/ensure-free:
@@ -4926,7 +5833,7 @@ async function registerRoutes(app) {
             const { requiredAmount } = req.body ?? {};
             const user = await storage_1.storage.getUser(userId);
             if (!user) {
-                res.status(404).json({ success: false, error: 'Пользователь не найден' });
+                res.status(404).json({ success: false, error: translations_js_1.serverTranslations.error('userNotFound') });
                 return;
             }
             const before = {
@@ -5157,7 +6064,7 @@ async function registerRoutes(app) {
             res.status(500).json({ error: 'Ошибка получения прибыли активных сделок' });
         }
     });
-    app.post('/api/deals/open', simpleOAuth_1.isAuthenticated, async (req, res) => {
+    app.post('/api/deals/open', simpleOAuth_1.isAuthenticated, analyticsLogger_js_1.default.tradeLogger(), async (req, res) => {
         try {
             const userId = req.user.id;
             const { symbol, direction, amount, multiplier, takeProfit, stopLoss } = req.body;
@@ -5180,18 +6087,24 @@ async function registerRoutes(app) {
             res.status(400).json({ success: false, error: error.message });
         }
     });
-    app.post('/api/deals/close', simpleOAuth_1.isAuthenticated, async (req, res) => {
+    app.post('/api/deals/close', (req, res, next) => {
+        console.log(`🚨 [MIDDLEWARE] /api/deals/close вызван, body:`, req.body);
+        next();
+    }, simpleOAuth_1.isAuthenticated, analyticsLogger_js_1.default.tradeLogger(), async (req, res) => {
         try {
             const userId = req.user.id;
             const { dealId } = req.body;
+            console.log(`🔥 [ROUTES] REST API /api/deals/close вызван: userId=${userId}, dealId=${dealId}`);
             if (!dealId) {
                 res.status(400).json({ error: 'dealId обязателен' });
                 return;
             }
             const result = await dealsService_1.dealsService.closeDeal({ userId, dealId: Number(dealId) });
+            console.log(`🔥 [ROUTES] REST API закрытие завершено успешно для dealId=${dealId}`);
             res.json({ success: true, ...result });
         }
         catch (error) {
+            console.error(`🔥 [ROUTES] REST API ошибка закрытия dealId=${dealId}:`, error.message);
             res.status(400).json({ success: false, error: error.message });
         }
     });
@@ -5205,11 +6118,11 @@ async function registerRoutes(app) {
                 return;
             }
             if (takeProfit !== undefined && (typeof takeProfit !== 'number' || takeProfit <= 0)) {
-                res.status(400).json({ success: false, error: 'Некорректное значение Take Profit' });
+                res.status(400).json({ success: false, error: translations_js_1.serverTranslations.error('invalidTakeProfit') });
                 return;
             }
             if (stopLoss !== undefined && (typeof stopLoss !== 'number' || stopLoss <= 0)) {
-                res.status(400).json({ success: false, error: 'Некорректное значение Stop Loss' });
+                res.status(400).json({ success: false, error: translations_js_1.serverTranslations.error('invalidStopLoss') });
                 return;
             }
             // Нечего обновлять — оба значения отсутствуют
@@ -5243,7 +6156,7 @@ async function registerRoutes(app) {
             if (isNaN(dealId) || dealId <= 0) {
                 res.status(400).json({
                     success: false,
-                    error: 'Некорректный ID сделки'
+                    error: translations_js_1.serverTranslations.error('dealNotFound')
                 });
                 return;
             }
@@ -5298,18 +6211,113 @@ async function registerRoutes(app) {
         pingTimeout: 60000,
         pingInterval: 25000,
     });
-    // Redis адаптер для кластеризации Socket.io
-    try {
+    // Redis adapter для кластеризации Socket.io с устойчивой обработкой ошибок
+    const setupRedisAdapter = async () => {
         const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-        const pubClient = (0, redis_1.createClient)({ url: redisUrl });
-        const subClient = pubClient.duplicate();
-        await Promise.all([pubClient.connect(), subClient.connect()]);
-        io.adapter((0, redis_adapter_1.createAdapter)(pubClient, subClient));
-        console.log('✅ Socket.io Redis адаптер подключен');
-    }
-    catch (error) {
-        console.warn('⚠️ Redis недоступен, Socket.io работает без кластеризации:', error);
-    }
+        console.log('🔌 Подключаемся к Redis для Socket.io адаптера...');
+        // Флаги для отслеживания состояния подключения
+        let connectionAttempted = false;
+        let pubClient = null;
+        let subClient = null;
+        try {
+            // Создаем клиентов с улучшенными настройками
+            pubClient = (0, redis_1.createClient)({
+                url: redisUrl,
+                socket: {
+                    connectTimeout: 3000, // Короткий таймаут подключения
+                    lazyConnect: false, // Немедленное подключение
+                    reconnectStrategy: false, // Отключаем автоподключение для точного контроля
+                }
+            });
+            subClient = (0, redis_1.createClient)({
+                url: redisUrl,
+                socket: {
+                    connectTimeout: 3000,
+                    lazyConnect: false,
+                    reconnectStrategy: false,
+                }
+            });
+            // Критические обработчики ошибок - НЕ позволяем падать серверу
+            pubClient.on('error', (error) => {
+                console.warn('⚠️ Redis pub client error:', error.message);
+            });
+            subClient.on('error', (error) => {
+                console.warn('⚠️ Redis sub client error:', error.message);
+            });
+            // Создаем Promise с жестким таймаутом
+            connectionAttempted = true;
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => {
+                    reject(new Error('Redis connection timed out after 4 seconds'));
+                }, 4000);
+            });
+            const connectPromise = Promise.all([
+                pubClient.connect(),
+                subClient.connect()
+            ]);
+            // Ждем либо подключения, либо таймаута
+            await Promise.race([connectPromise, timeoutPromise]);
+            // Проверяем, что соединения действительно готовы
+            if (!pubClient.isReady || !subClient.isReady) {
+                throw new Error('Redis clients not ready after connection');
+            }
+            // Успешное подключение - настраиваем адаптер
+            const redisAdapter = (0, redis_adapter_1.createAdapter)(pubClient, subClient);
+            io.adapter(redisAdapter);
+            console.log('✅ Socket.io Redis адаптер успешно подключен');
+            console.log('🌐 Socket.io готов к кластеризации');
+            // Мониторинг здоровья (тихий, раз в минуту)
+            const healthCheckInterval = setInterval(() => {
+                if (pubClient?.isReady && subClient?.isReady) {
+                    // Тихий success - не засоряем логи
+                }
+                else {
+                    console.warn('💛 Redis adapter health check: соединение нестабильно');
+                }
+            }, 60000);
+            // Graceful shutdown
+            process.on('SIGTERM', async () => {
+                console.log('🔌 Закрываем Redis соединения для Socket.io...');
+                clearInterval(healthCheckInterval);
+                await Promise.allSettled([
+                    pubClient?.disconnect(),
+                    subClient?.disconnect()
+                ]);
+            });
+            return true;
+        }
+        catch (error) {
+            console.warn('⚠️ Не удалось подключить Redis адаптер:', error.message);
+            console.warn('📡 Socket.io работает в standalone режиме');
+            // Очистка клиентов при ошибке
+            try {
+                if (connectionAttempted) {
+                    await Promise.allSettled([
+                        pubClient?.disconnect?.(),
+                        subClient?.disconnect?.()
+                    ]);
+                }
+            }
+            catch (cleanupError) {
+                // Тихо игнорируем ошибки очистки
+            }
+            return false;
+        }
+    };
+    // ВАЖНО: Запускаем асинхронно, НЕ блокируя запуск сервера
+    setupRedisAdapter()
+        .then((success) => {
+        if (success) {
+            console.log('🚀 Redis адаптер готов к продакшену и кластеризации');
+        }
+        else {
+            console.log('🔧 Сервер работает в standalone режиме (без Redis кластеризации)');
+        }
+    })
+        .catch((error) => {
+        console.error('❌ Критическая ошибка настройки Redis адаптера:', error.message);
+        console.log('📡 Fallback: Socket.io работает в standalone режиме');
+    });
     const socketSubs = new Map();
     io.on('connection', (socket) => {
         socketSubs.set(socket.id, { symbols: new Set() });

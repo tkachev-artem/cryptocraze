@@ -18,10 +18,12 @@ type SpotlightProps = {
   dimOpacity?: number; // 0..1 darkness for the dim layer
   forceDim?: boolean; // when true, draw fullscreen dim even if no targets
   paddingPx?: number; // extra padding around targets (can be negative or 0)
+  paddingVertical?: number; // extra vertical padding (overrides paddingPx for top/bottom)
+  paddingHorizontal?: number; // extra horizontal padding (overrides paddingPx for left/right)
   shadowPx?: number; // extra blue glow thickness around outline
 };
 
-export const TradeTutorialSpotlight = ({ targetSelector, active, zIndex = 65, dimOpacity = 0.3, forceDim = false, paddingPx = 8, shadowPx = 4 }: SpotlightProps) => {
+export const TradeTutorialSpotlight = ({ targetSelector, active, zIndex = 65, dimOpacity = 0.3, forceDim = false, paddingPx = 8, paddingVertical, paddingHorizontal, shadowPx = 4 }: SpotlightProps) => {
   const [rects, setRects] = useState<DOMRect[]>([]);
 
   const updateRects = useCallback(() => {
@@ -43,16 +45,18 @@ export const TradeTutorialSpotlight = ({ targetSelector, active, zIndex = 65, di
     const newRects: DOMRect[] = [];
     elements.forEach((el) => {
       const r = el.getBoundingClientRect();
+      const horizontalPad = paddingHorizontal ?? paddingPx;
+      const verticalPad = paddingVertical ?? paddingPx;
       const padded = new DOMRect(
-        r.left - paddingPx,
-        r.top - paddingPx,
-        r.width + paddingPx * 2,
-        r.height + paddingPx * 2,
+        r.left - horizontalPad,
+        r.top - verticalPad,
+        r.width + horizontalPad * 2,
+        r.height + verticalPad * 2,
       );
       newRects.push(padded);
     });
     setRects(newRects);
-  }, [targetSelector, paddingPx]);
+  }, [targetSelector, paddingPx, paddingVertical, paddingHorizontal]);
 
   useEffect(() => {
     if (!active) return;
@@ -73,7 +77,7 @@ export const TradeTutorialSpotlight = ({ targetSelector, active, zIndex = 65, di
       window.removeEventListener('scroll', onResize, true);
       observer.disconnect();
     };
-  }, [active, targetSelector, paddingPx, updateRects]);
+  }, [active, targetSelector, paddingPx, paddingVertical, paddingHorizontal, updateRects]);
 
   if (!active) return null;
 

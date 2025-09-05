@@ -9,6 +9,7 @@ exports.setupAuth = setupAuth;
 const express_session_1 = __importDefault(require("express-session"));
 const connect_pg_simple_1 = __importDefault(require("connect-pg-simple"));
 const storage_js_1 = require("./storage.js");
+const analyticsLogger_js_1 = __importDefault(require("./middleware/analyticsLogger.js"));
 function getSession() {
     const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
     const pgStore = (0, connect_pg_simple_1.default)(express_session_1.default);
@@ -35,7 +36,7 @@ async function setupAuth(app) {
     app.set("trust proxy", 1);
     app.use(getSession());
     // Простая аутентификация для разработки
-    app.get("/api/login", async (req, res) => {
+    app.get("/api/login", analyticsLogger_js_1.default.loginLogger(), async (req, res) => {
         // Создаем тестового пользователя
         const testUser = {
             id: 'dev-user-123',

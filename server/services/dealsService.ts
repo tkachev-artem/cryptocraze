@@ -7,6 +7,7 @@ import { applyAutoRewards } from './autoRewards.js';
 import { workerManager } from './workers/workerManager.js';
 import AnalyticsLogger from '../middleware/analyticsLogger.js';
 import { notificationService } from './notifications.js';
+import { serverTranslations } from '../lib/translations.js';
 
 export const dealsService = {
   async openDeal({ userId, symbol, direction, amount, multiplier, takeProfit, stopLoss }: {
@@ -20,7 +21,7 @@ export const dealsService = {
   }) {
     // Проверка пользователя
     const user = await storage.getUser(userId);
-    if (!user) throw new Error('Пользователь не найден');
+    if (!user) throw new Error(serverTranslations.error('userNotFound'));
     // Автоматическое поддержание 30% в свободных средствах при нехватке
     const currentBalance = Number(user.balance || 0);
     const currentFree = Number(user.freeBalance || 0);
@@ -35,7 +36,7 @@ export const dealsService = {
       }
       const [reloaded] = await db.select().from(users).where(eq(users.id as any, userId));
       if (!reloaded || Number(reloaded.freeBalance || 0) < amount) {
-        throw new Error('Недостаточно средств');
+        throw new Error(serverTranslations.error('insufficientFunds'));
       }
     }
 
@@ -45,16 +46,16 @@ export const dealsService = {
       await unifiedPriceService.addPair(symbol);
       priceData = unifiedPriceService.getPrice(symbol);
     }
-    if (!priceData) throw new Error('Символ не найден или не поддерживается');
+    if (!priceData) throw new Error(serverTranslations.error('symbolNotFound'));
     const openPrice = priceData.price;
 
     // Проверка плеча
-    if (multiplier < 1 || multiplier > 100) throw new Error('Некорректное значение плеча');
-    if (amount <= 0) throw new Error('Сумма должна быть больше 0');
+    if (multiplier < 1 || multiplier > 100) throw new Error(serverTranslations.error('invalidLeverage'));
+    if (amount <= 0) throw new Error(serverTranslations.error('invalidAmount'));
 
     // Валидация TP/SL
-    if (takeProfit && takeProfit <= 0) throw new Error('Некорректный Take Profit');
-    if (stopLoss && stopLoss <= 0) throw new Error('Некорректный Stop Loss');
+    if (takeProfit && takeProfit <= 0) throw new Error(serverTranslations.error('invalidTakeProfit'));
+    if (stopLoss && stopLoss <= 0) throw new Error(serverTranslations.error('invalidStopLoss'));
 
     // Фиксируем цену открытия с бэка
     const now = new Date();

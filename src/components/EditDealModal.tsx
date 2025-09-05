@@ -506,6 +506,7 @@ export const EditDealModal = ({ bottomOffset = 0 }: EditDealModalProps) => {
                                 onClick={() => { void handleCloseDeal(); }}
                                 disabled={isLoading}
                                 className="min-h-[35px] bg-[#0C54EA] text-white !font-bold text-xs rounded-[20px] hover:bg-blue-700 disabled:bg-gray-400 px-8 py-2 w-full sm:w-auto"
+                                data-tutorial-target="edit-deal-close"
                             >
                                 {isLoading ? t('deal.closing') : t('deal.closeTrade')}
                             </Button>

@@ -130,6 +130,9 @@ const Deal = ({ isOpen, onClose, cryptoData, userBalance, direction, bottomOffse
 
     const handleBuy = useCallback(async () => {
         try {
+            // Notify tutorial that user clicked the buy button (for step 9)
+            window.dispatchEvent(new Event('trade:tutorial:buyButtonClicked'));
+            
             // Проверяем и при необходимости пополняем свободные средства до 30%
             const requiredAmount = Number(amount) || 0;
 

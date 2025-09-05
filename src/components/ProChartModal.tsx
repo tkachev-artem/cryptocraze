@@ -178,7 +178,9 @@ const ProChartModal: React.FC<ProChartModalProps> = ({
                       });
                       
                       // Отправляем событие для обучения, если это EMA, RSI или SMA
-                      window.dispatchEvent(new Event(`pro:tutorial:${opt.id}Toggled`));
+                      const eventName = `pro:tutorial:${opt.id}Toggled`;
+                      console.log(`[ProChartModal] Dispatching tutorial event: ${eventName}`);
+                      window.dispatchEvent(new Event(eventName));
                     }}
                     className={`relative w-10 h-5 rounded-full transition-colors duration-200 ${isOn ? 'bg-[#0C46BE]' : 'bg-[#F1F7FF]'}`}
                     aria-pressed={isOn}

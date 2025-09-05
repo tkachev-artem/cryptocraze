@@ -19,6 +19,8 @@ const DealInfo = () => {
   }, [isDealInfoOpen]);
 
   const handleClose = () => {
+    // Notify tutorial that user closed deal info (for step 11)
+    window.dispatchEvent(new Event('trade:tutorial:dealInfoClosed'));
      
     dispatch(closeDealInfo());
   };

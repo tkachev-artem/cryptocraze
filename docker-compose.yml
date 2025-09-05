@@ -1,0 +1,104 @@
+# Docker Compose configuration for CryptoCraze
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "1111:1111"
+    environment:
+      - NODE_ENV=production
+      - PORT=1111
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/crypto_analyzer
+      - REDIS_URL=redis://redis:6379
+      - CLICKHOUSE_URL=http://clickhouse:8123
+      - CLICKHOUSE_DATABASE=cryptocraze_analytics
+      - ENABLE_REDIS_SCALING=false
+      - SKIP_MIGRATIONS=false
+      - STATIC_ONLY=false
+      - TUNNEL_URL=https://relieved-magpie-pleasing.ngrok-free.app
+      - GOOGLE_CLIENT_ID=707632794493-srt8bno0b30oclctuo9e50nhoin9jfma.apps.googleusercontent.com
+      - GOOGLE_CLIENT_SECRET=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
+      - GOOGLE_OAUTH_REDIRECT_URI=https://relieved-magpie-pleasing.ngrok-free.app/api/auth/google/callback
+      - SESSION_SECRET=production-secret-change-me-123456789
+      - FRONTEND_URL=https://relieved-magpie-pleasing.ngrok-free.app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./uploads:/app/uploads
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=crypto_analyzer
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./drizzle:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d crypto_analyzer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    environment:
+      - CLICKHOUSE_DB=cryptocraze_analytics
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_logs:/var/log/clickhouse-server
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  clickhouse_data:
+  clickhouse_logs:
+
+networks:
+  app-network:
+    driver: bridge

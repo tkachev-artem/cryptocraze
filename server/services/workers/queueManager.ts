@@ -61,15 +61,29 @@ export class QueueManager {
   private constructor() {
     // Redis configuration from environment
     const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-    this.redisConfig = {
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-      password: process.env.REDIS_PASSWORD,
-      db: parseInt(process.env.REDIS_DB || '0'),
-      maxRetriesPerRequest: 3,
-      retryDelayOnFailover: 100,
-      lazyConnect: true,
-    };
+    
+    if (process.env.REDIS_URL && process.env.REDIS_URL.startsWith('redis://')) {
+      const url = new URL(process.env.REDIS_URL);
+      this.redisConfig = {
+        host: url.hostname,
+        port: parseInt(url.port) || 6379,
+        password: url.password || undefined,
+        db: parseInt(url.pathname.slice(1)) || 0,
+        maxRetriesPerRequest: 3,
+        retryDelayOnFailover: 100,
+        lazyConnect: true,
+      };
+    } else {
+      this.redisConfig = {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379'),
+        password: process.env.REDIS_PASSWORD,
+        db: parseInt(process.env.REDIS_DB || '0'),
+        maxRetriesPerRequest: 3,
+        retryDelayOnFailover: 100,
+        lazyConnect: true,
+      };
+    }
 
     // Initialize queues with advanced configuration
     this.orderMonitorQueue = new Queue<OrderMonitorJobData>('orderMonitor', {

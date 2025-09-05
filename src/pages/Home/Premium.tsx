@@ -25,7 +25,7 @@ const Premium: FC = () => {
     // Создание подписки в БД
     const createPremiumSubscription = async (planType: 'month' | 'year') => {
         if (!user?.id) {
-            console.error('ID пользователя не найден');
+            console.error(t('errors.userNotFound'));
             return;
         }
 
@@ -65,7 +65,7 @@ const Premium: FC = () => {
                 // Возвращаемся на главную после успешной активации
                 setTimeout(() => { void navigate('/home'); }, 300);
             } else {
-                console.error('Неожиданная структура ответа при создании подписки:', data);
+                console.error(t('premium.unexpected'), data);
                 toast({
                     title: t('premium.activateErrorTitle') || 'Ошибка активации PRO',
                     description: t('premium.unexpected') || 'Неожиданный ответ сервера',

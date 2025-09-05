@@ -95,6 +95,7 @@ const AlertDeal = ({
               onClick={onClose}
               className="w-full max-w-xs mx-auto block bg-[#0C54EA] text-white font-bold text-base sm:text-lg py-3 px-6 rounded-2xl shadow-lg transition hover:bg-blue-600"
               aria-label={t('common.ok')}
+              data-tutorial-target="alert-deal-close"
             >
               {t('common.ok')}
             </Button>

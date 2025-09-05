@@ -270,15 +270,36 @@ const Pro: React.FC = () => {
       setModalType(null);
     };
 
+    const handleCloseMarkerModal = () => {
+      setModalType(null);
+    };
+
+    const handleResetIndicators = () => {
+      console.log('[Pro] Resetting indicators state');
+      setIndicators({ ema: false, rsi: false, sma: false });
+    };
+
+    const handleClearDrawings = () => {
+      console.log('[Pro] Clearing all drawings');
+      setDrawingObjects([]);
+      setSelectedDrawingId(null);
+    };
+
     window.addEventListener('pro:tutorial:openFxModal', handleOpenFxModal);
     window.addEventListener('pro:tutorial:closeFxModal', handleCloseFxModal);
     window.addEventListener('pro:tutorial:openIndicatorsModal', handleOpenIndicatorsModal);
     window.addEventListener('pro:tutorial:closeIndicatorsModal', handleCloseIndicatorsModal);
+    window.addEventListener('pro:tutorial:closeMarkerModal', handleCloseMarkerModal);
+    window.addEventListener('pro:tutorial:resetIndicators', handleResetIndicators);
+    window.addEventListener('pro:tutorial:clearDrawings', handleClearDrawings);
     return () => {
       window.removeEventListener('pro:tutorial:openFxModal', handleOpenFxModal);
       window.removeEventListener('pro:tutorial:closeFxModal', handleCloseFxModal);
       window.removeEventListener('pro:tutorial:openIndicatorsModal', handleOpenIndicatorsModal);
       window.removeEventListener('pro:tutorial:closeIndicatorsModal', handleCloseIndicatorsModal);
+      window.removeEventListener('pro:tutorial:closeMarkerModal', handleCloseMarkerModal);
+      window.removeEventListener('pro:tutorial:resetIndicators', handleResetIndicators);
+      window.removeEventListener('pro:tutorial:clearDrawings', handleClearDrawings);
     };
   }, []);
 

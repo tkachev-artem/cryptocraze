@@ -1,6 +1,7 @@
 import { db } from '../db.js';
 import { userNotifications, notificationTypeEnum } from '../../shared/schema';
 import { eq, and, desc, lt, sql } from 'drizzle-orm';
+import { serverTranslations } from '../lib/translations.js';
 
 export type NotificationType = typeof notificationTypeEnum.enumValues[number];
 
@@ -280,7 +281,7 @@ export class NotificationService {
    * Создать уведомление о закрытии сделки
    */
   static async createTradeClosedNotification(userId: string, tradeId: number, symbol: string, profit: number) {
-    const title = profit >= 0 ? 'Сделка закрыта с прибылью' : 'Сделка закрыта с убытком';
+    const title = profit >= 0 ? serverTranslations.notificationTitle('trade_closed_profit') : serverTranslations.notificationTitle('trade_closed_loss');
     const message = `Сделка #${tradeId} (${symbol}) закрыта. ${profit >= 0 ? 'Прибыль' : 'Убыток'}: $${Math.abs(profit).toFixed(2)}`;
 
     return this.createNotification({
@@ -298,7 +299,7 @@ export class NotificationService {
     return this.createNotification({
       userId,
       type: 'daily_reward',
-      title: 'Ежедневная награда',
+      title: serverTranslations.notificationTitle('daily_reward'),
       message: `Ваша ежедневная награда готова! Получите ${rewardAmount} монет.`
     });
   }
@@ -310,7 +311,7 @@ export class NotificationService {
     return this.createNotification({
       userId,
       type: 'achievement_unlocked',
-      title: 'Новое достижение!',
+      title: serverTranslations.notificationTitle('achievement_unlocked'),
       message: `Поздравляем! Вы получили достижение "${achievementName}".`
     });
   }
@@ -322,7 +323,7 @@ export class NotificationService {
     return this.createNotification({
       userId,
       type: 'daily_reward',
-      title: 'Новая ежедневная задача!',
+      title: serverTranslations.notificationTitle('daily_task'),
       message: `Доступна новая задача: "${taskTitle}" - ${taskDescription}`
     });
   }

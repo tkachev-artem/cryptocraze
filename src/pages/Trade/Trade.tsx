@@ -413,7 +413,7 @@ const { height: bottomNavHeight, ref: bottomNavRef } = useBottomNavigationHeight
       {!isDealInfoOpen && <EditDealModal bottomOffset={bottomNavHeight} />}
 
       {/* Trade Tutorial - New System */}
-      <UniversalTutorial type="trade" autoStart={false} />
+      <UniversalTutorial type="trade" autoStart={true} />
     </div>
     </div>
   );

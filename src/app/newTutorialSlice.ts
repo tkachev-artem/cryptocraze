@@ -92,34 +92,34 @@ export const TUTORIAL_STEPS: Record<TutorialType, BaseTutorialStep[]> = {
     { id: 3, title: 'tradeTutorial.steps.3.title', description: 'tradeTutorial.steps.3.description', targetSelector: '[data-tutorial-target="pair-selector"]', state: 'pending' },
     { id: 4, title: 'tradeTutorial.steps.4.title', description: 'tradeTutorial.steps.4.description', targetSelector: '[data-tutorial-target="chart-area"]', state: 'pending' },
     { id: 5, title: 'tradeTutorial.steps.5.title', description: 'tradeTutorial.steps.5.description', targetSelector: '[data-tutorial-target="timeframe-selector"], [data-tutorial-target="chart-type-selector"]', state: 'pending' },
-    { id: 6, title: 'tradeTutorial.steps.6.title', description: 'tradeTutorial.steps.6.description', targetSelector: '[data-tutorial-target="crypto-info"]', state: 'pending' },
-    { id: 7, title: 'tradeTutorial.steps.7.title', description: 'tradeTutorial.steps.7.description', targetSelector: '[data-tutorial-target="sell-button"], [data-tutorial-target="buy-button"]', state: 'pending' },
-    { id: 8, title: 'tradeTutorial.steps.8.title', description: 'tradeTutorial.steps.8.description', eventHandlers: ['trade:tutorial:buyOrSell'], state: 'pending' },
-    { id: 9, title: 'tradeTutorial.steps.9.title', description: 'tradeTutorial.steps.9.description', autoTriggers: ['trade:tutorial:simulateBuy'], state: 'pending' },
-    { id: 10, title: 'tradeTutorial.steps.10.title', description: 'tradeTutorial.steps.10.description', eventHandlers: ['trade:tutorial:editDealOpened'], state: 'pending' },
-    { id: 11, title: 'tradeTutorial.steps.11.title', description: 'tradeTutorial.steps.11.description', eventHandlers: ['trade:tutorial:dealInfoOpened'], state: 'pending' },
-    { id: 12, title: 'tradeTutorial.steps.12.title', description: 'tradeTutorial.steps.12.description', autoTriggers: ['trade:tutorial:simulateCloseDeal'], state: 'pending' },
+    { id: 6, title: 'tradeTutorial.steps.6.title', description: 'tradeTutorial.steps.6.description', targetSelector: '[data-tutorial-target="deal-amount"], [data-tutorial-target="deal-multiplier"]', state: 'pending', autoTriggers: ['trade:tutorial:openDealModal'] },
+    { id: 7, title: 'tradeTutorial.steps.7.title', description: 'tradeTutorial.steps.7.description', targetSelector: '[data-tutorial-target="deal-take-profit"], [data-tutorial-target="deal-stop-loss"]', state: 'pending' },
+    { id: 8, title: 'tradeTutorial.steps.8.title', description: 'tradeTutorial.steps.8.description', targetSelector: '[data-tutorial-target="deal-direction-toggle"]', state: 'pending' },
+    { id: 9, title: 'tradeTutorial.steps.9.title', description: 'tradeTutorial.steps.9.description', targetSelector: '[data-tutorial-target="deal-volume-buy"]', state: 'pending', eventHandlers: ['trade:tutorial:buyButtonClicked'] },
+    { id: 10, title: 'tradeTutorial.steps.10.title', description: 'tradeTutorial.steps.10.description', state: 'pending' },
+    { id: 11, title: 'tradeTutorial.steps.11.title', description: 'tradeTutorial.steps.11.description', targetSelector: '[data-tutorial-target="edit-deal-close"]', state: 'pending', eventHandlers: ['trade:tutorial:dealInfoClosed'] },
+    { id: 12, title: 'tradeTutorial.steps.12.title', description: 'tradeTutorial.steps.12.description', state: 'pending' },
   ],
   
   pro: [
     { id: 1, title: 'proTutorial.title', description: 'proTutorial.desc', imageSrc: '/pro-menu/pro-bear.svg', state: 'pending' },
     { id: 2, title: 'proTutorial.applyEMA', description: 'proTutorial.movingAverages', targetSelector: '[data-tutorial-target="fx-element"]', eventHandlers: ['pro:tutorial:fxClicked'], state: 'pending' },
     { id: 3, title: 'proTutorial.applyEMA', description: 'proTutorial.movingAverages', targetSelector: '[data-tutorial-target="ema-indicator"]', autoTriggers: ['pro:tutorial:openFxModal'], eventHandlers: ['pro:tutorial:emaToggled'], state: 'pending' },
-    { id: 4, title: 'proTutorial.nextTask', description: '', state: 'pending' },
+    { id: 4, title: 'proTutorial.nextTask', description: '', autoTriggers: ['pro:tutorial:closeIndicatorsModal'], state: 'pending' },
     { id: 5, title: 'proTutorial.applyIndicator', description: 'proTutorial.rsiIndicator', targetSelector: '[data-tutorial-target="fx-element"]', eventHandlers: ['pro:tutorial:fxClicked'], state: 'pending' },
     { id: 6, title: 'proTutorial.applyIndicator', description: 'proTutorial.rsiIndicator', targetSelector: '[data-tutorial-target="rsi-indicator"]', autoTriggers: ['pro:tutorial:openIndicatorsModal'], eventHandlers: ['pro:tutorial:rsiToggled'], state: 'pending' },
-    { id: 7, title: 'proTutorial.nextTask', description: '', state: 'pending' },
+    { id: 7, title: 'proTutorial.nextTask', description: '', autoTriggers: ['pro:tutorial:closeIndicatorsModal'], state: 'pending' },
     { id: 8, title: 'proTutorial.applyEMA', description: 'proTutorial.smaAverages', targetSelector: '[data-tutorial-target="fx-element"]', eventHandlers: ['pro:tutorial:fxClicked'], state: 'pending' },
     { id: 9, title: 'proTutorial.applyEMA', description: 'proTutorial.smaAverages', targetSelector: '[data-tutorial-target="sma-indicator"]', autoTriggers: ['pro:tutorial:openIndicatorsModal'], eventHandlers: ['pro:tutorial:smaToggled'], state: 'pending' },
     { id: 10, title: 'proTutorial.nextTask', description: '', autoTriggers: ['pro:tutorial:closeIndicatorsModal'], state: 'pending' },
     { id: 11, title: 'proTutorial.addLine', description: '', targetSelector: '[data-tutorial-target="marker-element"]', eventHandlers: ['pro:tutorial:markerClicked'], state: 'pending' },
     { id: 12, title: 'proTutorial.addLine', description: '', targetSelector: '[data-tutorial-target="line-element"]', autoTriggers: ['pro:tutorial:openMarkerModal'], eventHandlers: ['pro:tutorial:lineDrawn'], state: 'pending' },
-    { id: 13, title: 'proTutorial.nextTask', description: '', state: 'pending' },
+    { id: 13, title: 'proTutorial.nextTask', description: '', autoTriggers: ['pro:tutorial:closeMarkerModal'], state: 'pending' },
     { id: 14, title: 'markers.tools.area', description: '', targetSelector: '[data-tutorial-target="marker-element"]', eventHandlers: ['pro:tutorial:markerClicked'], state: 'pending' },
     { id: 15, title: 'markers.tools.area', description: '', targetSelector: '[data-tutorial-target="areas-element"]', autoTriggers: ['pro:tutorial:openMarkerModal'], eventHandlers: ['pro:tutorial:areasClicked'], state: 'pending' },
     { id: 16, title: 'markers.tutorial.drawArea', description: '', eventHandlers: ['pro:tutorial:areaDrawn'], state: 'pending' },
     { id: 17, title: 'markers.tutorial.addArrow', description: '', targetSelector: '[data-tutorial-target="marker-element"]', eventHandlers: ['pro:tutorial:markerClicked'], state: 'pending' },
-    { id: 18, title: 'markers.tutorial.addArrow', description: '', targetSelector: '[data-tutorial-target="arrow-element"]', autoTriggers: ['pro:tutorial:openMarkerModal'], eventHandlers: ['pro:tutorial:arrowDrawn', 'pro:tutorial:arrowClicked'], state: 'pending' },
+    { id: 18, title: 'markers.tutorial.addArrow', description: '', targetSelector: '[data-tutorial-target="arrow-element"]', autoTriggers: ['pro:tutorial:openMarkerModal'], eventHandlers: ['pro:tutorial:arrowClicked'], state: 'pending' },
     { id: 19, title: 'proTutorial.nextTask', description: '', state: 'pending' },
     { id: 20, title: 'proTutorial.excellent', description: 'proTutorial.timeToPractice', state: 'pending' },
   ]
@@ -181,11 +181,16 @@ export const newTutorialSlice = createSlice({
     },
 
     nextStep: (state) => {
+      console.log('[Redux] nextStep called, activeTutorial:', state.activeTutorial);
       if (!state.activeTutorial) return;
       
       const tutorial = state.tutorials[state.activeTutorial];
+      console.log('[Redux] nextStep - before:', { currentStepIndex: tutorial.currentStepIndex, totalSteps: tutorial.totalSteps });
       if (tutorial.currentStepIndex < tutorial.totalSteps - 1) {
         tutorial.currentStepIndex += 1;
+        console.log('[Redux] nextStep - after:', { currentStepIndex: tutorial.currentStepIndex });
+      } else {
+        console.log('[Redux] nextStep - already at last step, not advancing');
       }
     },
 
@@ -207,6 +212,7 @@ export const newTutorialSlice = createSlice({
     },
 
     skipTutorial: (state) => {
+      console.log('[Redux] skipTutorial called, activeTutorial:', state.activeTutorial);
       if (!state.activeTutorial) return;
       
       const tutorial = state.tutorials[state.activeTutorial];
@@ -219,6 +225,7 @@ export const newTutorialSlice = createSlice({
     },
 
     completeTutorial: (state) => {
+      console.log('[Redux] completeTutorial called, activeTutorial:', state.activeTutorial);
       if (!state.activeTutorial) return;
       
       const tutorial = state.tutorials[state.activeTutorial];
@@ -243,25 +250,32 @@ export const newTutorialSlice = createSlice({
     // Event handling
     handleTutorialEvent: (state, action: PayloadAction<string>) => {
       const eventName = action.payload;
+      console.log('[Redux] handleTutorialEvent called:', { eventName, activeTutorial: state.activeTutorial });
       
       if (!state.activeTutorial) return;
       
       const tutorial = state.tutorials[state.activeTutorial];
       const currentStep = TUTORIAL_STEPS[state.activeTutorial][tutorial.currentStepIndex];
+      console.log('[Redux] handleTutorialEvent - current step:', { stepIndex: tutorial.currentStepIndex, stepId: currentStep.id, eventHandlers: currentStep.eventHandlers });
       
       // Check if this event is expected for current step
       if (currentStep.eventHandlers?.includes(eventName)) {
+        console.log('[Redux] handleTutorialEvent - event matches, advancing step');
         // Auto-advance to next step on valid event
         if (tutorial.currentStepIndex < tutorial.totalSteps - 1) {
           tutorial.currentStepIndex += 1;
+          console.log('[Redux] handleTutorialEvent - advanced to step:', tutorial.currentStepIndex);
         } else {
           // Complete tutorial on last step
+          console.log('[Redux] handleTutorialEvent - completing tutorial on last step');
           tutorial.isActive = false;
           tutorial.isCompleted = true;
           writeCompletionToStorage(state.activeTutorial, true);
           state.activeTutorial = null;
           state.isModalOpen = false;
         }
+      } else {
+        console.log('[Redux] handleTutorialEvent - event does not match current step, ignoring');
       }
       
       // Remove processed event from pending

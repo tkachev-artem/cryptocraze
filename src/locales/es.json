@@ -34,28 +34,6 @@
     "analytics": "Analíticas",
     "openTrades": "Operaciones Abiertas"
   },
-  "analytics": {
-    "title": "Analíticas",
-    "subtitle": "Tu rendimiento de trading",
-    "tradingStatistics": "Estadísticas de Trading",
-    "profitAndLoss": "Ganancias y Pérdidas",
-    "topTrades": "Top 5 Operaciones",
-    "performanceTrends": "Tendencias de Rendimiento",
-    "totalPL": "P&L Total",
-    "ratingPosition": "Posición en el Ranking",
-    "notRanked": "Sin clasificar",
-    "percentile": "percentil",
-    "noProfitableTrades": "Aún no hay operaciones rentables",
-    "avgTradeSize": "Tamaño Promedio de Operación",
-    "successRate": "Tasa de Éxito",
-    "dailyPL": "P&L Diario (Últimos 7 Días)",
-    "profitableDays": "días rentables",
-    "noTradingActivity": "Aún no hay actividad de trading",
-    "startTrading": "Comienza a operar para ver tu P&L diario",
-    "bestDay": "Mejor Día",
-    "worstDay": "Peor Día",
-    "avgDaily": "Promedio Diario"
-  },
   "wallet": {
     "total": "Total",
     "free": "Gratis"
@@ -85,10 +63,12 @@
     "riskWarning": "El trading implica riesgo. Solo opera con dinero que puedas permitirte perder.",
     "min24h": "Mín 24h",
     "max24h": "Máx 24h",
-    "tradesShort": "Operaciones",
     "crypto": "Cripto",
     "gain": "Ganancia",
-    "loss": "Pérdida"
+    "loss": "Pérdida",
+    "tradesShort": "Operaciones",
+    "up": "Arriba",
+    "down": "Abajo"
   },
   "chart": {
     "candlestick": "Velas Japonesas",
@@ -119,7 +99,6 @@
   "nav": {
     "back": "Atrás",
     "home": "Inicio",
-    "goHome": "Regresar a la Pantalla Principal",
     "topInvestors": "Top Inversores"
   },
   "rewards": {
@@ -156,23 +135,17 @@
     "editBg": "Editar fondo",
     "editIcon": "Editar",
     "rewards": "Recompensas",
-    "uploadPhoto": "Subir Foto",
-    "uploading": "Subiendo...",
-    "fileTooLarge": "Archivo demasiado grande. Tamaño máximo: 5MB",
-    "imagesOnly": "Solo se permiten imágenes",
-    "uploadError": "Error al subir la foto. Por favor, inténtalo de nuevo.",
-    "updateError": "Error al actualizar el perfil",
-    "cancel": "Cancelar",
     "analytics": "Análisis",
-    "defaultName": "Usuario",
-    "notAvailable": "N/D",
     "rating30Days": "Calificación de 30 días",
+    "allDeals": "Operaciones",
     "top": "Top",
-    "allDeals": "Operaciones"
+    "notAvailable": "N/D",
+    "defaultUsername": "Usuario"
   },
   "deal": {
     "commission": "Comisión",
     "edit": "Editar",
+    "editTpSl": "Editar TP/SL",
     "updated": "TP/SL actualizado",
     "updateFail": "Error al actualizar la operación",
     "closeFail": "Error al cerrar la operación",
@@ -194,7 +167,7 @@
     "cancel": "Cancelar",
     "save": "Guardar",
     "close": "Cerrar",
-    "back": "←",
+    "back": "Atrás",
     "na": "N/A",
     "noData": "No se han realizado operaciones comerciales, no hay información disponible",
     "select": "Seleccionar",
@@ -203,18 +176,12 @@
     "finish": "Terminar",
     "next": "Siguiente",
     "claim": "Reclamar",
-    "execute": "Ejecutar",
     "premium": "PREMIUM",
-    "retry": "Reintentar",
-    "attemptsLeft": "intentos restantes",
     "coin": "Moneda",
     "coins": "Monedas",
+    "retry": "Reintentar",
     "viewAll": "Ver Todo",
-    "page": "Página",
-    "of": "de",
-    "lastUpdated": "Última actualización",
-    "goHome": "Regresar a la Pantalla Principal",
-    "balance": "Saldo"
+    "closeNotification": "Cerrar notificación"
   },
   "app": {
     "phoneOnly": {
@@ -224,6 +191,7 @@
     },
     "name": "Cryptocraze"
   },
+  
   "settings": {
     "title": "Configuración",
     "language": "Idioma",
@@ -256,79 +224,6 @@
     "chargeMonthly": "$6.99 se cobrará automáticamente cada mes hasta que canceles tu suscripción",
     "chargeYearly": "$64.99 se cobrará automáticamente cada año hasta que canceles tu suscripción"
   },
-  "admin": {
-    "dashboard": {
-      "title": "Panel de Control",
-      "totalUsers": "Total de Usuarios",
-      "totalUsersDesc": "Todos los usuarios registrados",
-      "activeDeals": "Operaciones Activas",
-      "activeDealsDesc": "Posiciones actualmente abiertas",
-      "dailyActiveUsers": "Usuarios Activos Diarios",
-      "dailyActiveUsersDesc": "Usuarios activos hoy",
-      "totalRevenue": "Ingresos Totales",
-      "totalRevenueDesc": "Ingresos de todos los tiempos",
-      "engagementMetrics": "Métricas de Participación",
-      "weeklyActiveUsers": "Usuarios Activos Semanales",
-      "monthlyActiveUsers": "Usuarios Activos Mensuales",
-      "avgSessionsPerUser": "Sesiones Promedio por Usuario",
-      "totalTrades": "Total de Operaciones",
-      "revenueMonetization": "Ingresos y Monetización",
-      "arpu": "ARPU",
-      "arppu": "ARPPU",
-      "conversionRate": "Tasa de Conversión",
-      "payingUsers": "Usuarios de Pago",
-      "tradingPerformance": "Rendimiento de Trading",
-      "closedTrades": "Operaciones Cerradas",
-      "profitableTrades": "Operaciones Rentables",
-      "successRate": "Tasa de Éxito",
-      "totalPnL": "P&L Total",
-      "userActivity": "Actividad de Usuarios",
-      "newUsersToday": "Nuevos Usuarios Hoy",
-      "totalSessions": "Sesiones Totales",
-      "logins7d": "Inicios de Sesión (7d)",
-      "adsWatched": "Anuncios Vistos",
-      "adPerformance": "Rendimiento de Anuncios",
-      "totalAdSpend": "Gasto Total en Anuncios",
-      "cpi": "CPI (Costo Por Instalación)",
-      "cpa": "CPA (Costo Por Acción)",
-      "roas": "ROAS (Retorno de Inversión Publicitaria)",
-      "premiumStats": "Estadísticas Premium",
-      "allRegisteredUsers": "Todos los usuarios registrados",
-      "currentlyOpenPositions": "Posiciones actualmente abiertas",
-      "usersActiveToday": "Usuarios activos hoy",
-      "allTimeRevenue": "Ingresos de todos los tiempos",
-      "premiumPurchased": "Compraron Premium",
-      "premiumMonthly": "Mensual",
-      "premiumYearly": "Anual",
-      "premiumPurchasedPercent": "Compraron Premium",
-      "premiumReceived": "Recibieron Premium",
-      "premiumDaysGranted": "días Premium otorgados",
-      "premiumActive": "Total usuarios Premium",
-      "premiumStatsError": "Error al cargar estadísticas Premium",
-      "purchasedPremium": "Compraron Premium",
-      "receivedPremium": "Recibieron Premium",
-      "subscriptionType": "Tipo de Suscripción",
-      "daysGranted": "Días Otorgados",
-      "activeUntil": "Activo Hasta",
-      "user": "Usuario",
-      "errorLoadingUsers": "Error al cargar usuarios",
-      "invalidDate": "Fecha inválida",
-      "premiumMonth": "Mes",
-      "premiumYear": "Año",
-      "noPurchasedPremiumUsers": "Ningún usuario ha comprado Premium",
-      "noRewardPremiumUsers": "Ningún usuario recibió Premium como recompensa",
-      "loadingUsers": "Cargando usuarios...",
-      "errorLoading": "Error de carga",
-      "days": "días",
-      "level": "Nivel",
-      "back": "Atrás",
-      "next": "Siguiente",
-      "page": "Página",
-      "of": "de",
-      "usersNotFound": "Usuarios no encontrados",
-      "notAvailable": "N/D"
-    }
-  },
   "notifications": {
     "emptyTitle": "No hay notificaciones activas",
     "emptySubtitle": "Las nuevas notificaciones aparecerán aquí automáticamente",
@@ -354,90 +249,13 @@
       "personal_messages": "Tienes un nuevo mensaje personal",
       "maintenance": "Trabajo de mantenimiento programado",
       "system_alert": "Notificación importante del sistema"
-    }
-  },
-  "admin": {
-    "analytics": {
-      "title": "Panel de Análisis BI",
-      "subtitle": "Inteligencia de Negocio y Análisis de Usuarios",
-      "totalUsers": "Total de Usuarios",
-      "activeDeals": "Operaciones Activas",
-      "dailyActiveUsers": "Usuarios Activos Diarios",
-      "totalRevenue": "Ingresos Totales",
-      "engagement": "Métricas de Participación",
-      "revenue": "Ingresos y Monetización",
-      "acquisition": "Adquisición de Usuarios",
-      "weeklyActiveUsers": "Usuarios Activos Semanales",
-      "monthlyActiveUsers": "Usuarios Activos Mensuales",
-      "avgSessionDuration": "Duración Promedio de Sesión",
-      "totalTrades": "Operaciones",
-      "arpu": "ARPU",
-      "arppu": "ARPPU", 
-      "conversionRate": "Tasa de Conversión",
-      "payingUsers": "Usuarios de Pago",
-      "totalSignups": "Total de Registros",
-      "firstTrades": "Primeras Operaciones",
-      "tradeOpenRate": "Tasa de Apertura de Operaciones",
-      "avgTimeToFirstTrade": "Tiempo Promedio a Primera Operación",
-      "recentActivity": "Actividad Reciente",
-      "recentRevenue": "Ingresos Recientes",
-      "processMetrics": "Procesar Métricas de Hoy",
-      "metricsProcessed": "¡Métricas diarias procesadas exitosamente!",
-      "lastUpdated": "Última actualización",
-      "avgSessionsPerUser": "Sesiones Promedio por Usuario",
-      "newUsersToday": "Nuevos Usuarios Hoy",
-      "totalSessions": "Sesiones Totales",
-      "logins7d": "Inicios de Sesión (7d)",
-      "adsWatched": "Anuncios Vistos",
-      "closedTrades": "Operaciones Cerradas",
-      "profitableTrades": "Operaciones Rentables",
-      "successRate": "Tasa de Éxito",
-      "totalPnL": "P&L Total",
-      "totalAdSpend": "Gasto Total en Publicidad",
-      "cpi": "CPI (Costo por Instalación)",
-      "cpa": "CPA (Costo por Acción)",
-      "roas": "ROAS (Retorno de la Inversión Publicitaria)",
-      "premiumStats": "Estadísticas Premium",
-      "premiumStatsError": "Error al cargar las estadísticas de usuarios premium",
-      "premiumPurchased": "Comprado",
-      "premiumMonthly": "Mes",
-      "premiumYearly": "Año",
-      "premiumPurchasedPercent": "Comprados",
-      "premiumReceived": "Recibido",
-      "premiumDaysGranted": "días otorgados",
-      "premiumActive": "Activo",
-      "allRegisteredUsers": "Todos los usuarios registrados",
-      "currentlyOpenPositions": "Posiciones abiertas actualmente", 
-      "usersActiveToday": "Usuarios activos hoy",
-      "allTimeRevenue": "Ingresos de todos los tiempos",
-      "premiumMonth": "Mes",
-      "premiumYear": "Año",
-      "errorLoadingUsers": "Error al cargar usuarios",
-      "invalidDate": "Fecha inválida",
-      "purchasedPremium": "Premium Comprado",
-      "receivedPremium": "Premium Recibido",
-      "user": "Usuario",
-      "subscriptionType": "Tipo de Suscripción",
-      "daysGranted": "Días Otorgados",
-      "activeUntil": "Activo Hasta",
-      "noPurchasedPremiumUsers": "No hay usuarios con premium comprado",
-      "noRewardPremiumUsers": "No hay usuarios con premium por recompensa",
-      "avgSessionDuration": "Duración Promedio de Sesión",
-      "screensOpened": "Pantallas Abiertas",
-      "retentionMetrics": "Métricas de Retención",
-      "retentionD1": "Retención Día 1",
-      "retentionD3": "Retención Día 3",
-      "retentionD7": "Retención Día 7",
-      "retentionD30": "Retención Día 30",
-      "tutorialMetrics": "Métricas del Tutorial",
-      "tutorialCompletionRate": "Finalización del Tutorial",
-      "tutorialSkipRate": "Tasa de Omisión del Tutorial",
-      "advancedAdMetrics": "Métricas Avanzadas de Anuncios",
-      "totalImpressions": "Impresiones Totales",
-      "totalClicks": "Clicks Totales",
-      "avgCTR": "CTR Promedio",
-      "clickToInstallRate": "Tasa Click-a-Instalación",
-      "adEngagementRate": "Tasa de Interacción con Anuncios"
+    },
+    "titles": {
+      "daily_reward": "Recompensa Diaria",
+      "trade_closed_profit": "Operación cerrada con ganancia",
+      "trade_closed_loss": "Operación cerrada con pérdida",
+      "achievement_unlocked": "¡Nuevo logro!",
+      "daily_task": "¡Nueva tarea diaria!"
     }
   },
   "language": {
@@ -465,15 +283,148 @@
     "stepProgress": "Paso {{current}} de {{total}}",
     "percentComplete": "{{percent}}% Completado",
     "stepsTitle": "Pasos del Tutorial",
-    "interactiveArea": "Área de demostración interactiva",
-    "errorTitle": "Error del Tutorial",
-    "errorMessage": "Algo salió mal: {{error}}",
-    "errorCanRetry": "Ocurrió un error: {{error}}. Puedes intentar de nuevo.",
-    "errorFinal": "Error final: {{error}}. Por favor contacta soporte.",
-    "retry": "Reintentar",
-    "emergencyExit": "Salir del Tutorial",
-    "emergencyExitDesc": "El tutorial fue omitido debido a problemas técnicos.",
-    "maxRetriesReached": "Máximo de intentos alcanzado. Por favor contacta soporte."
+    "interactiveArea": "Área de demostración interactiva"
+  },
+  "dashboard": {
+    "profitChart": "Gráfico de ganancias/pérdidas",
+    "topDeals": "Mejores operaciones",
+    "totalVolume": "Volumen total",
+    "totalProfit": "Beneficio total",
+    "bestDeal": "Mejor operación",
+    "roi": "Rentabilidad",
+    "noData": "No hay datos de trading",
+    "failedToLoad": "No se pudieron cargar los datos del gráfico",
+    "recent": "Recientes",
+    "best": "Mejores",
+    "loading": "Cargando...",
+    "days": "días",
+    "trades": "operaciones"
+  },
+  "admin": {
+    "analytics": {
+      "title": "Panel de Análisis BI",
+      "subtitle": "Inteligencia de Negocio y Análisis de Usuarios",
+      "totalUsers": "Total de Usuarios",
+      "activeDeals": "Operaciones Activas",
+      "dailyActiveUsers": "Usuarios Activos Diarios",
+      "totalRevenue": "Ingresos Totales",
+      "engagement": "Métricas de Participación",
+      "revenue": "Ingresos y Monetización",
+      "acquisition": "Adquisición de Usuarios",
+      "weeklyActiveUsers": "Usuarios Activos Semanales",
+      "monthlyActiveUsers": "Usuarios Activos Mensales", 
+      "avgSessionDuration": "Duración Promedio de Sesión",
+      "totalTrades": "Operaciones",
+      "arpu": "ARPU",
+      "arppu": "ARPPU",
+      "conversionRate": "Conversión",
+      "payingUsers": "Usuarios de Pago",
+      "totalSignups": "Total de Registros",
+      "firstTrades": "Primeras Operaciones",
+      "tradeOpenRate": "Conversión en trading",
+      "avgTimeToFirstTrade": "Tiempo promedio hasta primera operación",
+      "recentActivity": "Actividad reciente",
+      "recentRevenue": "Ingresos recientes",
+      "processMetrics": "Procesar métricas de hoy",
+      "metricsProcessed": "¡Métricas diarias procesadas exitosamente!",
+      "lastUpdated": "Última actualización"
+    },
+    "dashboard": {
+      "title": "Panel de control",
+      "totalUsers": "Total de usuarios",
+      "activeDeals": "Operaciones activas",
+      "dailyActiveUsers": "Activos por día",
+      "totalRevenue": "Ingresos totales",
+      "engagementMetrics": "Métricas de participación",
+      "weeklyActiveUsers": "Activos por semana",
+      "monthlyActiveUsers": "Activos por mes",
+      "avgSessionsPerUser": "Sesiones promedio por usuario",
+      "totalTrades": "Operaciones",
+      "revenueMonetization": "Ingresos y monetización",
+      "arpu": "ARPU",
+      "arppu": "ARPPU",
+      "conversionRate": "Conversión",
+      "payingUsers": "Usuarios de pago",
+      "tradingPerformance": "Rendimiento de trading",
+      "closedTrades": "Operaciones cerradas",
+      "profitableTrades": "Operaciones rentables",
+      "successRate": "Porcentaje de éxito",
+      "totalPnL": "P&L total",
+      "userActivity": "Actividad de usuarios",
+      "newUsersToday": "Nuevos hoy",
+      "totalSessions": "Sesiones totales",
+      "logins7d": "Entradas (7 días)",
+      "adsWatched": "Anuncios vistos",
+      "adPerformance": "Rendimiento de anuncios",
+      "totalAdSpend": "Gasto en publicidad",
+      "cpi": "CPI (Coste por instalación)",
+      "cpa": "CPA (Coste por acción)",
+      "roas": "ROAS (Retorno de inversión publicitaria)",
+      "avgSessionDuration": "Duración promedio de sesión",
+      "screensOpened": "Pantallas abiertas",
+      "retentionMetrics": "Métricas de retención", 
+      "retentionD1": "Retención 1 día",
+      "retentionD3": "Retención 3 días", 
+      "retentionD7": "Retención 7 días",
+      "retentionD30": "Retención 30 días",
+      "tutorialMetrics": "Métricas de tutorial",
+      "tutorialCompletionRate": "Finalización del tutorial",
+      "tutorialSkipRate": "Omisión del tutorial",
+      "advancedAdMetrics": "Métricas avanzadas de publicidad",
+      "totalImpressions": "Total de impresiones",
+      "totalClicks": "Total de clics",
+      "avgCTR": "CTR promedio",
+      "clickToInstallRate": "Clic a instalación",
+      "adEngagementRate": "Participación en anuncios",
+      "premiumStats": "Estadísticas Premium",
+      "allRegisteredUsers": "Todos los usuarios registrados",
+      "currentlyOpenPositions": "Estadística de operaciones abiertas y cerradas",
+      "usersActiveToday": "Usuarios activos hoy",
+      "allTimeRevenue": "Ingresos de todos los tiempos",
+      "premiumPurchased": "Compraron Premium",
+      "premiumMonthly": "Mensual",
+      "premiumYearly": "Anual",
+      "premiumPurchasedPercent": "Compraron Premium",
+      "premiumReceived": "Recibieron Premium",
+      "premiumDaysGranted": "días Premium otorgados",
+      "premiumActive": "Total usuarios Premium",
+      "premiumStatsError": "Error cargando estadísticas Premium",
+      "purchasedPremium": "Compraron Premium",
+      "receivedPremium": "Recibieron Premium",
+      "subscriptionType": "Tipo de suscripción",
+      "daysGranted": "Días otorgados",
+      "activeUntil": "Activo hasta",
+      "user": "Usuario",
+      "errorLoadingUsers": "Error cargando usuarios",
+      "invalidDate": "Fecha no válida",
+      "premiumMonth": "Mes",
+      "premiumYear": "Año",
+      "noPurchasedPremiumUsers": "No hay usuarios que compraron Premium",
+      "noRewardPremiumUsers": "No hay usuarios que recibieron Premium como recompensa",
+      "loadingUsers": "Cargando usuarios...",
+      "errorLoading": "Error de carga",
+      "days": "días",
+      "level": "Nivel",
+      "back": "Atrás",
+      "next": "Siguiente",
+      "page": "Página",
+      "of": "de",
+      "usersNotFound": "Usuarios no encontrados",
+      "notAvailable": "N/D"
+    }
+  },
+  "analytics": {
+    "title": "Analíticas",
+    "subtitle": "Tu rendimiento de trading",
+    "tradingStatistics": "Estadísticas de Trading",
+    "profitAndLoss": "Ganancias y Pérdidas",
+    "totalPL": "P&L Total",
+    "topTrades": "Mejores operaciones",
+    "noProfitableTrades": "No hay operaciones rentables",
+    "performanceTrends": "Tendencias de rendimiento",
+    "bestDay": "Mejor día",
+    "worstDay": "Peor día",
+    "noTradingActivity": "Sin actividad de trading"
   },
   "tradeTutorial": {
     "start": "Comenzar",
@@ -497,9 +448,9 @@
       "7": { "title": "Take Profit y Stop Loss", "description": "Stop Loss limita las pérdidas; Take Profit asegura ganancias cerrando automáticamente la operación." },
       "8": { "title": "Editar operación", "description": "Si esperas una reversión, ajusta los parámetros de tu operación con un toque." },
       "9": { "title": "Comprar o Vender", "description": "Después de configurar parámetros, toca Comprar o Vender para confirmar." },
-      "10": { "title": "Operación abierta", "description": "Toca Comprar para ver la confirmación — operación abierta." },
+      "10": { "title": "Operación abierta", "description": "" },
       "11": { "title": "Cerrar operación", "description": "Puedes cerrar la operación y obtener tu ganancia." },
-      "12": { "title": "Operación cerrada", "description": "Toca Cerrar operación y verifica el resultado en el modal de confirmación." }
+      "12": { "title": "Operación cerrada", "description": "" }
     }
   },
   "panda": {
@@ -518,6 +469,7 @@
       "trends": "Sigue la tendencia; evita operar contra el mercado."
     }
   },
+  
   "welcome": {
     "login": {
       "google": "Iniciar sesión con Google",
@@ -547,7 +499,11 @@
     "whatsappAria": "Compartir en WhatsApp",
     "telegramAria": "Compartir en Telegram",
     "smsAria": "Compartir por SMS",
-    "emailAria": "Compartir por Email"
+    "emailAria": "Compartir por Email",
+    "chartAnalysis": "¡Mira este análisis de gráfico en CryptoCraze!",
+    "chartPreview": "Vista previa del gráfico",
+    "shareImage": "Compartir imagen del gráfico",
+    "saveImage": "Guardar imagen del gráfico"
   },
   "rating": {
     "last30d": "Ranking de últimos 30 días",
@@ -568,6 +524,22 @@
     "title": "¿Estás seguro de que quieres salir?",
     "yes": "Sí",
     "no": "No"
+  },
+
+  "live": {
+    "title": "Precios en directo",
+    "subtitle": "Cotizaciones en tiempo real vía Socket.io"
+  },
+  "priceTicker": {
+    "aria": "Ticker de precios en directo",
+    "updated": "Actualizado:",
+    "cardAria": "Tarjeta de precio {{symbol}}"
+  },
+  "liveBadge": {
+    "live": "EN DIRECTO",
+    "offline": "DESCONECTADO",
+    "ariaLiveActive": "Conexión en directo activa",
+    "ariaLiveOffline": "Conexión en directo desconectada"
   },
   "proModal": {
     "titles": {
@@ -616,6 +588,7 @@
     "commission": { "desc": "La comisión se calcula del volumen de la operación y puede diferir. La comisión final se calcula en el servidor al cerrar." },
     "info": { "title": "Información", "desc": "Información adicional sobre la función." }
   },
+  
   "deals": {
     "active": "Activas",
     "closed": "Cerradas",
@@ -624,7 +597,8 @@
     "noClosedTrades": "Aún no tienes operaciones cerradas",
     "openList": "Lista de operaciones abiertas",
     "title": "Operaciones"
-  },
+  }
+  ,
   "validation": {
     "nameRequired": "El nombre es requerido",
     "nameMin": "El nombre debe tener al menos 2 caracteres",
@@ -634,21 +608,6 @@
     "emailRequired": "El email es requerido",
     "emailMax": "El email no debe exceder 100 caracteres",
     "emailInvalid": "Ingresa un email válido"
-  },
-  "live": {
-    "title": "Precios en Vivo",
-    "subtitle": "Cotizaciones en tiempo real vía Socket.io"
-  },
-  "priceTicker": {
-    "aria": "Ticker de precios en vivo",
-    "updated": "Actualizado:",
-    "cardAria": "Tarjeta de precio {{symbol}}"
-  },
-  "liveBadge": {
-    "live": "EN VIVO",
-    "offline": "SIN CONEXIÓN",
-    "ariaLiveActive": "Conexión en vivo activa",
-    "ariaLiveOffline": "Conexión en vivo sin conexión"
   },
   "proTutorial": {
     "title": "¡Bienvenido al Modo Pro!",
@@ -669,6 +628,14 @@
     "excellent": "¡Excelente!",
     "timeToPractice": "¡Es hora de aplicar conocimientos en la práctica!",
     "tradeCompete": "Opera, compite y mejora tus habilidades."
+  },
+  "status": {
+    "checking": "Verificando conexión...",
+    "connected": "Conectado",
+    "disconnected": "Desconectado",
+    "reconnect": "Reconectar",
+    "apiOffline": "API desconectado",
+    "socketOffline": "WebSocket desconectado"
   },
   "energy": {
     "title": "Sistema de Energía",
@@ -837,14 +804,6 @@
   "drawing": {
     "noObjects": "Sin objetos"
   },
-  "status": {
-    "checking": "Verificando conexión...",
-    "connected": "Conectado",
-    "disconnected": "Desconectado",
-    "reconnect": "Reconectar",
-    "apiOffline": "API sin conexión",
-    "socketOffline": "WebSocket sin conexión"
-  },
   "exchange": {
     "title": "Intercambiar Monedas",
     "rate": "Tasa de Cambio",
@@ -882,7 +841,9 @@
     "preview": {
       "empty": "La vista previa aparecerá aquí..."
     },
-    "save": "Añadir Texto"
+    "save": "Añadir Texto",
+    "pixels": "px",
+    "selectColor": "Seleccionar color"
   },
   "markers": {
     "title": "Herramientas de Dibujo",
@@ -993,6 +954,7 @@
       "fraudDetected": "Actividad sospechosa detectada",
       "initialization": "Inicializando sistema de anuncios...",
       "simulation": "Anuncio de demostración",
+      "videoAd": "Anuncio de video",
       "testAd": "Anuncio de Prueba",
       "startingAd": "Iniciando anuncio...",
       "initializing": "Inicializando...",
@@ -1094,20 +1056,8 @@
   "errors": {
     "404": {
       "title": "Página No Encontrada",
-      "subtitle": "¡Oops! La página que buscas no existe.",
-      "description": "La página a la que intentabas acceder pudo haber sido movida, eliminada, o puede que hayas introducido una URL incorrecta.",
-      "goHome": "Ir a Trading",
-      "goBack": "Volver",
-      "searchPlaceholder": "Buscar pares de trading...",
-      "suggestions": {
-        "title": "Prueba estas secciones populares:",
-        "trading": "Comenzar Trading",
-        "profile": "Tu Perfil",
-        "rating": "Clasificación",
-        "rewards": "Recompensas",
-        "premium": "Funciones Premium"
-      },
-      "pandaMessage": "¡No te preocupes! Incluso los traders experimentados a veces se pierden. ¡Vamos a llevarte de vuelta al camino!"
+      "description": "La página que buscas no existe o ha sido movida.",
+      "goHome": "Ir a Trading"
     },
     "general": "Error",
     "dataLoading": "Error de carga de datos",
@@ -1122,7 +1072,8 @@
     "dealNotFound": "Operación no encontrada",
     "noAccess": "Sin acceso a la operación",
     "dealAlreadyClosed": "Operación ya cerrada",
-    "priceNotFound": "Error al obtener precio"
+    "priceNotFound": "Error al obtener precio",
+    "wheelSpinError": "Error al girar la ruleta"
   },
   "tutorial": {
     "error": {
@@ -1134,31 +1085,5 @@
     "bearCharacter": "Personaje oso",
     "skills": "tus habilidades",
     "stepsTitle": "Pasos del Tutorial"
-  },
-  "textMarker": {
-    "title": "Agregar Marcador de Texto",
-    "label": {
-      "text": "Texto",
-      "fontSize": "Tamaño de Fuente",
-      "color": "Color",
-      "customColor": "Color personalizado"
-    },
-    "placeholder": "Ingresa tu texto aquí...",
-    "pixels": "px",
-    "selectColor": "Seleccionar color",
-    "preview": {
-      "empty": "La vista previa aparecerá aquí..."
-    },
-    "save": "Agregar Texto",
-    "error": {
-      "emptyText": "El texto no puede estar vacío",
-      "tooLong": "El texto no puede exceder 100 caracteres"
-    }
-  },
-  "share": {
-    "chartAnalysis": "¡Mira este análisis de gráfico en CryptoCraze!",
-    "chartPreview": "Vista previa del gráfico",
-    "shareImage": "Compartir imagen del gráfico",
-    "saveImage": "Guardar imagen del gráfico"
   }
 }

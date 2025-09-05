@@ -88,7 +88,9 @@
     "tradesShort": "Trades",
     "crypto": "Crypto",
     "gain": "Gain",
-    "loss": "Perte"
+    "loss": "Perte",
+    "up": "Haut",
+    "down": "Bas"
   },
   "chart": {
     "candlestick": "Chandelier",
@@ -154,7 +156,8 @@
     "dealNotFound": "Deal non trouvé",
     "noAccess": "Aucun accès au deal",
     "dealAlreadyClosed": "Deal déjà fermé",
-    "priceNotFound": "Échec de récupération du prix"
+    "priceNotFound": "Échec de récupération du prix",
+    "wheelSpinError": "Erreur lors du tour de roue"
   },
   "profile": {
     "title": "Profil",
@@ -194,6 +197,7 @@
   "deal": {
     "commission": "Commission",
     "edit": "Modifier",
+    "editTpSl": "Modifier TP/SL",
     "updated": "TP/SL mis à jour",
     "updateFail": "Échec de mise à jour du deal",
     "closeFail": "Échec de fermeture du deal",
@@ -233,7 +237,8 @@
     "of": "de",
     "lastUpdated": "Dernière mise à jour",
     "goHome": "Retourner à l'Écran Principal",
-    "balance": "Solde"
+    "balance": "Solde",
+    "closeNotification": "Fermer la notification"
   },
   "app": {
     "phoneOnly": {
@@ -345,7 +350,23 @@
       "page": "Page",
       "of": "sur",
       "usersNotFound": "Utilisateurs non trouvés",
-      "notAvailable": "N/D"
+      "notAvailable": "N/D",
+      "avgSessionDuration": "Durée Moyenne de Session",
+      "screensOpened": "Écrans Ouverts",
+      "retentionMetrics": "Métriques de Rétention",
+      "retentionD1": "Rétention J1",
+      "retentionD3": "Rétention J3",
+      "retentionD7": "Rétention J7",
+      "retentionD30": "Rétention J30",
+      "tutorialMetrics": "Métriques du Tutoriel",
+      "tutorialCompletionRate": "Taux de Finalisation du Tutoriel",
+      "tutorialSkipRate": "Taux d'Abandon du Tutoriel",
+      "advancedAdMetrics": "Métriques Publicitaires Avancées",
+      "totalImpressions": "Impressions Totales",
+      "totalClicks": "Clics Totaux",
+      "avgCTR": "CTR Moyen",
+      "clickToInstallRate": "Taux Clic-Installation",
+      "adEngagementRate": "Taux d'Engagement Publicitaire"
     }
   },
   "notifications": {
@@ -373,6 +394,13 @@
       "personal_messages": "Vous avez un nouveau message personnel",
       "maintenance": "Travaux de maintenance programmés",
       "system_alert": "Notification système importante"
+    },
+    "titles": {
+      "daily_reward": "Récompense Quotidienne",
+      "trade_closed_profit": "Trade fermé avec profit",
+      "trade_closed_loss": "Trade fermé avec perte",
+      "achievement_unlocked": "Nouvelle réalisation !",
+      "daily_task": "Nouvelle tâche quotidienne !"
     }
   },
   "admin": {

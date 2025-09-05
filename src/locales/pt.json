@@ -88,7 +88,9 @@
     "tradesShort": "Negociações",
     "crypto": "Cripto",
     "gain": "Ganho",
-    "loss": "Perda"
+    "loss": "Perda",
+    "up": "Subir",
+    "down": "Descer"
   },
   "chart": {
     "candlestick": "Velas",
@@ -154,7 +156,8 @@
     "dealNotFound": "Negociação não encontrada",
     "noAccess": "Sem acesso à negociação",
     "dealAlreadyClosed": "Negociação já fechada",
-    "priceNotFound": "Falha ao obter preço"
+    "priceNotFound": "Falha ao obter preço",
+    "wheelSpinError": "Erro ao girar a roleta"
   },
   "profile": {
     "title": "Perfil",
@@ -194,6 +197,7 @@
   "deal": {
     "commission": "Comissão",
     "edit": "Editar",
+    "editTpSl": "Editar TP/SL",
     "updated": "TP/SL atualizado",
     "updateFail": "Falha ao atualizar negociação",
     "closeFail": "Falha ao fechar negociação",
@@ -233,7 +237,8 @@
     "of": "de",
     "lastUpdated": "Última atualização",
     "goHome": "Retornar à Tela Principal",
-    "balance": "Saldo"
+    "balance": "Saldo",
+    "closeNotification": "Fechar notificação"
   },
   "app": {
     "phoneOnly": {
@@ -300,6 +305,13 @@
       "personal_messages": "Você tem uma nova mensagem pessoal",
       "maintenance": "Trabalho de manutenção programada",
       "system_alert": "Notificação importante do sistema"
+    },
+    "titles": {
+      "daily_reward": "Recompensa Diária",
+      "trade_closed_profit": "Negociação fechada com lucro",
+      "trade_closed_loss": "Negociação fechada com perda",
+      "achievement_unlocked": "Nova conquista!",
+      "daily_task": "Nova tarefa diária!"
     }
   },
   "admin": {
@@ -379,6 +391,21 @@
       "cpi": "CPI (Custo por Instalação)",
       "cpa": "CPA (Custo por Ação)",
       "roas": "ROAS (Retorno sobre o Investimento em Anúncios)",
+      "screensOpened": "Telas Abertas",
+      "retentionMetrics": "Métricas de Retenção",
+      "retentionD1": "Retenção Dia 1",
+      "retentionD3": "Retenção Dia 3", 
+      "retentionD7": "Retenção Dia 7",
+      "retentionD30": "Retenção Dia 30",
+      "tutorialMetrics": "Métricas do Tutorial",
+      "tutorialCompletionRate": "Taxa de Conclusão do Tutorial",
+      "tutorialSkipRate": "Taxa de Pular Tutorial",
+      "advancedAdMetrics": "Métricas Avançadas de Anúncios",
+      "totalImpressions": "Total de Impressões",
+      "totalClicks": "Total de Cliques",
+      "avgCTR": "CTR Médio",
+      "clickToInstallRate": "Taxa de Clique para Instalação",
+      "adEngagementRate": "Taxa de Engajamento em Anúncios",
       "premiumStats": "Estatísticas Premium",
       "premiumStatsError": "Erro ao carregar as estatísticas de usuários premium",
       "purchasedPremium": "Compraram Premium",

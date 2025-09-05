@@ -168,7 +168,8 @@
     "dealNotFound": "Deal not found",
     "noAccess": "No access to deal",
     "dealAlreadyClosed": "Deal already closed",
-    "priceNotFound": "Failed to get price"
+    "priceNotFound": "Failed to get price",
+    "wheelSpinError": "Error spinning the wheel"
   },
   "profile": {
     "title": "Profile",
@@ -320,6 +321,13 @@
       "personal_messages": "You have a new personal message",
       "maintenance": "Scheduled maintenance work",
       "system_alert": "Important system notification"
+    },
+    "titles": {
+      "daily_reward": "Daily Reward",
+      "trade_closed_profit": "Trade closed with profit",
+      "trade_closed_loss": "Trade closed with loss",
+      "achievement_unlocked": "New achievement!",
+      "daily_task": "New daily task!"
     }
   },
   "admin": {

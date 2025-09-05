@@ -152,9 +152,9 @@ export const UniversalTutorial: React.FC<UniversalTutorialProps> = ({
   }, [autoStart, type, isActive, dispatch]);
 
   // Handle tutorial events
-  const handleEvent = useCallback((eventName: string) => {
+  const handleEvent = useCallback((event: Event) => {
     if (isActive) {
-      dispatch(handleTutorialEvent(eventName));
+      dispatch(handleTutorialEvent(event.type));
     }
   }, [isActive, dispatch]);
 

@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../lib/i18n';
 import { useTaskTranslation } from '../lib/translationUtils';
-import AdContainer from './AdContainer';
+import EnhancedVideoAdModal from './EnhancedVideoAdModal';
 import type {
   Task,
   TaskState,
@@ -38,12 +38,12 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
     apiError: null
   });
   
-  // Ad modal logic will be handled by AdContainer
+  // Ad modal state
+  const [showAdModal, setShowAdModal] = useState(false);
   
   // Refs for cleanup and preventing race conditions
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isUpdatingRef = useRef(false);
-  const showAdRef = useRef<(() => void) | null>(null);
 
   // Мемоизируем вычисляемые значения
   const progress = useMemo(() => {
@@ -323,14 +323,29 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
     }
   }, [isLoading, isActive, task.id, task.title, task.reward, onComplete, onWheelOpen]);
 
-  // Check if video ad can be started
-  const canStartVideo = useCallback(() => {
-    return !componentState.isLoading && isActive && !isUpdatingRef.current && !canClaimReward;
-  }, [componentState.isLoading, isActive, canClaimReward]);
+  // Handle video task start - open ad modal
+  const handleVideoStart = useCallback(async () => {
+    if (componentState.isLoading || !isActive || isUpdatingRef.current) {
+      console.log(`[TaskCard] Cannot start video - conditions not met for ${task.title}`);
+      return;
+    }
+    
+    // Prevent starting if already completed
+    if (canClaimReward) {
+      console.log(`[TaskCard] Task ${task.title} can claim reward, ignoring video start`);
+      return;
+    }
+    
+    console.log(`[TaskCard] Opening video ad modal for ${task.title}`);
+    setShowAdModal(true);
+  }, [componentState.isLoading, isActive, task.title, canClaimReward]);
 
-  // Handle video ad completion from AdContainer
-  const handleVideoAdCompleted = useCallback(async (result: { success: boolean; reward?: any }) => {
+  // Handle video ad completion from modal
+  const handleVideoAdCompleted = useCallback(async (result: any) => {
     console.log(`[TaskCard] Video ad completed for ${task.title}:`, result);
+    
+    // Close modal first
+    setShowAdModal(false);
     
     if (!result.success || !onUpdateProgress || isUpdatingRef.current) {
       console.log(`[TaskCard] Video ad not successful or conditions not met for ${task.title}`);
@@ -379,7 +394,10 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
     }
   }, [onUpdateProgress, task.id, task.progress, task.title]);
 
-  // AdContainer handles modal close automatically
+  // Handle modal close
+  const handleModalClose = useCallback(() => {
+    setShowAdModal(false);
+  }, []);
 
   // Claim reward for completed task (same as handleComplete for simplicity)
   const handleClaimReward = handleComplete;
@@ -627,9 +645,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                   if (getButtonConfig.action === 'claim') {
                     void handleComplete();
                   } else if (getButtonConfig.action === 'video') {
-                    if (showAdRef.current) {
-                      showAdRef.current();
-                    }
+                    void handleVideoStart();
                   } else if (getButtonConfig.action === 'navigate') {
                     handleNavigateToTrading();
                   } else if (getButtonConfig.action === 'daily') {
@@ -660,24 +676,16 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 
       </div>
 
-      {/* Unified Ad Container */}
-      {isVideoTask && (
-        <AdContainer
-          placement="task_completion"
-          reward={{
-            type: 'coins',
-            amount: 30,
-            description: task.reward?.description
-          }}
+      {/* Video Ad Modal */}
+      {showAdModal && (
+        <EnhancedVideoAdModal
+          isOpen={showAdModal}
+          onClose={handleModalClose}
           onAdCompleted={handleVideoAdCompleted}
-          disabled={!canStartVideo()}
-        >
-          {({ showAd, isAdShowing, canShowAd }) => {
-            // Store the showAd function in ref so button can access it
-            showAdRef.current = showAd;
-            return null; // This render prop doesn't render anything visible
-          }}
-        </AdContainer>
+          placement="task_completion"
+          requiredViews={1}
+          rewardAmount={30}
+        />
       )}
 
     </div>

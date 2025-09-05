@@ -1,4 +1,4 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolkit';
 import type { RootState } from './store';
 
 // Tutorial types
@@ -336,17 +336,20 @@ export const selectCurrentStep = (state: RootState) => {
   const tutorial = state.newTutorial.tutorials[active];
   return TUTORIAL_STEPS[active][tutorial.currentStepIndex] || null;
 };
-export const selectTutorialProgress = (state: RootState) => {
-  const active = state.newTutorial.activeTutorial;
-  if (!active) return { current: 0, total: 0, percentage: 0 };
-  
-  const tutorial = state.newTutorial.tutorials[active];
-  return {
-    current: tutorial.currentStepIndex + 1,
-    total: tutorial.totalSteps,
-    percentage: Math.round(((tutorial.currentStepIndex + 1) / tutorial.totalSteps) * 100),
-  };
-};
+export const selectTutorialProgress = createSelector(
+  [(state: RootState) => state.newTutorial.activeTutorial, 
+   (state: RootState) => state.newTutorial.tutorials],
+  (activeTutorial, tutorials) => {
+    if (!activeTutorial) return { current: 0, total: 0, percentage: 0 };
+    
+    const tutorial = tutorials[activeTutorial];
+    const current = tutorial.currentStepIndex + 1;
+    const total = tutorial.totalSteps;
+    const percentage = Math.round((current / total) * 100);
+    
+    return { current, total, percentage };
+  }
+);
 export const selectIsModalOpen = (state: RootState) => state.newTutorial.isModalOpen;
 export const selectIsLoading = (state: RootState) => state.newTutorial.isLoading;
 export const selectError = (state: RootState) => state.newTutorial.error;

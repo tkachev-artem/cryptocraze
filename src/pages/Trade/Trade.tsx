@@ -20,8 +20,6 @@ import { symbolToCoinId } from '../../hooks/symbolToCoinId';
 import { openEditDeal } from '../../app/dealModalSlice';
 import { dealService } from '../../services/dealService';
 // import { useAppSelector as useSelector } from '../../app/hooks';
-import { startTradeTutorial, selectTradeTutorial } from '../../app/tutorialSlice';
-import TradeTutorial from '../../components/TradeTutorial';
 import UniversalTutorial from '../../components/UniversalTutorial';
 import { useTranslation } from '@/lib/i18n';
 import { useBottomNavigationHeight } from '@/hooks/useBottomNavigationHeight';
@@ -57,7 +55,7 @@ const Trade = () => {
   // Забираем состояние dealModal одним селектором
   const dealModalState = useAppSelector((state: RootState) => state.dealModal) as { isEditDealOpen: boolean; isDealInfoOpen: boolean; lastDismissedEditDealId: number | null; editDealData?: { deal?: { symbol?: string } } };
   const { isEditDealOpen, isDealInfoOpen, lastDismissedEditDealId, editDealData } = dealModalState;
-const tutorial = useAppSelector(selectTradeTutorial);
+// Tutorial is now handled by UniversalTutorial component
 const { height: bottomNavHeight, ref: bottomNavRef } = useBottomNavigationHeight();
   
   useEffect(() => {
@@ -124,11 +122,7 @@ const { height: bottomNavHeight, ref: bottomNavRef } = useBottomNavigationHeight
   }, []);
 
 // Автозапуск обучения при первом входе на /trade (если не завершено ранее)
-useEffect(() => {
-  if (!tutorial.hasCompletedTradeTutorial && !tutorial.isTradeTutorialActive) {
-    dispatch(startTradeTutorial());
-  }
-}, [dispatch, tutorial.hasCompletedTradeTutorial, tutorial.isTradeTutorialActive]);
+// Tutorial start is now handled by UniversalTutorial component
 
   // Обработка параметра редактирования сделки
   useEffect(() => {
@@ -420,9 +414,6 @@ useEffect(() => {
 
       {/* Trade Tutorial - New System */}
       <UniversalTutorial type="trade" autoStart={false} />
-      
-      {/* Keep old tutorial for backwards compatibility */}
-      <TradeTutorial isActive={tutorial.isTradeTutorialActive} stepIndex={tutorial.currentStepIndex} />
     </div>
     </div>
   );

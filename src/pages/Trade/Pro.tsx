@@ -5,7 +5,6 @@ import type { ProChartHandle } from '@/components/ProChart';
 import ProBottomMenu from '@/components/ui/ProBottomMenu';
 import ProChartModal from '@/components/ProChartModal';
 import ProShareModal from '@/components/ProShareModal';
-import ProTutorial from '@/components/ProTutorial';
 import UniversalTutorial from '@/components/UniversalTutorial';
 import ProExitModal from '@/components/ProExitModal';
 import Deal from '@/components/Deal';
@@ -104,8 +103,6 @@ const Pro: React.FC = () => {
     return savedSettings?.indicators ?? { ema: false, rsi: false, sma: false };
   });
   const [modalType, setModalType] = useState<'chart' | 'fx' | 'marker' | 'share' | 'switch' | null>(null);
-  const [isProTutorialOpen, setIsProTutorialOpen] = useState<boolean>(false);
-  const [proTutorialStep, setProTutorialStep] = useState<number>(1);
   const [isExitOpen, setIsExitOpen] = useState<boolean>(false);
   const [menuHeight, setMenuHeight] = useState<number>(56);
   const [isDealOpen, setIsDealOpen] = useState<boolean>(false);
@@ -253,20 +250,7 @@ const Pro: React.FC = () => {
     };
   }, []);
 
-  // open Pro tutorial once on first visit
-  useEffect(() => {
-    try {
-      const key = 'proTutorialSeen';
-      const seen = localStorage.getItem(key);
-      if (seen !== 'true') {
-        setIsProTutorialOpen(true);
-        analyticsService.trackTutorialProgress('pro_tutorial', 'start');
-      }
-    } catch {
-      setIsProTutorialOpen(true);
-      analyticsService.trackTutorialProgress('pro_tutorial', 'start');
-    }
-  }, []);
+  // Pro tutorial is now handled by UniversalTutorial component
 
   // Обработчик для открытия fx модалки в обучении
   useEffect(() => {
@@ -478,50 +462,8 @@ const Pro: React.FC = () => {
         offsetBottomPx={menuHeight}
       />
 
-      {/* New Pro Tutorial System */}
+      {/* Pro Tutorial - New System */}
       <UniversalTutorial type="pro" autoStart={true} />
-      
-      {/* Keep old ProTutorial for backwards compatibility */}
-      <ProTutorial
-        isOpen={isProTutorialOpen}
-        currentStep={proTutorialStep}
-        onProceed={() => { 
-          if (proTutorialStep < 20) {
-            setProTutorialStep(proTutorialStep + 1);
-          } else {
-            setIsProTutorialOpen(false);
-            setProTutorialStep(1);
-            // Сбрасываем состояния индикаторов после завершения обучения
-            setIndicators({ ema: false, rsi: false, sma: false });
-            // Удаляем все нарисованные объекты
-            setDrawingObjects([]);
-            setSelectedDrawingId(null);
-            setActiveTool('none');
-            analyticsService.trackTutorialProgress('pro_tutorial', 'complete');
-            try { 
-              localStorage.setItem('proTutorialSeen', 'true'); 
-            } catch {
-              // ignore localStorage errors
-            }
-          }
-        }}
-        onSkip={() => {
-          analyticsService.trackTutorialProgress('pro_tutorial', 'skip');
-          try { 
-            localStorage.setItem('proTutorialSeen', 'true'); 
-          } catch {
-            // ignore localStorage errors
-          }
-          setIsProTutorialOpen(false);
-          setProTutorialStep(1);
-          // Сбрасываем состояния индикаторов при пропуске обучения
-          setIndicators({ ema: false, rsi: false, sma: false });
-          // Удаляем все нарисованные объекты
-          setDrawingObjects([]);
-          setSelectedDrawingId(null);
-          setActiveTool('none');
-        }}
-      />
 
       {/* Deal Modal */}
       <Deal

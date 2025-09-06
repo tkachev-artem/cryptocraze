@@ -175,11 +175,10 @@ export function setupSimpleOAuth(app: Express) {
       // Логируем событие логина в ClickHouse
       console.log(`[Analytics Debug] About to log login event for user ${user.id}`);
       try {
-        // Используем BigInt для больших ID, затем Number для ClickHouse
-        const userIdNumber = Number(BigInt(user.id));
-        console.log(`[Analytics Debug] Calling logUserEvent with userId: ${userIdNumber}, eventType: login`);
+        // Используем строковый ID напрямую без преобразований
+        console.log(`[Analytics Debug] Calling logUserEvent with userId: ${user.id}, eventType: login`);
         await AnalyticsLogger.logUserEvent(
-          userIdNumber,
+          user.id,
           'login',
           {
             email: profile.email,

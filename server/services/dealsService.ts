@@ -75,7 +75,8 @@ export const dealsService = {
     // Замораживаем средства
     await storage.updateUserFreeBalance(userId, -amount);
 
-    // ОТКЛЮЧЕНО: Синхронизируем сделку с ClickHouse
+    // НЕ синхронизируем открытие сделки с ClickHouse - только при закрытии
+    // чтобы избежать дублирования записей (open + closed = 2 записи)
     // try {
     //   await AnalyticsLogger.syncDeal({
     //     id: deal.id,
@@ -219,28 +220,28 @@ export const dealsService = {
     await storage.updateUserTradingStats(userId, finalProfit, amount);
     console.log(`[dealsService] Обновлена статистика торговли: прибыль=${finalProfit}`);
 
-    // ОТКЛЮЧЕНО: Синхронизируем закрытие сделки с ClickHouse
+    // Синхронизируем закрытие сделки с ClickHouse
     const closedAt = new Date();
-    // try {
-    //   await AnalyticsLogger.syncDeal({
-    //     id: dealId,
-    //     userId,
-    //     symbol: deal.symbol,
-    //     direction: deal.direction,
-    //     amount: parseFloat(deal.amount),
-    //     multiplier: deal.multiplier,
-    //     openPrice: parseFloat(deal.openPrice),
-    //     takeProfit: deal.takeProfit ? parseFloat(deal.takeProfit) : undefined,
-    //     stopLoss: deal.stopLoss ? parseFloat(deal.stopLoss) : undefined,
-    //     openedAt: deal.openedAt,
-    //     closedAt,
-    //     closePrice,
-    //     profit: finalProfit,
-    //     status: 'closed'
-    //   });
-    // } catch (error) {
-    //   console.error('Failed to sync closed deal to ClickHouse:', error);
-    // }
+    try {
+      await AnalyticsLogger.syncDeal({
+        id: dealId,
+        userId,
+        symbol: deal.symbol,
+        direction: deal.direction,
+        amount: parseFloat(deal.amount),
+        multiplier: deal.multiplier,
+        openPrice: parseFloat(deal.openPrice),
+        takeProfit: deal.takeProfit ? parseFloat(deal.takeProfit) : undefined,
+        stopLoss: deal.stopLoss ? parseFloat(deal.stopLoss) : undefined,
+        openedAt: deal.openedAt,
+        closedAt,
+        closePrice,
+        profit: finalProfit,
+        status: 'closed'
+      });
+    } catch (error) {
+      console.error('Failed to sync closed deal to ClickHouse:', error);
+    }
 
     // ОТКЛЮЧЕНО ВРЕМЕННО: Обновляем прогресс заданий типа "daily_trade"
     // console.log(`🔥🔥 [dealsService] СЕЙЧАС будем вызывать updateDailyTradeTasks для userId=${userId}`);

@@ -25,6 +25,7 @@ export class BinanceWsService extends EventEmitter {
   private heartbeatTimer: NodeJS.Timeout | null = null;
 
   private readonly subscribedSymbols = new Set<LowerSymbol>();
+  private lastLogTime: Record<string, number> = {};
 
   constructor() {
     super();
@@ -154,7 +155,14 @@ export class BinanceWsService extends EventEmitter {
         const exchangeTimestamp = Number(data.T ?? data.E ?? Date.now());
         if (symbol && Number.isFinite(price)) {
           const payload: BinanceWsPriceEvent = { symbol, price, exchangeTimestamp };
-          console.log(`📊 ${symbol}: $${price.toFixed(2)}`);
+          // Only log price updates every 30 seconds per symbol to reduce noise
+          const now = Date.now();
+          const lastLogKey = `${symbol}_last_log`;
+          if (!this.lastLogTime || !this.lastLogTime[lastLogKey] || (now - this.lastLogTime[lastLogKey]) >= 30000) {
+            console.log(`📊 ${symbol}: $${price.toFixed(2)}`);
+            this.lastLogTime = this.lastLogTime || {};
+            this.lastLogTime[lastLogKey] = now;
+          }
           this.emit('price', payload);
         }
       }

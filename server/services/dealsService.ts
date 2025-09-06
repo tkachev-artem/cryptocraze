@@ -75,49 +75,49 @@ export const dealsService = {
     // Замораживаем средства
     await storage.updateUserFreeBalance(userId, -amount);
 
-    // Синхронизируем сделку с ClickHouse
-    try {
-      await AnalyticsLogger.syncDeal({
-        id: deal.id,
-        userId,
-        symbol,
-        direction,
-        amount,
-        multiplier,
-        openPrice,
-        takeProfit,
-        stopLoss,
-        openedAt: now,
-        status: 'open'
-      });
-    } catch (error) {
-      console.error('Failed to sync deal to ClickHouse:', error);
-    }
+    // ОТКЛЮЧЕНО: Синхронизируем сделку с ClickHouse
+    // try {
+    //   await AnalyticsLogger.syncDeal({
+    //     id: deal.id,
+    //     userId,
+    //     symbol,
+    //     direction,
+    //     amount,
+    //     multiplier,
+    //     openPrice,
+    //     takeProfit,
+    //     stopLoss,
+    //     openedAt: now,
+    //     status: 'open'
+    //   });
+    // } catch (error) {
+    //   console.error('Failed to sync deal to ClickHouse:', error);
+    // }
 
     // Увеличиваем счетчик сделок пользователя
     await storage.incrementUserTradesCount(userId);
 
-    // Add order to worker monitoring if TP or SL is set
-    if (takeProfit || stopLoss) {
-      try {
-        await workerManager.addOrderToMonitoring({
-          dealId: deal.id,
-          userId,
-          symbol,
-          direction,
-          amount,
-          multiplier,
-          openPrice,
-          takeProfit,
-          stopLoss,
-          openedAt: now,
-        });
-        console.log(`[dealsService] Added order ${deal.id} to TP/SL monitoring`);
-      } catch (error) {
-        console.error(`[dealsService] Failed to add order ${deal.id} to monitoring:`, error);
-        // Don't fail the deal opening, just log the error
-      }
-    }
+    // ОТКЛЮЧЕНО: Add order to worker monitoring if TP or SL is set
+    // if (takeProfit || stopLoss) {
+    //   try {
+    //     await workerManager.addOrderToMonitoring({
+    //       dealId: deal.id,
+    //       userId,
+    //       symbol,
+    //       direction,
+    //       amount,
+    //       multiplier,
+    //       openPrice,
+    //       takeProfit,
+    //       stopLoss,
+    //       openedAt: now,
+    //     });
+    //     console.log(`[dealsService] Added order ${deal.id} to TP/SL monitoring`);
+    //   } catch (error) {
+    //     console.error(`[dealsService] Failed to add order ${deal.id} to monitoring:`, error);
+    //     // Don't fail the deal opening, just log the error
+    //   }
+    // }
 
     // Create notification for deal opened
     try {
@@ -139,14 +139,14 @@ export const dealsService = {
   async closeDeal({ userId, dealId }: { userId: string, dealId: number }) {
     console.log(`🔥🔥 [dealsService] НАЧИНАЕМ closeDeal: userId=${userId}, dealId=${dealId}`);
     
-    // Remove from worker monitoring first (if it exists)
-    try {
-      await workerManager.removeOrderFromMonitoring(dealId);
-      console.log(`[dealsService] Removed order ${dealId} from TP/SL monitoring`);
-    } catch (error) {
-      console.error(`[dealsService] Failed to remove order ${dealId} from monitoring:`, error);
-      // Continue with manual closure
-    }
+    // ОТКЛЮЧЕНО: Remove from worker monitoring first (if it exists)
+    // try {
+    //   await workerManager.removeOrderFromMonitoring(dealId);
+    //   console.log(`[dealsService] Removed order ${dealId} from TP/SL monitoring`);
+    // } catch (error) {
+    //   console.error(`[dealsService] Failed to remove order ${dealId} from monitoring:`, error);
+    //   // Continue with manual closure
+    // }
     
     // Получаем сделку
     const [deal] = await db.select().from(deals).where(eq(deals.id, dealId));
@@ -219,43 +219,43 @@ export const dealsService = {
     await storage.updateUserTradingStats(userId, finalProfit, amount);
     console.log(`[dealsService] Обновлена статистика торговли: прибыль=${finalProfit}`);
 
-    // Синхронизируем закрытие сделки с ClickHouse
+    // ОТКЛЮЧЕНО: Синхронизируем закрытие сделки с ClickHouse
     const closedAt = new Date();
-    try {
-      await AnalyticsLogger.syncDeal({
-        id: dealId,
-        userId,
-        symbol: deal.symbol,
-        direction: deal.direction,
-        amount: parseFloat(deal.amount),
-        multiplier: deal.multiplier,
-        openPrice: parseFloat(deal.openPrice),
-        takeProfit: deal.takeProfit ? parseFloat(deal.takeProfit) : undefined,
-        stopLoss: deal.stopLoss ? parseFloat(deal.stopLoss) : undefined,
-        openedAt: deal.openedAt,
-        closedAt,
-        closePrice,
-        profit: finalProfit,
-        status: 'closed'
-      });
-    } catch (error) {
-      console.error('Failed to sync closed deal to ClickHouse:', error);
-    }
+    // try {
+    //   await AnalyticsLogger.syncDeal({
+    //     id: dealId,
+    //     userId,
+    //     symbol: deal.symbol,
+    //     direction: deal.direction,
+    //     amount: parseFloat(deal.amount),
+    //     multiplier: deal.multiplier,
+    //     openPrice: parseFloat(deal.openPrice),
+    //     takeProfit: deal.takeProfit ? parseFloat(deal.takeProfit) : undefined,
+    //     stopLoss: deal.stopLoss ? parseFloat(deal.stopLoss) : undefined,
+    //     openedAt: deal.openedAt,
+    //     closedAt,
+    //     closePrice,
+    //     profit: finalProfit,
+    //     status: 'closed'
+    //   });
+    // } catch (error) {
+    //   console.error('Failed to sync closed deal to ClickHouse:', error);
+    // }
 
-    // Обновляем прогресс заданий типа "daily_trade"
-    console.log(`🔥🔥 [dealsService] СЕЙЧАС будем вызывать updateDailyTradeTasks для userId=${userId}`);
-    await this.updateDailyTradeTasks(userId);
-    console.log(`🔥🔥 [dealsService] updateDailyTradeTasks ЗАВЕРШЕН`);
+    // ОТКЛЮЧЕНО ВРЕМЕННО: Обновляем прогресс заданий типа "daily_trade"
+    // console.log(`🔥🔥 [dealsService] СЕЙЧАС будем вызывать updateDailyTradeTasks для userId=${userId}`);
+    // await this.updateDailyTradeTasks(userId);
+    // console.log(`🔥🔥 [dealsService] updateDailyTradeTasks ЗАВЕРШЕН`);
 
-    // Обновляем прогресс заданий типа "crypto_king" на основе прибыли
-    console.log(`[dealsService] Вызываем updateCryptoKingTasks для userId=${userId}, прибыль=${finalProfit}`);
-    await this.updateCryptoKingTasks(userId, finalProfit);
-    console.log(`[dealsService] updateCryptoKingTasks завершен`);
+    // // Обновляем прогресс заданий типа "crypto_king" на основе прибыли
+    // console.log(`[dealsService] Вызываем updateCryptoKingTasks для userId=${userId}, прибыль=${finalProfit}`);
+    // await this.updateCryptoKingTasks(userId, finalProfit);
+    // console.log(`[dealsService] updateCryptoKingTasks завершен`);
 
-    // Обновляем новые типы торговых заданий
-    console.log(`[dealsService] Вызываем updateNewTradeTasksOnClose для userId=${userId}, прибыль=${finalProfit}`);
-    await this.updateNewTradeTasksOnClose(userId, finalProfit);
-    console.log(`[dealsService] updateNewTradeTasksOnClose завершен`);
+    // // Обновляем новые типы торговых заданий
+    // console.log(`[dealsService] Вызываем updateNewTradeTasksOnClose для userId=${userId}, прибыль=${finalProfit}`);
+    // await this.updateNewTradeTasksOnClose(userId, finalProfit);
+    // console.log(`[dealsService] updateNewTradeTasksOnClose завершен`);
 
     // Create notification for deal closed
     try {

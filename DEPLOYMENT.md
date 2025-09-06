@@ -24,20 +24,20 @@ npm run start
 
 ---
 
-## 🌍 Public Access with ngrok
+## 🌍 Local Development Access
 
-### Setup ngrok tunnel:
-```bash
-ngrok http 1111 --domain=relieved-magpie-pleasing.ngrok-free.app
-```
+### Application URLs:
+- **Frontend:** http://localhost:1111
+- **API:** http://localhost:1111/api
+- **Admin Dashboard:** http://localhost:1111/admin/dashboard
 
-### Google OAuth Setup:
+### Google OAuth Setup for localhost:
 ```
 Authorized JavaScript origins:
-https://relieved-magpie-pleasing.ngrok-free.app
+http://localhost:1111
 
 Authorized redirect URIs:
-https://relieved-magpie-pleasing.ngrok-free.app/api/auth/google/callback
+http://localhost:1111/api/auth/google/callback
 ```
 
 ---
@@ -121,18 +121,18 @@ ls -la dist/  # Should contain index.html and assets/
 - [ ] Frontend loads at http://localhost:1111
 - [ ] API responds at http://localhost:1111/api/health
 - [ ] Admin dashboard accessible
-- [ ] Google OAuth configured for ngrok domain
+- [ ] Google OAuth configured for localhost
 - [ ] Database migrations completed
 - [ ] ClickHouse analytics working
 - [ ] Redis caching functional
 
 ---
 
-## 📱 Mobile Testing
+## 📱 Local Testing
 
-1. Start ngrok tunnel
-2. Open https://relieved-magpie-pleasing.ngrok-free.app on mobile
-3. Test Google OAuth login
-4. Verify all features work on mobile device
+1. Open http://localhost:1111 in browser
+2. Test Google OAuth login (configured for localhost)
+3. Verify all features work correctly
+4. Test admin dashboard at http://localhost:1111/admin/dashboard
 
 **Ready for production deployment! 🚀**

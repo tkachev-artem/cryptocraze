@@ -30,17 +30,19 @@ export function setupSimpleOAuth(app: Express) {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false,
       maxAge: sessionTtl,
       sameSite: 'lax' as const,
+      // Don't set domain in Docker - let browser handle it
+      ...(process.env.NODE_ENV === 'production' ? {} : { domain: 'localhost' }),
     },
   }));
 
-  // Google OAuth URLs
-  const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
-  const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
-  const CALLBACK_URL = process.env.GOOGLE_OAUTH_REDIRECT_URI || process.env.TUNNEL_URL + '/api/auth/google/callback' || 'http://localhost:1111/api/auth/google/callback';
-  const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+  // Google OAuth URLs - use env vars for Docker compatibility
+  const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '707632794493-5lhl2avka63s62n4nje0qlvg7vd90dc4.apps.googleusercontent.com';
+  const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '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';
+  const CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || 'http://localhost:1111/api/auth/google/callback';
+  const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:1111';
 
   console.log(`🔗 OAuth Callback URL: ${CALLBACK_URL}`);
 
@@ -249,7 +251,12 @@ export function setupSimpleOAuth(app: Express) {
         console.error('❌ Session destroy error:', err);
       }
       
-      res.clearCookie('crypto_session');
+      res.clearCookie('crypto_session', { 
+        domain: 'localhost', 
+        path: '/',
+        httpOnly: true,
+        sameSite: 'lax' as const
+      });
       res.redirect(`${FRONTEND_URL}/`);
     });
   });
@@ -326,6 +333,38 @@ export function setupSimpleOAuth(app: Express) {
     }
   });
 
+  // ВРЕМЕННЫЙ endpoint для тестирования торговых операций
+  app.post('/api/test/set-user-session', async (req: Request, res: Response) => {
+    const { userId } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ message: 'userId required' });
+    }
+    
+    console.log(`🧪 Setting test session for user: ${userId}`);
+    
+    try {
+      // Проверяем что пользователь существует
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      // Устанавливаем сессию
+      (req as any).session.userId = userId;
+      
+      res.json({ 
+        success: true, 
+        message: `Session set for user ${userId}`,
+        user: user 
+      });
+      
+    } catch (error) {
+      console.error('❌ Error setting test session:', error);
+      res.status(500).json({ message: 'Failed to set session' });
+    }
+  });
+
   console.log('✅ Simple OAuth setup complete');
 }
 
@@ -334,11 +373,22 @@ export const isAuthenticated = (req: any, res: any, next: any) => {
   // Skip auth only for static mode
   const shouldSkipAuth = process.env.STATIC_ONLY === 'true';
   if (shouldSkipAuth) {
-    req.user = { id: 'test-user' };
+    req.user = { id: '116069980752518862717' };
     return next();
   }
 
   const userId = req.session?.userId;
+  
+  // Debug logging for Docker issues
+  if (process.env.NODE_ENV === 'production') {
+    console.log('🔐 Auth check:', {
+      hasSession: !!req.session,
+      sessionId: req.session?.id?.substring(0, 8),
+      userId: userId,
+      cookies: Object.keys(req.cookies || {}),
+      userAgent: req.get('User-Agent')?.substring(0, 50)
+    });
+  }
   
   if (!userId) {
     return res.status(401).json({ message: 'Unauthorized' });
@@ -354,7 +404,7 @@ export const isAdmin = async (req: any, res: any, next: any) => {
   // Skip admin auth if disabled for testing/development
   const shouldSkipAuth = process.env.STATIC_ONLY === 'true' || process.env.DISABLE_ADMIN_AUTH === 'true';
   if (shouldSkipAuth) {
-    req.user = { id: 'test-admin', role: 'admin' };
+    req.user = { id: '116069980752518862717', role: 'admin' };
     return next();
   }
 
@@ -388,7 +438,7 @@ export const isAdminWithAuth = async (req: any, res: any, next: any) => {
   // Skip both auth and admin check if disabled for testing/development  
   const shouldSkipAuth = process.env.STATIC_ONLY === 'true' || process.env.DISABLE_ADMIN_AUTH === 'true';
   if (shouldSkipAuth) {
-    req.user = { id: 'test-admin', role: 'admin' };
+    req.user = { id: '116069980752518862717', role: 'admin' };
     return next();
   }
 

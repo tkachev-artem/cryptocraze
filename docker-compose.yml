@@ -1,35 +1,55 @@
 # Docker Compose configuration for CryptoCraze
 
 services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "1111:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "1111:1111"
+    expose:
+      - "1111"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:1111/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     environment:
       - NODE_ENV=production
       - PORT=1111
       - DATABASE_URL=postgresql://postgres:password@postgres:5432/crypto_analyzer
       - REDIS_URL=redis://redis:6379
-      - CLICKHOUSE_URL=http://clickhouse:8123
+      - CLICKHOUSE_URL=
+      - DISABLE_CLICKHOUSE=true
       - CLICKHOUSE_DATABASE=cryptocraze_analytics
       - ENABLE_REDIS_SCALING=false
       - SKIP_MIGRATIONS=false
       - STATIC_ONLY=false
-      - TUNNEL_URL=https://relieved-magpie-pleasing.ngrok-free.app
-      - GOOGLE_CLIENT_ID=707632794493-srt8bno0b30oclctuo9e50nhoin9jfma.apps.googleusercontent.com
-      - GOOGLE_CLIENT_SECRET=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
-      - GOOGLE_OAUTH_REDIRECT_URI=https://relieved-magpie-pleasing.ngrok-free.app/api/auth/google/callback
+      - DISABLE_WORKERS=true
+      - GOOGLE_CLIENT_ID=707632794493-5lhl2avka63s62n4nje0qlvg7vd90dc4.apps.googleusercontent.com
+      - GOOGLE_CLIENT_SECRET=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
+      - GOOGLE_CALLBACK_URL=http://localhost:1111/api/auth/google/callback
       - SESSION_SECRET=production-secret-change-me-123456789
-      - FRONTEND_URL=https://relieved-magpie-pleasing.ngrok-free.app
+      - FRONTEND_URL=http://localhost:1111
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-      clickhouse:
-        condition: service_healthy
+      # clickhouse:
+      #   condition: service_healthy
     restart: unless-stopped
     volumes:
       - ./uploads:/app/uploads
@@ -62,36 +82,60 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    # КРИТИЧНЫЕ НАСТРОЙКИ ДЛЯ ТОРГОВЛИ
+    command: >
+      redis-server 
+      --appendonly yes 
+      --maxmemory 512mb 
+      --maxmemory-policy noeviction
+      --tcp-keepalive 60
+      --save 60 1000
+      --timeout 300
+      --client-output-buffer-limit "normal 0 0 0"
+      --client-output-buffer-limit "replica 256mb 64mb 60"
+      --client-output-buffer-limit "pubsub 32mb 8mb 60"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
     restart: unless-stopped
     networks:
       - app-network
+    # ОПТИМИЗАЦИЯ ДЛЯ ТОРГОВЛИ
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
 
-  clickhouse:
-    image: clickhouse/clickhouse-server:latest
-    ports:
-      - "8123:8123"
-      - "9000:9000"
-    environment:
-      - CLICKHOUSE_DB=cryptocraze_analytics
-      - CLICKHOUSE_USER=default
-      - CLICKHOUSE_PASSWORD=
-    volumes:
-      - clickhouse_data:/var/lib/clickhouse
-      - clickhouse_logs:/var/log/clickhouse-server
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - app-network
+  # clickhouse:
+  #   image: clickhouse/clickhouse-server:latest
+  #   ports:
+  #     - "8123:8123"
+  #     - "9000:9000"
+  #   environment:
+  #     - CLICKHOUSE_DB=cryptocraze_analytics
+  #     - CLICKHOUSE_USER=default
+  #     - CLICKHOUSE_PASSWORD=
+  #   ulimits:
+  #     nofile:
+  #       soft: 262144
+  #       hard: 262144
+  #   volumes:
+  #     - clickhouse_data:/var/lib/clickhouse
+  #     - clickhouse_logs:/var/log/clickhouse-server
+  #     - ./clickhouse-config/users.xml:/etc/clickhouse-server/users.xml
+  #   healthcheck:
+  #     test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   restart: unless-stopped
+  #   networks:
+  #     - app-network
 
 volumes:
   postgres_data:
@@ -102,3 +146,7 @@ volumes:
 networks:
   app-network:
     driver: bridge
+    driver_opts:
+      com.docker.network.bridge.host_binding_ipv4: "0.0.0.0"
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "true"

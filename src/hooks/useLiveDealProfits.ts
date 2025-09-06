@@ -1,91 +1,83 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ensureSocketConnected } from '@/lib/socket'
 
 export type DealProfit = { dealId: number; profit: string }
 export type DealProfitMap = Record<number, DealProfit>
 
-const refCount = new Map<number, number>()
-
+// Socket.IO removed - deal profits are fetched via REST API polling
 const subscribeDeals = (dealIds: number[]) => {
-  if (!dealIds.length) return
-  const socket = ensureSocketConnected()
-  const toAdd: number[] = []
-  for (const id of dealIds) {
-    const cur = refCount.get(id) ?? 0
-    if (cur === 0) toAdd.push(id)
-    refCount.set(id, cur + 1)
-  }
-  if (toAdd.length) socket.emit('subscribeDeals', { dealIds: toAdd })
+  console.log('🚫 Socket.IO removed - using REST API for deal profits')
 }
 
 const unsubscribeDeals = (dealIds: number[]) => {
-  if (!dealIds.length) return
-  const socket = ensureSocketConnected()
-  const toRemove: number[] = []
-  for (const id of dealIds) {
-    const cur = refCount.get(id) ?? 0
-    if (cur <= 1) {
-      refCount.delete(id)
-      toRemove.push(id)
-    } else {
-      refCount.set(id, cur - 1)
-    }
-  }
-  if (toRemove.length) socket.emit('unsubscribeDeals', { dealIds: toRemove })
+  console.log('🚫 Socket.IO removed - using REST API for deal profits')
 }
 
 export const useLiveDealProfits = (inputDealIds: number[]) => {
-  const [isConnected, setIsConnected] = useState(false)
+  const [isConnected, setIsConnected] = useState(true) // Always connected for REST API
   const [profits, setProfits] = useState<DealProfitMap>({})
   const dealIds = useMemo(() => Array.from(new Set(inputDealIds.filter((n) => Number.isFinite(n)))), [inputDealIds])
-  const subscribedRef = useRef<Set<number>>(new Set())
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Fetch deal profits from REST API
+  const fetchDealProfits = async (dealIdList: number[]) => {
+    if (dealIdList.length === 0) return
+    
+    try {
+      const response = await fetch(`/api/deals/profits?ids=${dealIdList.join(',')}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      })
+      
+      if (!response.ok) {
+        console.warn('Failed to fetch deal profits:', response.status)
+        return
+      }
+      
+      const data = await response.json()
+      if (Array.isArray(data)) {
+        const newProfits: DealProfitMap = {}
+        for (const item of data) {
+          if (typeof item.dealId === 'number') {
+            newProfits[item.dealId] = {
+              dealId: item.dealId,
+              profit: item.profit || '0',
+            }
+          }
+        }
+        setProfits(prev => ({ ...prev, ...newProfits }))
+      }
+    } catch (error) {
+      console.error('Failed to fetch deal profits:', error)
+    }
+  }
+
+  // Set up polling for the requested deal IDs
   useEffect(() => {
-    const socket = ensureSocketConnected()
-    const onConnect = () => {
-      setIsConnected(true)
-      const all = Array.from(refCount.keys())
-      if (all.length) socket.emit('subscribeDeals', { dealIds: all })
+    if (dealIds.length === 0) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+      return
     }
-    const onDisconnect = () => { setIsConnected(false); }
-    const onDealProfit = (payload: DealProfit) => {
-      if (typeof payload.dealId !== 'number') return
-      setProfits(prev => ({ ...prev, [payload.dealId]: payload }))
-    }
-    socket.on('connect', onConnect)
-    socket.on('disconnect', onDisconnect)
-    socket.on('dealProfitUpdate', onDealProfit)
+
+    // Fetch initial data
+    fetchDealProfits(dealIds)
+
+    // Set up polling every 5 seconds
+    if (intervalRef.current) clearInterval(intervalRef.current)
+    intervalRef.current = setInterval(() => {
+      fetchDealProfits(dealIds)
+    }, 5000)
+
     return () => {
-      socket.off('connect', onConnect)
-      socket.off('disconnect', onDisconnect)
-      socket.off('dealProfitUpdate', onDealProfit)
-    }
-  }, [])
-
-  useEffect(() => {
-    ensureSocketConnected()
-    const set = subscribedRef.current
-    const desired = new Set(dealIds)
-    const toSub: number[] = []
-    const toUnsub: number[] = []
-    for (const id of desired) if (!set.has(id)) toSub.push(id)
-    for (const id of set) if (!desired.has(id)) toUnsub.push(id)
-    if (toSub.length) {
-      subscribeDeals(toSub)
-      toSub.forEach(id => set.add(id))
-    }
-    if (toUnsub.length) {
-      unsubscribeDeals(toUnsub)
-      toUnsub.forEach(id => set.delete(id))
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
     }
   }, [dealIds])
-
-  useEffect(() => () => {
-    const set = subscribedRef.current
-    const all = Array.from(set)
-    if (all.length) unsubscribeDeals(all)
-    set.clear()
-  }, [])
 
   return { profits, isConnected }
 }

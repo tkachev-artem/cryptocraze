@@ -1,12 +1,25 @@
 import { getClickHouseClient } from './clickhouseClient.js';
 import { v4 as uuidv4 } from 'uuid';
 
+// Check if ClickHouse is disabled
+const isClickHouseDisabled = process.env.DISABLE_CLICKHOUSE === 'true';
+
 /**
  * ClickHouse Analytics Service
  * Высокопроизводительный сервис для аналитики admin dashboard
  */
 export class ClickHouseAnalyticsService {
-  private client = getClickHouseClient();
+  private client = null;
+  
+  private getClient() {
+    if (isClickHouseDisabled) {
+      throw new Error('ClickHouse is disabled');
+    }
+    if (!this.client) {
+      this.client = getClickHouseClient();
+    }
+    return this.client;
+  }
 
   /**
    * Инициализация схемы ClickHouse
@@ -14,9 +27,10 @@ export class ClickHouseAnalyticsService {
   async initializeSchema(): Promise<void> {
     try {
       console.log('[ClickHouse] Initializing schema...');
+      const client = this.getClient();
       
       // Создание базы данных
-      await this.client.exec({
+      await client.exec({
         query: 'CREATE DATABASE IF NOT EXISTS cryptocraze_analytics'
       });
 

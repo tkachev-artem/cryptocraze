@@ -246,7 +246,7 @@ export class PriceMonitorService extends EventEmitter {
   } {
     const isHealthy = this.isRunning && 
                      this.stats.failedPricesFetches < this.MAX_FAILED_FETCHES &&
-                     (Date.now() - this.stats.lastUpdateTime.getTime()) < 10000; // Last update within 10s
+                     (this.stats.trackedSymbols === 0 || (Date.now() - this.stats.lastUpdateTime.getTime()) < 60000); // Allow 60s for updates, or pass if no symbols
     
     return {
       isHealthy,

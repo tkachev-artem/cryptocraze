@@ -1,5 +1,13 @@
-import type { Socket } from 'socket.io-client';
-import { io } from 'socket.io-client';
+// Socket.IO completely removed for stability - using pure REST API only
+export type Socket = {
+  connected: boolean;
+  connect: () => void;
+  disconnect: () => void;
+  on: (event: string, callback: Function) => void;
+  off: (event: string, callback?: Function) => void;
+  emit: (event: string, data?: any) => void;
+  id?: string;
+}
 
 // Типы для Socket событий
 export type SocketConfig = {
@@ -59,70 +67,19 @@ const connectionState = {
   maxConnectAttempts: 5,
 };
 
-// Создание улучшенного Socket подключения
+// Socket.IO removed - return stub socket
 export const createResilientSocket = (config: Partial<SocketConfig> = {}): Socket => {
-  const socketConfig = { ...DEFAULT_SOCKET_CONFIG, ...config };
+  console.log('🚫 Socket.IO removed - using REST API only');
   
-  console.log(`Создание Socket подключения к: ${String(SOCKET_ORIGIN)}${String(SOCKET_PATH)}`);
-  
-  const socket: Socket = io(SOCKET_ORIGIN, {
-    path: SOCKET_PATH,
-    ...socketConfig,
-    // FORCE POLLING-ONLY для Cloudflare tunnel совместимости
-    transports: ['polling'], // ПРИНУДИТЕЛЬНО только polling - Cloudflare блокирует WebSocket
-    upgrade: false,
-    // Дополнительные настройки для надежности
-    randomizationFactor: 0.5,
-  });
-
-  // Обработчики событий подключения
-  socket.on('connect', () => {
-    console.log('✅ Socket подключен:', String(socket.id));
-    connectionState.isConnecting = false;
-    connectionState.isHealthy = true;
-    connectionState.connectAttempts = 0;
-  });
-
-  socket.on('connect_error', (error) => {
-    console.warn('❌ Ошибка подключения Socket:', error.message);
-    connectionState.isConnecting = false;
-    connectionState.isHealthy = false;
-    connectionState.connectAttempts++;
-    
-    // Если слишком много попыток, временно остановим
-    if (connectionState.connectAttempts >= connectionState.maxConnectAttempts) {
-      console.log('🔄 Достигнут лимит попыток подключения, пауза...');
-      setTimeout(() => {
-        connectionState.connectAttempts = 0;
-        console.log('🔄 Сброс счетчика попыток подключения');
-      }, 30000); // Пауза 30 секунд
-    }
-  });
-
-  socket.on('disconnect', (reason) => {
-    console.log('🔌 Socket отключен:', reason);
-    connectionState.isHealthy = false;
-    
-    // Автоматическое переподключение только для определенных причин
-    if (reason === 'io server disconnect') {
-      // Сервер принудительно отключил - не переподключаемся автоматически
-      console.log('🛑 Сервер принудительно отключил Socket');
-    }
-  });
-
-  socket.on('reconnect', (attemptNumber) => {
-    console.log(`🔄 Socket переподключен после ${String(attemptNumber)} попыток`);
-    connectionState.isHealthy = true;
-  });
-
-  socket.on('reconnect_attempt', (attemptNumber) => {
-    console.log(`🔄 Попытка переподключения #${String(attemptNumber)}`);
-  });
-
-  socket.on('reconnect_failed', () => {
-    console.error('❌ Не удалось переподключить Socket после всех попыток');
-    connectionState.isHealthy = false;
-  });
+  const socket: Socket = {
+    connected: false,
+    id: 'stub-socket',
+    connect: () => console.log('🚫 Socket.IO removed - using REST API only'),
+    disconnect: () => console.log('🚫 Socket.IO removed - using REST API only'),
+    on: () => console.log('🚫 Socket.IO removed - using REST API only'),
+    off: () => console.log('🚫 Socket.IO removed - using REST API only'),
+    emit: () => console.log('🚫 Socket.IO removed - using REST API only')
+  };
 
   return socket;
 };
@@ -130,118 +87,30 @@ export const createResilientSocket = (config: Partial<SocketConfig> = {}): Socke
 // Глобальный экземпляр Socket
 export const resilientSocket = createResilientSocket();
 
-// Функция для безопасного подключения
+// Socket.IO removed - return stub socket immediately
 export const ensureSocketConnection = (): Promise<Socket> => {
-  return new Promise((resolve, reject) => {
-    // Если уже подключен
-    if (resilientSocket.connected) {
-      resolve(resilientSocket);
-      return;
-    }
-
-    // Если уже подключается
-    if (connectionState.isConnecting) {
-      // Ждем результата текущей попытки
-      const timeout = setTimeout(() => {
-        reject(new Error('Таймаут ожидания подключения Socket'));
-      }, 15000);
-
-      const onConnect = () => {
-        clearTimeout(timeout);
-        resilientSocket.off('connect', onConnect);
-        resilientSocket.off('connect_error', onError);
-        resolve(resilientSocket);
-      };
-
-      const onError = (error: Error) => {
-        clearTimeout(timeout);
-        resilientSocket.off('connect', onConnect);
-        resilientSocket.off('connect_error', onError);
-        reject(error);
-      };
-
-      resilientSocket.once('connect', onConnect);
-      resilientSocket.once('connect_error', onError);
-      return;
-    }
-
-    // Проверяем лимит попыток
-    if (connectionState.connectAttempts >= connectionState.maxConnectAttempts) {
-      reject(new Error('Превышен лимит попыток подключения Socket'));
-      return;
-    }
-
-    // Начинаем новое подключение
-    connectionState.isConnecting = true;
-    connectionState.lastConnectAttempt = Date.now();
-
-    const timeout = setTimeout(() => {
-      connectionState.isConnecting = false;
-      reject(new Error('Таймаут подключения Socket'));
-    }, 15000);
-
-    const onConnect = () => {
-      clearTimeout(timeout);
-      resilientSocket.off('connect', onConnect);
-      resilientSocket.off('connect_error', onError);
-      resolve(resilientSocket);
-    };
-
-    const onError = (error: Error) => {
-      clearTimeout(timeout);
-      connectionState.isConnecting = false;
-      resilientSocket.off('connect', onConnect);
-      resilientSocket.off('connect_error', onError);
-      reject(error);
-    };
-
-    resilientSocket.once('connect', onConnect);
-    resilientSocket.once('connect_error', onError);
-    
-    resilientSocket.connect();
-  });
+  console.log('🚫 Socket.IO removed - using REST API only');
+  return Promise.resolve(resilientSocket);
 };
 
-// Функция для проверки здоровья подключения
+// Socket.IO removed - always return false
 export const checkSocketHealth = (): boolean => {
-  return resilientSocket.connected && connectionState.isHealthy;
+  return false;
 };
 
-// Функция для мягкого отключения
+// Socket.IO removed - nothing to disconnect
 export const disconnectSocket = (): void => {
-  if (resilientSocket.connected) {
-    console.log('🔌 Отключение Socket...');
-    resilientSocket.disconnect();
-  }
-  connectionState.isConnecting = false;
-  connectionState.isHealthy = false;
+  console.log('🚫 Socket.IO removed - nothing to disconnect');
 };
 
-// Утилита для подписки на события с автоматическим подключением
+// Socket.IO removed - return stub unsubscribe function
 export const subscribeToSocketEvent = (
   event: string,
   handler: (data: unknown) => void,
   options: { autoConnect?: boolean } = {}
 ): Promise<() => void> => {
-  const { autoConnect = true } = options;
-
-  return new Promise((resolve, reject) => {
-    const subscribe = () => {
-      resilientSocket.on(event, handler);
-      const unsubscribe = () => {
-        resilientSocket.off(event, handler);
-      };
-      resolve(unsubscribe);
-    };
-
-    if (autoConnect && !resilientSocket.connected) {
-      ensureSocketConnection()
-        .then(subscribe)
-        .catch(reject);
-    } else {
-      subscribe();
-    }
-  });
+  console.log('🚫 Socket.IO removed - using REST API only');
+  return Promise.resolve(() => {});
 };
 
 // Экспорт для обратной совместимости

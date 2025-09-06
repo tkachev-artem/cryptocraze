@@ -49,8 +49,6 @@ export async function setupAuth(app: Express) {
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
     
-    // Добавляем заголовок для обхода ngrok предупреждения
-    res.header('ngrok-skip-browser-warning', 'true');
     
     if (req.method === 'OPTIONS') {
       res.sendStatus(200);
@@ -75,9 +73,9 @@ export async function setupAuth(app: Express) {
 
   // Google OAuth Strategy
   passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID || 'your-google-client-id',
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'your-google-client-secret',
-    callbackURL: process.env.GOOGLE_CALLBACK_URL || process.env.TUNNEL_URL + '/api/auth/google/callback' || 'http://localhost:3001/api/auth/google/callback',
+    clientID: '707632794493-5lhl2avka63s62n4nje0qlvg7vd90dc4.apps.googleusercontent.com',
+    clientSecret: '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',
+    callbackURL: 'http://localhost:1111/api/auth/google/callback',
     scope: ['profile', 'email']
   }, async (accessToken, refreshToken, profile, done) => {
     try {
@@ -152,12 +150,11 @@ export async function setupAuth(app: Express) {
   app.get('/api/auth/google/callback', 
     passport.authenticate('google', { failureRedirect: '/login' }),
     (req, res) => {
-      // Успешная авторизация - перенаправляем на главную с заголовком для ngrok
+      // Успешная авторизация - перенаправляем на главную
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       
       res.writeHead(302, {
-        'Location': frontendUrl + '/',
-        'ngrok-skip-browser-warning': 'true'
+        'Location': frontendUrl + '/'
       });
       res.end();
     }

@@ -8,6 +8,11 @@ import { createClient, ClickHouseClient } from '@clickhouse/client';
 let clickhouseClient: ClickHouseClient | null = null;
 
 export const getClickHouseClient = (): ClickHouseClient => {
+  // Check if ClickHouse is disabled
+  if (process.env.DISABLE_CLICKHOUSE === 'true') {
+    throw new Error('ClickHouse is disabled via environment variable');
+  }
+  
   if (!clickhouseClient) {
     const config = {
       url: process.env.CLICKHOUSE_URL || process.env.CLICKHOUSE_HOST || 'http://localhost:8123',

@@ -1,11 +1,8 @@
-import type { Express, Request, Response } from "express";
+import express, { type Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
-import { Server as IOServer } from 'socket.io';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { createAdapter } from '@socket.io/redis-adapter';
-import { createClient } from 'redis';
 import { WebSocketServer, WebSocket } from 'ws';
 import { storage } from "./storage";
 import { setupSimpleOAuth, isAuthenticated, isAdmin, isAdminWithAuth } from "./simpleOAuth";
@@ -82,6 +79,36 @@ type AuthenticatedRequest = Request & {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  console.log('🚀 STARTING ROUTE REGISTRATION - Beginning of registerRoutes function');
+  
+  // КРИТИЧНЫЙ SSE ENDPOINT ДЛЯ ТОРГОВЫХ ОПЕРАЦИЙ  
+  app.get('/api/sse/trading', (req: Request, res: Response) => {
+    console.log('🔄 SSE ТОРГОВОЕ ПОДКЛЮЧЕНИЕ ЗАПРОШЕНО');
+    
+    // Настройка SSE заголовков
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive', 
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control'
+    });
+
+    // Отправка начального сообщения
+    res.write('data: {"type":"connected","message":"SSE торговое соединение установлено"}\n\n');
+
+    // Heartbeat каждые 10 секунд
+    const heartbeat = setInterval(() => {
+      res.write('data: {"type":"heartbeat","timestamp":' + Date.now() + '}\n\n');
+    }, 10000);
+
+    // Очистка при отключении
+    req.on('close', () => {
+      console.log('🔌 SSE ТОРГОВОЕ СОЕДИНЕНИЕ ЗАКРЫТО');
+      clearInterval(heartbeat);
+    });
+  });
+
   // Health check endpoint
   app.get('/health', async (req, res) => {
     try {
@@ -3214,8 +3241,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { userId, planType, telegramId, amount } = req.body;
       const currentUserId = req.user.id;
 
+      // Debug logging for premium API
+      console.log('🎁 Premium subscription request:', {
+        body: req.body,
+        currentUserId,
+        headers: {
+          'content-type': req.get('content-type'),
+          'user-agent': req.get('user-agent')?.substring(0, 50)
+        }
+      });
+
       // Валидация
       if (!userId || !planType) {
+        console.log('❌ Premium validation failed:', { userId, planType, body: req.body });
         res.status(400).json({
           success: false,
           message: "userId and planType are required"
@@ -3241,8 +3279,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Получаем план для определения цены
+      console.log('🔍 Looking for plan type:', planType);
       const plan = await premiumService.getPlanByType(planType);
+      console.log('📋 Found plan:', plan);
+      
       if (!plan) {
+        console.log('❌ Plan not found for type:', planType);
         res.status(400).json({
           success: false,
           message: `Plan type ${planType} not found`
@@ -6581,7 +6623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/deals/open', isAuthenticated, AnalyticsLogger.tradeLogger(), async (req: AuthenticatedRequest, res: Response) => {
+  app.post('/api/deals/open', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user.id;
       const { symbol, direction, amount, multiplier, takeProfit, stopLoss } = req.body;
@@ -6607,7 +6649,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/deals/close', (req, res, next) => {
     console.log(`🚨 [MIDDLEWARE] /api/deals/close вызван, body:`, req.body);
     next();
-  }, isAuthenticated, AnalyticsLogger.tradeLogger(), async (req: AuthenticatedRequest, res: Response) => {
+  }, isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user.id;
       const { dealId } = req.body;
@@ -6733,201 +6775,282 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  console.log('🚀 ABOUT TO SETUP STATIC FILES - Right before static files setup');
+  
+  // 🌐 STATIC FILES SERVING - Обслуживание фронтенда
+  console.log('📁 Setting up static file serving...');
+  
+  // Определяем правильный путь к dist папке в контейнере
+  const distPath = path.resolve(process.cwd(), 'dist');
+  const indexPath = path.join(distPath, 'index.html');
+  
+  console.log('📂 Static files path:', distPath);
+  console.log('📄 Index file exists:', fs.existsSync(indexPath));
+  console.log('📄 Index file path:', indexPath);
+  
+  if (fs.existsSync(indexPath)) {
+    console.log('✅ Index.html found successfully!');
+  } else {
+    console.log('❌ Index.html NOT FOUND! This will cause 404 errors.');
+  }
+  
+  // Serve static assets with proper caching headers
+  app.use('/assets', express.static(path.join(distPath, 'assets'), {
+    maxAge: '1y', // Cache assets for 1 year
+    etag: true,
+    lastModified: true
+  }));
+  
+  // Serve other static files (images, icons, etc.)
+  app.use(express.static(distPath, {
+    maxAge: '1d', // Cache for 1 day
+    etag: true,
+    lastModified: true,
+    index: false // Don't serve index.html for static files
+  }));
+  
+  // ========================================
+  // REST API ENDPOINTS TO REPLACE SOCKET.IO
+  // ========================================
+
+  // Prices endpoint for live price polling
+  app.get('/api/prices', async (req: Request, res: Response) => {
+    try {
+      const symbols = (req.query.symbols as string)?.split(',') || [];
+      const prices: Record<string, any> = {};
+
+      for (const symbol of symbols) {
+        let priceData = unifiedPriceService.getPrice(symbol);
+        
+        // If no data in unified service, subscribe and try direct Binance API
+        if (!priceData) {
+          console.log(`[/api/prices] No data for ${symbol}, subscribing and using fallback`);
+          
+          // Subscribe to unified price service for future requests
+          try {
+            await unifiedPriceService.addPair(symbol);
+          } catch (error) {
+            console.error(`[/api/prices] Failed to subscribe to ${symbol}:`, error);
+          }
+          
+          // Fallback to direct Binance API
+          try {
+            const price = await binanceApi.getCurrentPrice(symbol);
+            prices[symbol] = {
+              symbol: symbol.toUpperCase(),
+              price: price,
+              change: 0,
+              changePercent: 0,
+              timestamp: new Date().toISOString(),
+              source: 'binance-fallback'
+            };
+          } catch (error) {
+            console.error(`[/api/prices] Binance fallback failed for ${symbol}:`, error);
+          }
+        } else {
+          // Use unified service data
+          prices[symbol] = {
+            symbol: priceData.symbol,
+            price: priceData.price,
+            change: priceData.change || 0,
+            changePercent: priceData.changePercent || 0,
+            timestamp: priceData.timestamp,
+            source: 'unified-service'
+          };
+        }
+      }
+
+      res.json({
+        success: true,
+        data: prices,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error fetching prices:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to fetch prices' 
+      });
+    }
+  });
+
+  // Stats endpoint for general statistics polling
+  app.get('/api/stats', async (req: Request, res: Response) => {
+    try {
+      const symbols = (req.query.symbols as string)?.split(',') || ['BTCUSDT'];
+      const stats: Record<string, any> = {};
+
+      for (const symbol of symbols) {
+        let priceData = unifiedPriceService.getPrice(symbol);
+        
+        // If no data in unified service, subscribe and try direct Binance API
+        if (!priceData) {
+          console.log(`[/api/stats] No data for ${symbol}, subscribing and using fallback`);
+          
+          // Subscribe to unified price service for future requests
+          try {
+            await unifiedPriceService.addPair(symbol);
+          } catch (error) {
+            console.error(`[/api/stats] Failed to subscribe to ${symbol}:`, error);
+          }
+          
+          // Fallback to direct Binance API
+          try {
+            const price = await binanceApi.getCurrentPrice(symbol);
+            const stats24h = await binanceApi.get24hrStats(symbol);
+            stats[symbol] = {
+              price: price,
+              change: stats24h.priceChange || 0,
+              changePercent: stats24h.priceChangePercent || 0,
+              volume24h: stats24h.quoteVolume || 0,
+              high24h: stats24h.highPrice || price,
+              low24h: stats24h.lowPrice || price,
+              timestamp: new Date().toISOString(),
+              source: 'binance-fallback'
+            };
+          } catch (error) {
+            console.error(`[/api/stats] Binance fallback failed for ${symbol}:`, error);
+          }
+        } else {
+          // Use unified service data
+          stats[symbol] = {
+            price: priceData.price,
+            change: priceData.change || 0,
+            changePercent: priceData.changePercent || 0,
+            volume24h: priceData.volume || 0,
+            high24h: priceData.high24h || priceData.price,
+            low24h: priceData.low24h || priceData.price,
+            timestamp: priceData.timestamp,
+            source: 'unified-service'
+          };
+        }
+      }
+
+      res.json({
+        success: true,
+        data: stats,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to fetch stats' 
+      });
+    }
+  });
+
+  // Deal profits endpoint for polling deal updates
+  app.get('/api/deals/profits', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user.id || req.user.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: 'User ID not found' });
+      }
+
+      const ids = (req.query.ids as string)?.split(',') || [];
+      const dealIds = ids.map(id => parseInt(id)).filter(id => !isNaN(id));
+
+      if (dealIds.length === 0) {
+        return res.json({
+          success: true,
+          data: {},
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const openDeals = await db.select().from(deals).where(
+        and(
+          eq(deals.userId, userId),
+          inArray(deals.id, dealIds),
+          eq(deals.status, 'open')
+        )
+      );
+
+      const profits: Record<string, any> = {};
+
+      for (const deal of openDeals) {
+        const priceData = unifiedPriceService.getPrice(deal.symbol);
+        if (priceData) {
+          const openPrice = Number(deal.openPrice);
+          const currentPrice = priceData.price;
+          const amount = Number(deal.amount);
+          const multiplier = deal.multiplier;
+          
+          const priceChange = (currentPrice - openPrice) / openPrice;
+          const volume = amount * multiplier;
+          
+          let unrealizedProfit = 0;
+          if (deal.direction === 'up') {
+            unrealizedProfit = volume * priceChange;
+          } else {
+            unrealizedProfit = volume * (-priceChange);
+          }
+          
+          const commission = volume * 0.0005;
+          const finalProfit = unrealizedProfit - commission;
+
+          profits[deal.id.toString()] = {
+            dealId: deal.id,
+            symbol: deal.symbol,
+            currentPrice: currentPrice,
+            openPrice: openPrice,
+            unrealizedProfit: finalProfit,
+            profitPercent: (finalProfit / amount) * 100,
+            timestamp: new Date().toISOString()
+          };
+        }
+      }
+
+      res.json({
+        success: true,
+        data: profits,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error fetching deal profits:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to fetch deal profits' 
+      });
+    }
+  });
+
+  // SPA fallback - serve index.html for all non-API routes (MUST BE LAST!)
+  app.get('*', (req: Request, res: Response) => {
+    console.log('🌐 CATCH-ALL ROUTE HIT:', req.path, req.url);
+    
+    // Skip API routes, health check, and other server routes
+    if (req.path.startsWith('/api') || 
+        req.path.startsWith('/health') || 
+        req.path === '/favicon.ico') {
+      console.log('🚫 Skipping route (API/health/socket.io):', req.path);
+      return res.status(404).json({ error: 'Route not found' });
+    }
+    
+    console.log('🌐 Serving SPA for route:', req.path, 'indexPath:', indexPath);
+    res.sendFile(indexPath);
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket server for real-time updates
   // Socket.io server с Redis адаптером для масштабирования
-  const io = new IOServer(httpServer, {
-    path: '/socket.io',
-    cors: { origin: '*', methods: ['GET', 'POST'] },
-    transports: ['websocket', 'polling'],
-    pingTimeout: 60000,
-    pingInterval: 25000,
-  });
+  // Socket.IO CORS origins - expand for Docker
+  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
+    'http://localhost:1111',
+    'http://localhost:5173',
+    'http://localhost:8080',
+    'http://localhost:3000'
+  ];
+  
+  // Add Docker internal and external access
+  if (process.env.NODE_ENV === 'production') {
+    allowedOrigins.push('http://app:1111', 'http://0.0.0.0:1111', 'http://127.0.0.1:1111');
+  }
 
-  // Redis adapter для кластеризации Socket.io с устойчивой обработкой ошибок
-  const setupRedisAdapter = async (): Promise<boolean> => {
-    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-    console.log('🔌 Подключаемся к Redis для Socket.io адаптера...');
-    
-    // Флаги для отслеживания состояния подключения
-    let connectionAttempted = false;
-    let pubClient: any = null;
-    let subClient: any = null;
-    
-    try {
-      // Создаем клиентов с улучшенными настройками
-      pubClient = createClient({
-        url: redisUrl,
-        socket: {
-          connectTimeout: 3000,    // Короткий таймаут подключения
-          lazyConnect: false,      // Немедленное подключение
-          reconnectStrategy: false, // Отключаем автоподключение для точного контроля
-        }
-      });
-
-      subClient = createClient({
-        url: redisUrl,
-        socket: {
-          connectTimeout: 3000,
-          lazyConnect: false,
-          reconnectStrategy: false,
-        }
-      });
-
-      // Критические обработчики ошибок - НЕ позволяем падать серверу
-      pubClient.on('error', (error: any) => {
-        console.warn('⚠️ Redis pub client error:', error.message);
-      });
-
-      subClient.on('error', (error: any) => {
-        console.warn('⚠️ Redis sub client error:', error.message);
-      });
-
-      // Создаем Promise с жестким таймаутом
-      connectionAttempted = true;
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('Redis connection timed out after 4 seconds'));
-        }, 4000);
-      });
-
-      const connectPromise = Promise.all([
-        pubClient.connect(),
-        subClient.connect()
-      ]);
-
-      // Ждем либо подключения, либо таймаута
-      await Promise.race([connectPromise, timeoutPromise]);
-
-      // Проверяем, что соединения действительно готовы
-      if (!pubClient.isReady || !subClient.isReady) {
-        throw new Error('Redis clients not ready after connection');
-      }
-
-      // Успешное подключение - настраиваем адаптер
-      const redisAdapter = createAdapter(pubClient, subClient);
-      io.adapter(redisAdapter);
-
-      console.log('✅ Socket.io Redis адаптер успешно подключен');
-      console.log('🌐 Socket.io готов к кластеризации');
-
-      // Мониторинг здоровья (тихий, раз в минуту)
-      const healthCheckInterval = setInterval(() => {
-        if (pubClient?.isReady && subClient?.isReady) {
-          // Тихий success - не засоряем логи
-        } else {
-          console.warn('💛 Redis adapter health check: соединение нестабильно');
-        }
-      }, 60000);
-
-      // Graceful shutdown
-      process.on('SIGTERM', async () => {
-        console.log('🔌 Закрываем Redis соединения для Socket.io...');
-        clearInterval(healthCheckInterval);
-        await Promise.allSettled([
-          pubClient?.disconnect(),
-          subClient?.disconnect()
-        ]);
-      });
-
-      return true;
-
-    } catch (error: any) {
-      console.warn('⚠️ Не удалось подключить Redis адаптер:', error.message);
-      console.warn('📡 Socket.io работает в standalone режиме');
-      
-      // Очистка клиентов при ошибке
-      try {
-        if (connectionAttempted) {
-          await Promise.allSettled([
-            pubClient?.disconnect?.(),
-            subClient?.disconnect?.()
-          ]);
-        }
-      } catch (cleanupError) {
-        // Тихо игнорируем ошибки очистки
-      }
-      
-      return false;
-    }
-  };
-
-  // ВАЖНО: Запускаем асинхронно, НЕ блокируя запуск сервера
-  setupRedisAdapter()
-    .then((success) => {
-      if (success) {
-        console.log('🚀 Redis адаптер готов к продакшену и кластеризации');
-      } else {
-        console.log('🔧 Сервер работает в standalone режиме (без Redis кластеризации)');
-      }
-    })
-    .catch((error) => {
-      console.error('❌ Критическая ошибка настройки Redis адаптера:', error.message);
-      console.log('📡 Fallback: Socket.io работает в standalone режиме');
-    });
-
-  type ClientSubs = { symbols: Set<string> };
-  const socketSubs = new Map<string, ClientSubs>();
-
-  io.on('connection', (socket) => {
-    socketSubs.set(socket.id, { symbols: new Set() });
-
-    socket.on('subscribe', (payload: { symbols?: string[] }) => {
-      const entry = socketSubs.get(socket.id);
-      if (!entry) return;
-      
-      const symbols = (payload?.symbols || []).map((s) => String(s).toUpperCase());
-      
-      // Ограничение подписок: максимум 10 символов на соединение
-      const MAX_SYMBOLS = 10;
-      const currentCount = entry.symbols.size;
-      const newSymbols = symbols.filter(s => !entry.symbols.has(s));
-      
-      if (currentCount + newSymbols.length > MAX_SYMBOLS) {
-        socket.emit('error', { 
-          message: `Максимум ${MAX_SYMBOLS} символов на подключение. Текущее: ${currentCount}` 
-        });
-        return;
-      }
-      
-      // Подписываемся только на новые символы
-      for (const sym of newSymbols) {
-        entry.symbols.add(sym);
-        socket.join(`sym:${sym}`);
-        // ensure unified service tracks it
-        unifiedPriceService.addPair(sym).catch(() => {});
-      }
-      
-      socket.emit('subscribed', { 
-        symbols: Array.from(entry.symbols),
-        count: entry.symbols.size,
-        limit: MAX_SYMBOLS
-      });
-    });
-
-    socket.on('unsubscribe', (payload: { symbols?: string[] }) => {
-      const entry = socketSubs.get(socket.id);
-      if (!entry) return;
-      const symbols = (payload?.symbols || []).map((s) => String(s).toUpperCase());
-      for (const sym of symbols) {
-        entry.symbols.delete(sym);
-        socket.leave(`sym:${sym}`);
-        // we do not auto-remove from unified service to keep shared tracking
-      }
-      socket.emit('unsubscribed', { symbols });
-    });
-
-    socket.on('disconnect', () => {
-      socketSubs.delete(socket.id);
-    });
-  });
-
-  // Fan-out price updates to symbol rooms
-  unifiedPriceService.on('priceUpdate', (priceData: any) => {
-    if (!priceData?.symbol) return;
-    io.to(`sym:${priceData.symbol}`).emit('priceUpdate', priceData);
-  });
+  // Socket.IO completely removed for stability - using pure REST API only
+  console.log('📡 Socket.IO removed - using pure REST API for stability');
 
   // Legacy ws (kept for compatibility)
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
@@ -6983,6 +7106,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ws.on('error', (error) => {
       console.error('WebSocket error:', error);
     });
+  });
+
+  // Debug WebSocket upgrade issues in Docker
+  httpServer.on('upgrade', (request, socket, head) => {
+    console.log('🔄 HTTP Upgrade request:', {
+      url: request.url,
+      headers: Object.keys(request.headers),
+      origin: request.headers.origin,
+      connection: request.headers.connection,
+      upgrade: request.headers.upgrade
+    });
+  });
+
+  httpServer.on('error', (error) => {
+    console.error('🚨 HTTP Server error:', error);
+  });
+
+  httpServer.on('clientError', (error, socket) => {
+    console.error('🚨 HTTP Client error:', {
+      error: error.message,
+      code: error.code,
+      remoteAddress: socket.remoteAddress
+    });
+    if (!socket.destroyed) {
+      socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+    }
   });
 
   return httpServer;

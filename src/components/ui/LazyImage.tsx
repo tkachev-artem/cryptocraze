@@ -22,6 +22,20 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   useEffect(() => {
     if (loading === 'eager') return;
 
+    // Check if image is already in cache
+    const checkCache = () => {
+      if ('caches' in window) {
+        caches.match(src).then(response => {
+          if (response) {
+            setIsInView(true);
+            return;
+          }
+        });
+      }
+    };
+
+    checkCache();
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -30,7 +44,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
         }
       },
       {
-        rootMargin: '50px' // Start loading 50px before image comes into view
+        rootMargin: '100px' // Start loading 100px before image comes into view
       }
     );
 
@@ -39,7 +53,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
     }
 
     return () => observer.disconnect();
-  }, [loading]);
+  }, [loading, src]);
 
   const handleLoad = () => {
     setIsLoaded(true);

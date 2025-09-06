@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { ensureSocketConnected } from '@/lib/socket'
 import { fetchCandles, type Candle as ApiCandle } from '@/lib/api'
 import { intervalToSec, mergeTickIntoCandles, type Candle, type Interval } from '@/charts/candleMath'
 
@@ -16,13 +15,11 @@ type UseLiveCandlesResult = {
 }
 
 export const useLiveCandles = ({ symbol, interval, limit = 300 }: UseLiveCandlesParams): UseLiveCandlesResult => {
-  const [isConnected, setIsConnected] = useState(false)
-  const [, setVersion] = useState(0) // редкий триггер
+  const [isConnected, setIsConnected] = useState(true) // Always connected for REST API
+  const [, setVersion] = useState(0) // Trigger for re-renders
   const candlesRef = useRef<Candle[]>([])
   const lastPriceRef = useRef<number | undefined>(undefined)
-  const rafRef = useRef<number | null>(null)
-  const pendingTickRef = useRef<{ price: number; ts: number } | null>(null)
-  const subscribedRef = useRef(false)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // Инициализация снапшота
   useEffect(() => {
@@ -41,65 +38,50 @@ export const useLiveCandles = ({ symbol, interval, limit = 300 }: UseLiveCandles
     return () => { aborted = true }
   }, [symbol, interval, limit])
 
-  // Socket подписка + батчинг в rAF
+  // REST API polling for price updates
   useEffect(() => {
-    const socket = ensureSocketConnected()
     const upper = symbol.toUpperCase()
     const intervalSec = intervalToSec(interval)
 
-    const emitSubscribe = () => socket.emit('subscribe', { symbols: [upper] })
-    const emitUnsubscribe = () => socket.emit('unsubscribe', { symbols: [upper] })
-
-    const handleConnect = () => {
-      setIsConnected(true)
-      emitSubscribe()
-    }
-    const handleDisconnect = () => { setIsConnected(false); }
-
-    const scheduleApply = () => {
-      if (rafRef.current !== null) return
-      rafRef.current = requestAnimationFrame(() => {
-        rafRef.current = null
-        const pending = pendingTickRef.current
-        if (!pending) return
-        pendingTickRef.current = null
-        const { price, ts } = pending
-        lastPriceRef.current = price
-        const [next] = mergeTickIntoCandles(candlesRef.current, { price, timestamp: ts }, intervalSec, limit)
-        candlesRef.current = next
-        // редкий триггер для потребителей данных, не каждый тик
-        setVersion(v => v + 1)
-      })
-    }
-
-    const handlePriceUpdate = (payload: { symbol?: string; price: number; timestamp: number }) => {
-      if (!payload.symbol || payload.symbol.toUpperCase() !== upper) return
-      const ts = Number(payload.timestamp)
-      const price = Number(payload.price)
-      if (!Number.isFinite(ts) || !Number.isFinite(price)) return
-      pendingTickRef.current = { price, ts }
-      scheduleApply()
+    const fetchLatestPrice = async () => {
+      try {
+        const response = await fetch(`/api/prices?symbols=${upper}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        })
+        
+        if (!response.ok) return
+        
+        const data = await response.json()
+        if (Array.isArray(data) && data.length > 0) {
+          const priceData = data[0]
+          const price = Number(priceData.price)
+          const ts = Date.now()
+          
+          if (!Number.isFinite(price)) return
+          
+          lastPriceRef.current = price
+          const [next] = mergeTickIntoCandles(candlesRef.current, { price, timestamp: ts }, intervalSec, limit)
+          candlesRef.current = next
+          setVersion(v => v + 1)
+        }
+      } catch (error) {
+        console.error('Failed to fetch latest price for candles:', error)
+      }
     }
 
-    if (!subscribedRef.current) {
-      socket.on('connect', handleConnect)
-      socket.on('disconnect', handleDisconnect)
-      socket.on('priceUpdate', handlePriceUpdate)
-      emitSubscribe()
-      subscribedRef.current = true
-    }
+    // Start polling for price updates every 2 seconds
+    if (intervalRef.current) clearInterval(intervalRef.current)
+    intervalRef.current = setInterval(fetchLatestPrice, 2000)
+    
+    // Fetch immediately
+    fetchLatestPrice()
 
     return () => {
-      if (subscribedRef.current) {
-        emitUnsubscribe()
-        socket.off('connect', handleConnect)
-        socket.off('disconnect', handleDisconnect)
-        socket.off('priceUpdate', handlePriceUpdate)
-        subscribedRef.current = false
-      }
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current)
-        rafRef.current = null
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
       }
     }
   }, [symbol, interval, limit])

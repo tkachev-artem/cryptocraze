@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => {
   const rawProxy = env.VITE_API_PROXY_TARGET || env.VITE_API_SERVER || env.API_URL || ""
   // Remove /api suffix from proxy target if present, since proxy will add it
   const cleanProxy = rawProxy.replace(/\/api$/, "")
-  const proxyTarget = /^https?:\/\//i.test(cleanProxy) ? cleanProxy : "http://localhost:3001"
+  const proxyTarget = /^https?:\/\//i.test(cleanProxy) ? cleanProxy : "http://localhost:1111"
   
   console.log(`🔌 Raw proxy: ${rawProxy}`);
   console.log(`🔌 Clean proxy: ${cleanProxy}`);
@@ -75,7 +75,7 @@ export default defineConfig(({ mode }) => {
             'vendor-react': ['react', 'react-dom', 'react-router-dom'],
             'vendor-charts': ['lightweight-charts'],
             'vendor-query': ['@tanstack/react-query'],
-            'vendor-socket': ['socket.io-client'],
+            // 'vendor-socket': ['socket.io-client'], // Removed Socket.IO
             'vendor-redux': ['@reduxjs/toolkit', 'react-redux'],
             // Locales - commented out to fix dynamic import issues
             // 'locales': [
@@ -110,7 +110,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host: "0.0.0.0",
       // https: httpsConfig, // временно отключено
-      port: 5173,
+      port: 1111,
       allowedHosts: ['localhost', '.trycloudflare.com'],
       hmr: {
         port: 24678
@@ -121,13 +121,17 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
         },
-        "/socket.io": {
-          target: proxyTarget,
-          ws: true,
-          changeOrigin: true,
-          secure: false,
-        },
+        // "/socket.io": { // Socket.IO removed
+        //   target: proxyTarget,
+        //   ws: true,
+        //   changeOrigin: true,
+        //   secure: false,
+        // },
       },
     },
+    define: {
+      // Socket.IO removed - no longer needed
+      // __SOCKET_TRANSPORTS__: JSON.stringify(['polling', 'websocket']),
+    }
   }
 })

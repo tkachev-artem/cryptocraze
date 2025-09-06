@@ -37,13 +37,24 @@ if (container) {
   )
 }
 
-// Регистрация сервис-воркера для кэширования изображений
+// ВРЕМЕННО ОТКЛЮЧЕНО: Регистрация сервис-воркера (мешает Socket.io)
+// if ("serviceWorker" in navigator) {
+//   window.addEventListener("load", () => {
+//     navigator.serviceWorker
+//       .register("/sw.js")
+//       .catch(() => {
+//         // умышленно глушим ошибку регистрации, чтобы не ломать приложение
+//       })
+//   })
+// }
+
+// Удаляем существующие service workers
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/sw.js")
-      .catch(() => {
-        // умышленно глушим ошибку регистрации, чтобы не ломать приложение
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    registrations.forEach((registration) => {
+      registration.unregister().then(() => {
+        console.log("Service Worker удален для исправления Socket.io")
       })
+    })
   })
 }

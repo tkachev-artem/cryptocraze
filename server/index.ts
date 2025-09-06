@@ -44,25 +44,36 @@ app.use(compression({
   }
 }));
 
-// Security middleware
+// Security middleware (relaxed for Docker)
 app.use(helmet({
-  contentSecurityPolicy: NODE_ENV === 'production' ? {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https:"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https:", "http:"],
-      connectSrc: ["'self'", "https:", "ws:", "wss:"],
-      fontSrc: ["'self'", "https:", "data:"],
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      frameSrc: ["'self'"],
-    },
-  } : false,
+  contentSecurityPolicy: false, // Disable CSP to avoid connection issues in Docker
   crossOriginEmbedderPolicy: false
 }));
 
-// CORS configuration
+// КРИТИЧНЫЙ middleware для торговых операций
+app.use((req, res, next) => {
+  // Торговые эндпоинты не кешируются НИКОГДА
+  if (req.path.startsWith('/api')) {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Last-Modified', new Date().toUTCString());
+    // КРИТИЧНО: отключаем все виды кеширования для торговли
+    res.setHeader('Surrogate-Control', 'no-store');
+    res.setHeader('Vary', '*');
+  }
+  
+  // ТОРГОВЫЕ ЗАГОЛОВКИ ДЛЯ СТАБИЛЬНОСТИ
+  if (req.path.startsWith('/api/deals') || req.path.startsWith('/api/trade')) {
+    res.setHeader('X-Trading-Request', 'true');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Keep-Alive', 'timeout=5, max=1000');
+  }
+  
+  next();
+});
+
+// CORS configuration  
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
   'http://localhost:1111',
   'http://localhost:5173',
@@ -72,6 +83,11 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
 
 if (process.env.TUNNEL_URL) {
   allowedOrigins.push(process.env.TUNNEL_URL);
+}
+
+// In Docker, also allow container internal communication
+if (NODE_ENV === 'production') {
+  allowedOrigins.push('http://app:1111');
 }
 
 app.use(cors({
@@ -87,15 +103,39 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 async function bootstrap() {
   try {
+    console.log('🚀 Bootstrap started - initializing server components...');
+    
+    // Start the HTTP server FIRST to bind to port, then initialize other services
+    const server = await registerRoutes(app);
+    
+    // Start listening immediately for health checks
+    server.listen(Number(PORT), '0.0.0.0', () => {
+      console.log(`🚀 Server listening on port ${PORT}`);
+      console.log(`🌍 Environment: ${NODE_ENV}`);
+      console.log(`🔒 CORS origins: ${allowedOrigins.join(', ')}`);
+      if (process.env.TUNNEL_URL) {
+        console.log(`🌐 Tunnel URL: ${process.env.TUNNEL_URL}`);
+      }
+      console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
+      console.log('✅ Server ready to accept connections');
+    });
+
+    // Initialize background services after server is listening
+    console.log('🔄 Initializing background services...');
+    
     // Optionally skip DB migrations to allow static serving without DB
     const shouldSkipMigrations = (process.env.SKIP_MIGRATIONS || '').toLowerCase() === 'true';
     if (!shouldSkipMigrations) {
+      console.log('🔄 Running database migrations...');
       await migrate(db, { migrationsFolder: 'drizzle' });
+      console.log('✅ Database migrations completed');
     }
 
-    // Optionally disable background workers for static-only mode
+    // Optionally disable background workers for static-only mode or when worker system is disabled
     const staticOnly = (process.env.STATIC_ONLY || '').toLowerCase() === 'true';
-    if (!staticOnly) {
+    const disableWorkers = (process.env.DISABLE_WORKERS || '').toLowerCase() === 'true';
+    if (!staticOnly && !disableWorkers) {
+      console.log('🔄 Starting background services...');
       await import('./services/dealsAutoCloser');
       
       // Initialize the TP/SL worker system
@@ -109,68 +149,7 @@ async function bootstrap() {
       }
     }
 
-    const server = await registerRoutes(app);
-    
-    // Serve static files AFTER routes are registered
-    const publicDir = path.resolve(process.cwd(), NODE_ENV === 'production' ? 'dist' : 'public');
-    app.use(express.static(publicDir, { 
-      index: false,
-      etag: true,
-      lastModified: true,
-      setHeaders: (res, filePath) => {
-        // Aggressive caching for static assets
-        if (filePath.match(/\.(svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot)$/)) {
-          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); // 1 year
-        }
-        // Cache JS/CSS with shorter time for updates
-        else if (filePath.match(/\.(js|css)$/)) {
-          res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
-        }
-        // JSON files (like manifests) - shorter cache
-        else if (filePath.endsWith('.json')) {
-          res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour
-        }
-        // Let compression middleware handle encoding automatically
-      }
-    }));
-
-    // Serve uploaded files (avatars)
-    const uploadsDir = path.resolve(process.cwd(), 'uploads');
-    app.use('/uploads', express.static(uploadsDir, {
-      etag: true,
-      lastModified: true,
-      setHeaders: (res, filePath) => {
-        // Cache uploaded images for a reasonable time
-        if (filePath.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
-          res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
-        }
-      }
-    }));
-
-    // Fallback to index.html for any non-API route without using path patterns (avoids path-to-regexp issues)
-    app.use((req, res, next) => {
-      // Skip API routes, health checks, docs, socket.io, and static file extensions
-      if (req.path.startsWith('/api') || 
-          req.path === '/health' || 
-          req.path === '/api-docs' || 
-          req.path.startsWith('/socket.io') ||
-          req.path.match(/\.(svg|png|jpg|jpeg|gif|ico|css|js|json|woff|woff2|ttf|eot)$/)) {
-        return next();
-      }
-      res.sendFile(path.join(publicDir, 'index.html'), (err) => {
-        if (err) next();
-      });
-    });
-
-    server.listen(Number(PORT), () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`🌍 Environment: ${NODE_ENV}`);
-      console.log(`🔒 CORS origins: ${allowedOrigins.join(', ')}`);
-      if (process.env.TUNNEL_URL) {
-        console.log(`🌐 Tunnel URL: ${process.env.TUNNEL_URL}`);
-      }
-      console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
-    });
+    console.log('🎉 All services initialized successfully');
 
     // Graceful shutdown handlers (worker system has its own handlers)
     const gracefulShutdown = async (signal: string) => {

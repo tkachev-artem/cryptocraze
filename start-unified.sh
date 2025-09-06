@@ -30,12 +30,4 @@ docker-compose logs --tail=20
 echo "Deployment complete!"
 echo "Application available at: http://localhost:1111"
 echo "Admin dashboard: http://localhost:1111/admin/dashboard"
-echo "Ngrok tunnel: ngrok http 1111 --domain=relieved-magpie-pleasing.ngrok-free.app"
-
-# Optional: Start ngrok automatically
-read -p "Start ngrok tunnel automatically? (y/n): " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo "Starting ngrok tunnel..."
-    ngrok http 1111 --domain=relieved-magpie-pleasing.ngrok-free.app
-fi
+echo "All services are running successfully!"

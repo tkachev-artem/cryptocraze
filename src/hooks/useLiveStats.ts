@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ensureSocketConnected } from '@/lib/socket'
 
 export type LiveStats = {
   symbol?: string
@@ -18,35 +17,13 @@ export type LiveStats = {
 
 type StatsMap = Record<string, LiveStats>
 
-// Глобальный refcount, чтобы несколько компонентов могли шарить подписки
-const statsRefCount = new Map<string, number>()
-
+// Socket.IO removed - stats are fetched via REST API polling
 const subscribeStats = (symbols: string[]) => {
-  if (!symbols.length) return
-  const socket = ensureSocketConnected()
-  const toAdd: string[] = []
-  for (const s of symbols) {
-    const cur = statsRefCount.get(s) ?? 0
-    if (cur === 0) toAdd.push(s)
-    statsRefCount.set(s, cur + 1)
-  }
-  if (toAdd.length > 0) socket.emit('subscribeStats', { symbols: toAdd })
+  console.log('🚫 Socket.IO removed - using REST API for stats')
 }
 
 const unsubscribeStats = (symbols: string[]) => {
-  if (!symbols.length) return
-  const socket = ensureSocketConnected()
-  const toRemove: string[] = []
-  for (const s of symbols) {
-    const cur = statsRefCount.get(s) ?? 0
-    if (cur <= 1) {
-      statsRefCount.delete(s)
-      toRemove.push(s)
-    } else {
-      statsRefCount.set(s, cur - 1)
-    }
-  }
-  if (toRemove.length > 0) socket.emit('unsubscribeStats', { symbols: toRemove })
+  console.log('🚫 Socket.IO removed - using REST API for stats')
 }
 
 const normalize = (symbols: string[]): string[] => {
@@ -60,60 +37,81 @@ const normalize = (symbols: string[]): string[] => {
 }
 
 export const useLiveStats = (inputSymbols: string[]): { stats: StatsMap; isConnected: boolean } => {
-  const [isConnected, setIsConnected] = useState(false)
+  const [isConnected, setIsConnected] = useState(true) // Always connected for REST API
   const [stats, setStats] = useState<StatsMap>({})
   const symbols = useMemo(() => normalize(inputSymbols), [inputSymbols])
-  const subscribedRef = useRef<Set<string>>(new Set())
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Fetch stats from REST API
+  const fetchStats = async (symbolList: string[]) => {
+    if (symbolList.length === 0) return
+    
+    try {
+      const response = await fetch(`/api/stats?symbols=${symbolList.join(',')}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      })
+      
+      if (!response.ok) {
+        console.warn('Failed to fetch stats:', response.status)
+        return
+      }
+      
+      const data = await response.json()
+      if (Array.isArray(data)) {
+        const newStats: StatsMap = {}
+        for (const item of data) {
+          if (item.symbol) {
+            newStats[item.symbol.toUpperCase()] = {
+              symbol: item.symbol.toUpperCase(),
+              priceChange: item.priceChange || 0,
+              priceChangePercent: item.priceChangePercent || 0,
+              lastPrice: item.lastPrice || 0,
+              highPrice: item.highPrice || 0,
+              lowPrice: item.lowPrice || 0,
+              openPrice: item.openPrice || 0,
+              volume: item.volume || 0,
+              bidPrice: item.bidPrice,
+              askPrice: item.askPrice,
+              count: item.count,
+              timestamp: Date.now(),
+            }
+          }
+        }
+        setStats(prev => ({ ...prev, ...newStats }))
+      }
+    } catch (error) {
+      console.error('Failed to fetch stats:', error)
+    }
+  }
+
+  // Set up polling for the requested symbols
   useEffect(() => {
-    const socket = ensureSocketConnected()
-
-    const onConnect = () => {
-      setIsConnected(true)
-      const all = Array.from(statsRefCount.keys())
-      if (all.length) socket.emit('subscribeStats', { symbols: all })
-    }
-    const onDisconnect = () => { setIsConnected(false); }
-    const onStatsUpdate = (payload: LiveStats) => {
-      if (!payload.symbol) return
-      const sym = payload.symbol.toUpperCase()
-      setStats(prev => ({ ...prev, [sym]: { ...payload, symbol: sym } }))
+    if (symbols.length === 0) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+      return
     }
 
-    socket.on('connect', onConnect)
-    socket.on('disconnect', onDisconnect)
-    socket.on('statsUpdate', onStatsUpdate)
+    // Fetch initial data
+    fetchStats(symbols)
+
+    // Set up polling every 3 seconds
+    if (intervalRef.current) clearInterval(intervalRef.current)
+    intervalRef.current = setInterval(() => {
+      fetchStats(symbols)
+    }, 3000)
+
     return () => {
-      socket.off('connect', onConnect)
-      socket.off('disconnect', onDisconnect)
-      socket.off('statsUpdate', onStatsUpdate)
-    }
-  }, [])
-
-  useEffect(() => {
-    ensureSocketConnected()
-    const set = subscribedRef.current
-    const desired = new Set(symbols)
-    const toSub: string[] = []
-    const toUnsub: string[] = []
-    for (const s of desired) if (!set.has(s)) toSub.push(s)
-    for (const s of set) if (!desired.has(s)) toUnsub.push(s)
-    if (toSub.length) {
-      subscribeStats(toSub)
-      toSub.forEach(s => set.add(s))
-    }
-    if (toUnsub.length) {
-      unsubscribeStats(toUnsub)
-      toUnsub.forEach(s => set.delete(s))
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
     }
   }, [symbols])
-
-  useEffect(() => () => {
-    const set = subscribedRef.current
-    const all = Array.from(set)
-    if (all.length) unsubscribeStats(all)
-    set.clear()
-  }, [])
 
   return { stats, isConnected }
 }

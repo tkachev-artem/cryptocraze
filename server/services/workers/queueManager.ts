@@ -304,14 +304,22 @@ export class QueueManager {
    * Get worker statistics for a queue
    */
   private async getQueueWorkerStats(queue: Queue): Promise<WorkerStats> {
-    const [waiting, active, completed, failed, delayed, paused] = await Promise.all([
+    const [waiting, active, completed, failed, delayed] = await Promise.all([
       queue.getWaiting(),
       queue.getActive(),
       queue.getCompleted(),
       queue.getFailed(),
       queue.getDelayed(),
-      queue.getPaused(),
     ]);
+
+    // Check if queue is paused - BullMQ doesn't have getPaused() method
+    let isPaused = false;
+    try {
+      isPaused = await queue.isPaused();
+    } catch (error) {
+      // If isPaused() doesn't exist, assume not paused
+      isPaused = false;
+    }
 
     return {
       waiting: waiting.length,
@@ -319,7 +327,7 @@ export class QueueManager {
       completed: completed.length,
       failed: failed.length,
       delayed: delayed.length,
-      paused: paused.length,
+      paused: isPaused ? 1 : 0, // Return 1 if paused, 0 if not
     };
   }
 

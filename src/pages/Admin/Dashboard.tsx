@@ -448,28 +448,28 @@ const AdminDashboard: React.FC = () => {
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  {formatDecimal(Number(overview?.users?.retention_d1 || 0) * 100, 1)}%
+                  {formatDecimal(Number(overview?.users?.retention_d1 || 0), 1)}%
                 </div>
                 <div className="text-sm text-gray-600">{tWithFallback('admin.dashboard.retentionD1', 'Day 1 Retention')}</div>
               </div>
               
               <div>
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  {formatDecimal(Number(overview?.users?.retention_d3 || 0) * 100, 1)}%
+                  {formatDecimal(Number(overview?.users?.retention_d3 || 0), 1)}%
                 </div>
                 <div className="text-sm text-gray-600">{tWithFallback('admin.dashboard.retentionD3', 'Day 3 Retention')}</div>
               </div>
               
               <div>
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  {formatDecimal(Number(overview?.users?.retention_d7 || 0) * 100, 1)}%
+                  {formatDecimal(Number(overview?.users?.retention_d7 || 0), 1)}%
                 </div>
                 <div className="text-sm text-gray-600">{tWithFallback('admin.dashboard.retentionD7', 'Day 7 Retention')}</div>
               </div>
               
               <div>
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  {formatDecimal(Number(overview?.users?.retention_d30 || 0) * 100, 1)}%
+                  {formatDecimal(Number(overview?.users?.retention_d30 || 0), 1)}%
                 </div>
                 <div className="text-sm text-gray-600">{tWithFallback('admin.dashboard.retentionD30', 'Day 30 Retention')}</div>
               </div>

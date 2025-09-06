@@ -26,7 +26,7 @@ export class AnalyticsLogger {
    * Преобразует строковый user ID в числовой hash для ClickHouse
    * Использует простую hash функцию для стабильного преобразования
    */
-  private static stringToNumericId(strId: string): number {
+  private static userId(strId: string): number {
     let hash = 0;
     for (let i = 0; i < strId.length; i++) {
       const char = strId.charCodeAt(i);
@@ -78,13 +78,13 @@ export class AnalyticsLogger {
         // Если успешная авторизация
         if (res.statusCode === 200 && body.user?.id) {
           setImmediate(async () => {
-            // Используем hash функцию для безопасного преобразования строкового ID
-            const userIdNumber = AnalyticsLogger.stringToNumericId(body.user.id);
+            // Используем оригинальный строковый ID пользователя
+            const userId = body.user.id;
             const sessionId = uuidv4();
             
             // Логируем login событие
             await AnalyticsLogger.logUserEvent(
-              userIdNumber,
+              userId,
               'login',
               {
                 ip: req.ip,
@@ -97,7 +97,7 @@ export class AnalyticsLogger {
             // Если это новый пользователь (по наличию created или isNewUser флага), логируем user_register
             if (body.user?.created || body.user?.isNewUser) {
               await AnalyticsLogger.logUserEvent(
-                userIdNumber,
+                userIdString,
                 'user_register',
                 {
                   ip: req.ip,
@@ -150,11 +150,11 @@ export class AnalyticsLogger {
             }
 
             // Используем hash функцию для безопасного преобразования строкового ID
-            const userIdNumber = AnalyticsLogger.stringToNumericId(userId);
+            const userIdString = userId;
             // Используем sessionId из HTTP сессии или создаем один на основе userId для консистентности
             const sessionId = (req as any).session?.id || `user-session-${userId}`;
             await AnalyticsLogger.logUserEvent(
-              userIdNumber,
+              userIdString,
               eventType,
               eventData,
               sessionId
@@ -182,11 +182,11 @@ export class AnalyticsLogger {
         if (res.statusCode === 200 && userId && body.success) {
           setImmediate(async () => {
             // Используем hash функцию для безопасного преобразования строкового ID
-            const userIdNumber = AnalyticsLogger.stringToNumericId(userId);
+            const userIdString = userId;
             // Используем sessionId из HTTP сессии или создаем один на основе userId для консистентности
             const sessionId = (req as any).session?.id || `user-session-${userId}`;
             await AnalyticsLogger.logUserEvent(
-              userIdNumber,
+              userIdString,
               'ad_watch',
               {
                 adType: req.body?.adType || 'unknown',
@@ -220,11 +220,11 @@ export class AnalyticsLogger {
       )) {
         setImmediate(async () => {
           // Используем hash функцию для безопасного преобразования строкового ID
-          const userIdNumber = AnalyticsLogger.stringToNumericId(userId);
+          const userIdString = userId;
           // Используем sessionId из HTTP сессии или создаем один на основе userId для консистентности
           const sessionId = (req as any).session?.id || `user-session-${userId}`;
           await AnalyticsLogger.logUserEvent(
-            userIdNumber,
+            userIdString,
             'page_view',
             {
               path: req.path,

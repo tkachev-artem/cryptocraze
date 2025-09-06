@@ -5134,7 +5134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Also forward events to ClickHouse for analytics (use default user ID if not authenticated)
       try {
-        const userIdNumber = userId ? AnalyticsLogger.stringToNumericId(userId) : 999999999; // Default user ID for unauthenticated users
+        const userIdForClickhouse = userId ? userId : "999999999"; // Use string ID for ClickHouse
         const promises = events.map(async (event: any) => {
             // Forward important events to ClickHouse for dashboard metrics
             if (event.eventType === 'tutorial_progress' || 
@@ -5155,7 +5155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
               
               await clickhouseAnalyticsService.logUserEvent(
-                userIdNumber,
+                userIdForClickhouse,
                 eventType,
                 event.eventData || {},
                 event.sessionId
@@ -5164,7 +5164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           await Promise.allSettled(promises);
-          console.log(`[Analytics Batch] Forwarded ${events.length} events to ClickHouse for user ${userIdNumber}`);
+          console.log(`[Analytics Batch] Forwarded ${events.length} events to ClickHouse for user ${userIdForClickhouse}`);
       } catch (clickhouseError) {
         console.warn('[Analytics Batch] ClickHouse forwarding failed, but PostgreSQL insert succeeded:', clickhouseError);
       }

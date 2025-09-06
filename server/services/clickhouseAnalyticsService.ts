@@ -1,5 +1,8 @@
 import { getClickHouseClient } from './clickhouseClient.js';
 import { v4 as uuidv4 } from 'uuid';
+import { db } from '../db.js';
+import { deals } from '../../shared/schema.js';
+import { eq, sql } from 'drizzle-orm';
 
 // Check if ClickHouse is disabled
 const isClickHouseDisabled = process.env.DISABLE_CLICKHOUSE === 'true';
@@ -35,12 +38,12 @@ export class ClickHouseAnalyticsService {
       });
 
       // Переключение на базу данных
-      await this.client.exec({
+      await client.exec({
         query: 'USE cryptocraze_analytics'
       });
 
       // Создание основных таблиц
-      await this.createTables();
+      await this.createTables(client);
       
       console.log('[ClickHouse] Schema initialized successfully');
     } catch (error) {
@@ -52,12 +55,13 @@ export class ClickHouseAnalyticsService {
   /**
    * Создание таблиц
    */
-  private async createTables(): Promise<void> {
+  private async createTables(client?: any): Promise<void> {
+    const clickhouseClient = client || this.getClient();
     const tables = [
       // Таблица событий пользователей
       `CREATE TABLE IF NOT EXISTS user_events (
         event_id String,
-        user_id UInt64,
+        user_id String,
         event_type LowCardinality(String),
         event_data String,
         session_id String,
@@ -72,7 +76,7 @@ export class ClickHouseAnalyticsService {
       // Аналитическая таблица сделок
       `CREATE TABLE IF NOT EXISTS deals_analytics (
         deal_id UInt64,
-        user_id UInt64,
+        user_id String,
         symbol LowCardinality(String),
         direction LowCardinality(String),
         amount Decimal64(8),
@@ -124,7 +128,7 @@ export class ClickHouseAnalyticsService {
       // Таблица событий доходов  
       `CREATE TABLE IF NOT EXISTS revenue_events (
         event_id String,
-        user_id UInt64,
+        user_id String,
         revenue_type LowCardinality(String),
         amount Decimal64(8),
         revenue Decimal64(8),
@@ -142,7 +146,7 @@ export class ClickHouseAnalyticsService {
       // Таблица рекламных событий
       `CREATE TABLE IF NOT EXISTS ad_events (
         event_id String,
-        user_id UInt64,
+        user_id String,
         ad_type LowCardinality(String),
         event_type LowCardinality(String),
         reward_amount Nullable(Decimal64(8)),
@@ -156,7 +160,7 @@ export class ClickHouseAnalyticsService {
     ];
 
     for (const table of tables) {
-      await this.client.exec({ query: table });
+      await clickhouseClient.exec({ query: table });
     }
 
     // Создание индексов
@@ -167,7 +171,7 @@ export class ClickHouseAnalyticsService {
 
     for (const index of indexes) {
       try {
-        await this.client.exec({ query: index });
+        await clickhouseClient.exec({ query: index });
       } catch (error) {
         // Игнорируем ошибки создания индексов если они уже существуют
         console.log('[ClickHouse] Index creation note:', (error as Error).message);
@@ -179,7 +183,7 @@ export class ClickHouseAnalyticsService {
    * Логирование события пользователя
    */
   async logUserEvent(
-    userId: number,
+    userId: string | number,
     eventType: string,
     eventData: any = {},
     sessionId?: string
@@ -228,7 +232,7 @@ export class ClickHouseAnalyticsService {
    * Логирование revenue события
    */
   async logRevenueEvent(
-    userId: number,
+    userId: string | number,
     revenueType: 'premium' | 'ad' | 'subscription' | 'purchase',
     amount: number,
     currency: string = 'USD',
@@ -341,25 +345,26 @@ export class ClickHouseAnalyticsService {
       const userResult = await this.client.query({
         query: `
           WITH 
-            registered_users AS (
-              SELECT DISTINCT user_id, min(date) as registration_date
+            first_seen_users AS (
+              SELECT DISTINCT user_id, min(date) as first_seen_date
               FROM user_events
-              WHERE event_type IN ('user_register', 'app_install')
+              WHERE user_id != '999999999'
               GROUP BY user_id
             ),
             active_users AS (
               SELECT DISTINCT user_id, date
               FROM user_events
               WHERE date >= today() - INTERVAL 30 DAY
+                AND user_id != '999999999'
             )
           SELECT 
-            count(DISTINCT registered_users.user_id) as total_users,
-            count(DISTINCT CASE WHEN registered_users.registration_date = today() THEN registered_users.user_id END) as new_users_today,
+            count(DISTINCT active_users.user_id) as total_users,
+            count(DISTINCT CASE WHEN first_seen_users.first_seen_date = today() THEN first_seen_users.user_id END) as new_users_today,
             count(DISTINCT CASE WHEN active_users.date >= today() - INTERVAL 1 DAY THEN active_users.user_id END) as daily_active_users,
             count(DISTINCT CASE WHEN active_users.date >= today() - INTERVAL 7 DAY THEN active_users.user_id END) as weekly_active_users,
-            count(DISTINCT CASE WHEN active_users.date >= today() - INTERVAL 30 DAY THEN active_users.user_id END) as monthly_active_users
-          FROM registered_users
-          LEFT JOIN active_users ON registered_users.user_id = active_users.user_id
+            count(DISTINCT active_users.user_id) as monthly_active_users
+          FROM active_users
+          LEFT JOIN first_seen_users ON active_users.user_id = first_seen_users.user_id
         `,
         format: 'JSONEachRow'
       });
@@ -371,7 +376,7 @@ export class ClickHouseAnalyticsService {
             installs AS (
               SELECT DISTINCT user_id, min(date) as install_date
               FROM user_events
-              WHERE event_type = 'app_install' OR event_type = 'user_register'
+              WHERE user_id != '999999999'
               GROUP BY user_id
               HAVING install_date >= today() - INTERVAL 30 DAY
             ),
@@ -404,10 +409,10 @@ export class ClickHouseAnalyticsService {
             )
           SELECT 
             count(DISTINCT installs.user_id) as total_new_users,
-            count(DISTINCT day1_retention.user_id) as day1_retained,
-            count(DISTINCT day3_retention.user_id) as day3_retained,
-            count(DISTINCT day7_retention.user_id) as day7_retained,
-            count(DISTINCT day30_retention.user_id) as day30_retained
+            countIf(day1_retention.user_id != '') as day1_retained,
+            countIf(day3_retention.user_id != '') as day3_retained,
+            countIf(day7_retention.user_id != '') as day7_retained,
+            countIf(day30_retention.user_id != '') as day30_retained
           FROM installs
           LEFT JOIN day1_retention ON installs.user_id = day1_retention.user_id
           LEFT JOIN day3_retention ON installs.user_id = day3_retention.user_id
@@ -424,10 +429,10 @@ export class ClickHouseAnalyticsService {
       console.log('[ClickHouse] Raw retention data:', retentionData);
 
       const totalNewUsers = parseInt(retentionData.total_new_users || '0');
-      const retention_d1 = totalNewUsers > 0 ? parseInt(retentionData.day1_retained || '0') / totalNewUsers : 0;
-      const retention_d3 = totalNewUsers > 0 ? parseInt(retentionData.day3_retained || '0') / totalNewUsers : 0;
-      const retention_d7 = totalNewUsers > 0 ? parseInt(retentionData.day7_retained || '0') / totalNewUsers : 0;
-      const retention_d30 = totalNewUsers > 0 ? parseInt(retentionData.day30_retained || '0') / totalNewUsers : 0;
+      const retention_d1 = totalNewUsers > 0 ? Math.round((parseInt(retentionData.day1_retained || '0') / totalNewUsers) * 100) : 0;
+      const retention_d3 = totalNewUsers > 0 ? Math.round((parseInt(retentionData.day3_retained || '0') / totalNewUsers) * 100) : 0;
+      const retention_d7 = totalNewUsers > 0 ? Math.round((parseInt(retentionData.day7_retained || '0') / totalNewUsers) * 100) : 0;
+      const retention_d30 = totalNewUsers > 0 ? Math.round((parseInt(retentionData.day30_retained || '0') / totalNewUsers) * 100) : 0;
 
       console.log('[ClickHouse] Calculated retention:', {
         totalNewUsers,
@@ -468,11 +473,11 @@ export class ClickHouseAnalyticsService {
    * Получение торговых метрик
    */
   private async getTradingMetrics(): Promise<any> {
+    // Получаем закрытые сделки из ClickHouse
     const result = await this.client.query({
       query: `
         SELECT 
           count() as total_trades,
-          countIf(status = 'open') as active_deals,
           countIf(status = 'closed') as closed_trades,
           countIf(status = 'closed' AND is_profitable = 1) as profitable_trades,
           sum(amount) as total_volume,
@@ -488,9 +493,14 @@ export class ClickHouseAnalyticsService {
     const data = await result.json<any>();
     const metrics = data[0] || {};
     
+    // Получаем активные сделки из PostgreSQL (они не записываются в ClickHouse)
+    const activeDealsCount = await db.select({ count: sql<number>`count(*)`.as('count') })
+      .from(deals)
+      .where(eq(deals.status, 'open'));
+    
     return {
       totalTrades: parseInt(metrics.total_trades || '0'),
-      activeDeals: parseInt(metrics.active_deals || '0'),
+      activeDeals: activeDealsCount[0]?.count || 0,
       closedTrades: parseInt(metrics.closed_trades || '0'),
       profitableTrades: parseInt(metrics.profitable_trades || '0'),
       totalVolume: parseFloat(metrics.total_volume || '0'),

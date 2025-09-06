@@ -140,24 +140,36 @@
   "errors": {
     "404": {
       "title": "Page Non Trouvée",
-      "description": "La page que vous recherchez n'existe pas ou a été déplacée.",
-      "goHome": "Retourner à l'Écran Principal"
+      "subtitle": "Oups ! La page que vous cherchez n'existe pas.",
+      "description": "La page à laquelle vous tentiez d'accéder a peut-être été déplacée, supprimée, ou vous avez saisi une URL incorrecte.",
+      "goHome": "Aller au Trading",
+      "goBack": "Retour",
+      "searchPlaceholder": "Rechercher des paires de trading...",
+      "suggestions": {
+        "title": "Essayez ces sections populaires :",
+        "trading": "Commencer le Trading",
+        "profile": "Votre Profil",
+        "rating": "Classement",
+        "rewards": "Récompenses",
+        "premium": "Fonctionnalités Premium"
+      },
+      "pandaMessage": "Ne vous inquiétez pas ! Même les traders expérimentés se perdent parfois. Remettons-vous sur la bonne voie !"
     },
+    "wheelSpinError": "Erreur lors de la rotation de la roue",
+    "priceNotFound": "Échec de récupération du prix",
+    "invalidAmount": "Le montant doit être supérieur à 0",
+    "symbolNotFound": "Symbole non trouvé ou non supporté",
     "general": "Erreur",
     "dataLoading": "Erreur de chargement des données",
-    "binanceStats": "Erreur dans fetchBinanceStats",
-    "userNotFound": "Utilisateur non trouvé",
-    "insufficientFunds": "Fonds insuffisants",
-    "symbolNotFound": "Symbole non trouvé ou non pris en charge",
-    "invalidLeverage": "Valeur de levier invalide",
-    "invalidAmount": "Le montant doit être supérieur à 0",
-    "invalidTakeProfit": "Prise de Profit invalide",
     "invalidStopLoss": "Stop Loss invalide",
-    "dealNotFound": "Deal non trouvé",
-    "noAccess": "Aucun accès au deal",
-    "dealAlreadyClosed": "Deal déjà fermé",
-    "priceNotFound": "Échec de récupération du prix",
-    "wheelSpinError": "Erreur lors du tour de roue"
+    "insufficientFunds": "Fonds insuffisants",
+    "dealNotFound": "Transaction non trouvée",
+    "binanceStats": "Erreur dans fetchBinanceStats",
+    "invalidLeverage": "Valeur de levier invalide",
+    "invalidTakeProfit": "Prise de profit invalide",
+    "dealAlreadyClosed": "Transaction déjà fermée",
+    "userNotFound": "Utilisateur non trouvé",
+    "noAccess": "Aucun accès à la transaction"
   },
   "profile": {
     "title": "Profil",
@@ -192,7 +204,8 @@
     "notAvailable": "N/D",
     "rating30Days": "Note sur 30 jours",
     "top": "Top",
-    "allDeals": "Transactions"
+    "allDeals": "Transactions",
+    "defaultUsername": "Utilisateur"
   },
   "deal": {
     "commission": "Commission",
@@ -238,7 +251,8 @@
     "lastUpdated": "Dernière mise à jour",
     "goHome": "Retourner à l'Écran Principal",
     "balance": "Solde",
-    "closeNotification": "Fermer la notification"
+    "closeNotification": "Fermer la notification",
+    "collect": "Récupérer"
   },
   "app": {
     "phoneOnly": {
@@ -281,92 +295,120 @@
     "chargeYearly": "$64.99 seront facturés automatiquement chaque année jusqu'à ce que vous annuliez votre abonnement"
   },
   "admin": {
-    "dashboard": {
-      "title": "Tableau de Bord",
-      "totalUsers": "Total des Utilisateurs",
-      "totalUsersDesc": "Tous les utilisateurs enregistrés",
-      "activeDeals": "Transactions Actives",
-      "activeDealsDesc": "Positions actuellement ouvertes",
+    "analytics": {
+      "title": "Tableau de Bord d'Analyses BI",
+      "subtitle": "Business Intelligence et Analyses Utilisateur",
+      "totalUsers": "Utilisateurs Totaux",
+      "activeDeals": "Deals Actifs",
       "dailyActiveUsers": "Utilisateurs Actifs Quotidiens",
-      "dailyActiveUsersDesc": "Utilisateurs actifs aujourd'hui",
       "totalRevenue": "Revenus Totaux",
-      "totalRevenueDesc": "Revenus de tous les temps",
-      "engagementMetrics": "Métriques d'Engagement",
+      "engagement": "Métriques d'Engagement",
+      "revenue": "Revenus et Monétisation",
+      "acquisition": "Acquisition d'Utilisateurs",
       "weeklyActiveUsers": "Utilisateurs Actifs Hebdomadaires",
       "monthlyActiveUsers": "Utilisateurs Actifs Mensuels",
-      "avgSessionsPerUser": "Sessions Moyennes par Utilisateur",
-      "totalTrades": "Total des Transactions",
-      "revenueMonetization": "Revenus et Monétisation",
+      "avgSessionDuration": "Durée Moyenne de Session",
+      "totalTrades": "Trades Totaux",
       "arpu": "ARPU",
       "arppu": "ARPPU",
       "conversionRate": "Taux de Conversion",
       "payingUsers": "Utilisateurs Payants",
+      "totalSignups": "Inscriptions Totales",
+      "firstTrades": "Premiers Trades",
+      "tradeOpenRate": "Taux d'Ouverture de Trade",
+      "avgTimeToFirstTrade": "Temps Moyen au Premier Trade",
+      "recentActivity": "Activité Récente",
+      "recentRevenue": "Revenus Récents",
+      "processMetrics": "Traiter les Métriques d'Aujourd'hui",
+      "metricsProcessed": "Métriques quotidiennes traitées avec succès !",
+      "lastUpdated": "Dernière mise à jour"
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "totalUsers": "Utilisateurs Totaux",
+      "totalUsersDesc": "All registered users",
+      "activeDeals": "Active Deals",
+      "activeDealsDesc": "Positions actuellement ouvertes",
+      "dailyActiveUsers": "Utilisateurs Actifs Quotidiens",
+      "dailyActiveUsersDesc": "Utilisateurs actifs aujourd'hui",
+      "totalRevenue": "Total Revenue",
+      "totalRevenueDesc": "Revenus de tous les temps",
+      "engagementMetrics": "Métriques d'Engagement",
+      "revenueMonetization": "Revenue & Monetization",
       "tradingPerformance": "Performance de Trading",
-      "closedTrades": "Transactions Fermées",
-      "profitableTrades": "Transactions Rentables",
-      "successRate": "Taux de Réussite",
-      "totalPnL": "P&L Total",
-      "userActivity": "Activité des Utilisateurs",
+      "userActivity": "User Activity",
+      "adPerformance": "Performance Publicitaire",
+      "arpu": "ARPU",
+      "arppu": "ARPPU",
+      "conversionRate": "Conversion Rate",
+      "payingUsers": "Utilisateurs Payants",
+      "weeklyActiveUsers": "Utilisateurs Actifs Hebdomadaires",
+      "monthlyActiveUsers": "Utilisateurs Actifs Mensuels",
+      "avgSessionsPerUser": "Avg Sessions Per User",
+      "totalTrades": "Trades Totaux",
       "newUsersToday": "Nouveaux Utilisateurs Aujourd'hui",
       "totalSessions": "Sessions Totales",
       "logins7d": "Connexions (7j)",
-      "adsWatched": "Publicités Regardées",
-      "adPerformance": "Performance Publicitaire",
+      "adsWatched": "Publicités Vues",
+      "closedTrades": "Trades Fermés",
+      "profitableTrades": "Trades Rentables",
+      "successRate": "Taux de Réussite",
+      "totalPnL": "P&L Total",
       "totalAdSpend": "Dépenses Publicitaires Totales",
       "cpi": "CPI (Coût Par Installation)",
       "cpa": "CPA (Coût Par Action)",
-      "roas": "ROAS (Retour sur Investissement Publicitaire)",
+      "roas": "ROAS (Retour sur Dépenses Publicitaires)",
       "premiumStats": "Statistiques Premium",
-      "allRegisteredUsers": "Tous les utilisateurs enregistrés",
-      "currentlyOpenPositions": "Positions actuellement ouvertes",
-      "usersActiveToday": "Utilisateurs actifs aujourd'hui",
-      "allTimeRevenue": "Revenus de tous les temps",
-      "premiumPurchased": "Ont acheté Premium",
-      "premiumMonthly": "Mensuel",
-      "premiumYearly": "Annuel",
-      "premiumPurchasedPercent": "Ont acheté Premium",
-      "premiumReceived": "Ont reçu Premium",
-      "premiumDaysGranted": "jours Premium accordés",
-      "premiumActive": "Total utilisateurs Premium",
-      "premiumStatsError": "Erreur lors du chargement des statistiques Premium",
-      "purchasedPremium": "Ont acheté Premium",
-      "receivedPremium": "Ont reçu Premium",
-      "subscriptionType": "Type d'Abonnement",
+      "premiumStatsError": "Error loading premium user statistics",
+      "purchasedPremium": "Premium Acheté",
+      "receivedPremium": "Received Premium",
+      "subscriptionType": "Subscription Type",
       "daysGranted": "Jours Accordés",
-      "activeUntil": "Actif Jusqu'au",
-      "user": "Utilisateur",
-      "errorLoadingUsers": "Erreur lors du chargement des utilisateurs",
+      "activeUntil": "Active Until",
+      "user": "User",
+      "errorLoadingUsers": "Error loading users",
       "invalidDate": "Date invalide",
       "premiumMonth": "Mois",
-      "premiumYear": "Année",
-      "noPurchasedPremiumUsers": "Aucun utilisateur n'a acheté Premium",
-      "noRewardPremiumUsers": "Aucun utilisateur n'a reçu Premium en récompense",
+      "premiumYear": "Year",
+      "noPurchasedPremiumUsers": "Aucun utilisateur avec premium acheté",
+      "noRewardPremiumUsers": "No users with reward premium",
       "loadingUsers": "Chargement des utilisateurs...",
       "errorLoading": "Erreur de chargement",
       "days": "jours",
       "level": "Niveau",
-      "back": "Retour",
-      "next": "Suivant",
+      "back": "Back",
+      "next": "Next",
       "page": "Page",
-      "of": "sur",
+      "of": "de",
       "usersNotFound": "Utilisateurs non trouvés",
       "notAvailable": "N/D",
+      "premiumPurchased": "Acheté",
+      "premiumMonthly": "Mois",
+      "premiumYearly": "Year",
+      "premiumPurchasedPercent": "Purchased",
+      "premiumReceived": "Received",
+      "premiumDaysGranted": "jours accordés",
+      "premiumActive": "Active",
+      "allRegisteredUsers": "Tous les utilisateurs enregistrés",
+      "currentlyOpenPositions": "Currently open positions",
+      "usersActiveToday": "Utilisateurs actifs aujourd'hui",
+      "allTimeRevenue": "All time revenue",
       "avgSessionDuration": "Durée Moyenne de Session",
-      "screensOpened": "Écrans Ouverts",
+      "screensOpened": "Screens Opened",
       "retentionMetrics": "Métriques de Rétention",
-      "retentionD1": "Rétention J1",
-      "retentionD3": "Rétention J3",
-      "retentionD7": "Rétention J7",
-      "retentionD30": "Rétention J30",
+      "retentionD1": "Rétention Jour 1",
+      "retentionD3": "Rétention Jour 3",
+      "retentionD7": "Rétention Jour 7",
+      "retentionD30": "Rétention Jour 30",
       "tutorialMetrics": "Métriques du Tutoriel",
-      "tutorialCompletionRate": "Taux de Finalisation du Tutoriel",
-      "tutorialSkipRate": "Taux d'Abandon du Tutoriel",
+      "tutorialCompletionRate": "Tutorial Completion",
+      "tutorialSkipRate": "Taux de Saut du Tutoriel",
       "advancedAdMetrics": "Métriques Publicitaires Avancées",
       "totalImpressions": "Impressions Totales",
       "totalClicks": "Clics Totaux",
-      "avgCTR": "CTR Moyen",
-      "clickToInstallRate": "Taux Clic-Installation",
-      "adEngagementRate": "Taux d'Engagement Publicitaire"
+      "avgCTR": "Taux de Clic Moyen",
+      "clickToInstallRate": "Taux Clic vers Installation",
+      "adEngagementRate": "Ad Engagement Rate"
     }
   },
   "notifications": {
@@ -403,90 +445,6 @@
       "daily_task": "Nouvelle tâche quotidienne !"
     }
   },
-  "admin": {
-    "analytics": {
-      "title": "Tableau de Bord d'Analyses BI",
-      "subtitle": "Business Intelligence et Analyses Utilisateur",
-      "totalUsers": "Utilisateurs Totaux",
-      "activeDeals": "Deals Actifs",
-      "dailyActiveUsers": "Utilisateurs Actifs Quotidiens",
-      "totalRevenue": "Revenus Totaux",
-      "engagement": "Métriques d'Engagement",
-      "revenue": "Revenus et Monétisation",
-      "acquisition": "Acquisition d'Utilisateurs",
-      "weeklyActiveUsers": "Utilisateurs Actifs Hebdomadaires",
-      "monthlyActiveUsers": "Utilisateurs Actifs Mensuels",
-      "avgSessionDuration": "Durée Moyenne de Session",
-      "totalTrades": "Trades Totaux",
-      "arpu": "ARPU",
-      "arppu": "ARPPU",
-      "conversionRate": "Taux de Conversion",
-      "payingUsers": "Utilisateurs Payants",
-      "totalSignups": "Inscriptions Totales",
-      "firstTrades": "Premiers Trades",
-      "tradeOpenRate": "Taux d'Ouverture de Trade",
-      "avgTimeToFirstTrade": "Temps Moyen au Premier Trade",
-      "recentActivity": "Activité Récente",
-      "recentRevenue": "Revenus Récents",
-      "processMetrics": "Traiter les Métriques d'Aujourd'hui",
-      "metricsProcessed": "Métriques quotidiennes traitées avec succès !",
-      "lastUpdated": "Dernière mise à jour",
-      "avgSessionsPerUser": "Sessions Moy. par Utilisateur",
-      "newUsersToday": "Nouveaux Utilisateurs Aujourd'hui",
-      "totalSessions": "Sessions Totales",
-      "logins7d": "Connexions (7j)",
-      "adsWatched": "Publicités Vues",
-      "closedTrades": "Trades Fermés",
-      "profitableTrades": "Trades Rentables",
-      "successRate": "Taux de Réussite",
-      "totalPnL": "P&L Total",
-      "totalAdSpend": "Dépenses Publicitaires Totales",
-      "cpi": "CPI (Coût par Installation)",
-      "cpa": "CPA (Coût par Action)",
-      "roas": "ROAS (Retour sur Investissement Publicitaire)",
-      "premiumStats": "Statistiques Premium",
-      "premiumStatsError": "Erreur lors du chargement des statistiques d'utilisateurs premium",
-      "premiumPurchased": "Acheté",
-      "premiumMonthly": "Mois",
-      "premiumYearly": "Année",
-      "premiumPurchasedPercent": "Achetés",
-      "premiumReceived": "Reçu",
-      "premiumDaysGranted": "jours accordés",
-      "premiumActive": "Actif",
-      "allRegisteredUsers": "Tous les utilisateurs enregistrés",
-      "currentlyOpenPositions": "Positions actuellement ouvertes", 
-      "usersActiveToday": "Utilisateurs actifs aujourd'hui",
-      "allTimeRevenue": "Revenus de tous les temps",
-      "premiumMonth": "Mois",
-      "premiumYear": "Année",
-      "errorLoadingUsers": "Erreur de chargement des utilisateurs",
-      "invalidDate": "Date invalide",
-      "purchasedPremium": "Premium Acheté",
-      "receivedPremium": "Premium Reçu",
-      "user": "Utilisateur",
-      "subscriptionType": "Type d'Abonnement",
-      "daysGranted": "Jours Accordés",
-      "activeUntil": "Actif Jusqu'à",
-      "noPurchasedPremiumUsers": "Aucun utilisateur avec premium acheté",
-      "noRewardPremiumUsers": "Aucun utilisateur avec premium de récompense",
-      "avgSessionDuration": "Durée Moyenne de Session",
-      "screensOpened": "Écrans Ouverts",
-      "retentionMetrics": "Métriques de Rétention",
-      "retentionD1": "Rétention J1",
-      "retentionD3": "Rétention J3",
-      "retentionD7": "Rétention J7",
-      "retentionD30": "Rétention J30",
-      "tutorialMetrics": "Métriques du Tutoriel",
-      "tutorialCompletionRate": "Taux de Finalisation du Tutoriel",
-      "tutorialSkipRate": "Taux d'Abandon du Tutoriel",
-      "advancedAdMetrics": "Métriques Publicitaires Avancées",
-      "totalImpressions": "Impressions Totales",
-      "totalClicks": "Clics Totaux",
-      "avgCTR": "CTR Moyen",
-      "clickToInstallRate": "Taux Clic-Installation",
-      "adEngagementRate": "Taux d'Engagement Publicitaire"
-    }
-  },
   "language": {
     "title": "Choisir la langue",
     "description": "Vous pouvez toujours changer la langue de l'app dans les Paramètres",
@@ -499,28 +457,15 @@
     }
   },
   "tutorial": {
-    "title": "Tutoriel",
-    "welcome": "Bienvenue !",
-    "pandaIntro": "Panda vous aidera à apprendre l'interface et le trading.",
-    "step1": { "title": "Interface", "content": "Familiarisez-vous avec les sections principales." },
-    "step2": { "title": "Graphiques", "content": "Apprenez à lire les graphiques et trouver les tendances." },
-    "step3": { "title": "Trades", "content": "Ouvrez et fermez des trades avec TP/SL." },
-    "step4": { "title": "Risque", "content": "Gérez les risques et utilisez le levier de manière responsable." },
-    "step5": { "title": "Gamification", "content": "Débloquez des réalisations et interagissez avec les fonctionnalités." },
-    "skipTutorial": "Passer",
-    "congratulations": "Félicitations ! Tutoriel terminé.",
-    "stepProgress": "Étape {{current}} de {{total}}",
-    "percentComplete": "{{percent}}% Terminé",
-    "stepsTitle": "Étapes du Tutoriel",
-    "interactiveArea": "Zone de démonstration interactive",
-    "errorTitle": "Erreur du Tutoriel",
-    "errorMessage": "Quelque chose s'est mal passé : {{error}}",
-    "errorCanRetry": "Une erreur s'est produite : {{error}}. Vous pouvez réessayer.",
-    "errorFinal": "Erreur finale : {{error}}. Veuillez contacter le support.",
-    "retry": "Réessayer",
-    "emergencyExit": "Quitter le Tutoriel",
-    "emergencyExitDesc": "Le tutoriel a été ignoré en raison de problèmes techniques.",
-    "maxRetriesReached": "Nombre maximum de tentatives atteint. Veuillez contacter le support."
+    "error": {
+      "title": "Erreur du Tutoriel",
+      "message": "Une erreur s'est produite dans le tutoriel. Veuillez redémarrer ou ignorer.",
+      "restart": "Redémarrer",
+      "skip": "Ignorer"
+    },
+    "bearCharacter": "Personnage ours",
+    "skills": "vos compétences",
+    "stepsTitle": "Étapes du Tutoriel"
   },
   "tradeTutorial": {
     "start": "Commencer",
@@ -535,18 +480,54 @@
     "nextAria": "Suivant",
     "stepImage": "Illustration de l'étape",
     "steps": {
-      "1": { "title": "Commencez à apprendre !", "description": "Il est temps de maîtriser les bases : regarder les graphiques, ouvrir des trades, et multiplier les profits." },
-      "2": { "title": "Solde", "description": "Votre solde total et les fonds disponibles pour le trading." },
-      "3": { "title": "Paire de trading", "description": "Sélectionnez la paire de cryptomonnaies que vous voulez trader." },
-      "4": { "title": "Graphique", "description": "Le graphique montre les changements de prix dans le temps avec les axes vertical (prix) et horizontal (temps)." },
-      "5": { "title": "Paramètres du graphique", "description": "Timeframe : choisissez de 1m à 1d. Type : chandelier, barres, ou ligne." },
-      "6": { "title": "Créer un ordre", "description": "Définissez le montant du trade et choisissez un multiplicateur." },
-      "7": { "title": "Prise de Profit et Stop Loss", "description": "Le Stop Loss limite les pertes ; la Prise de Profit verrouille le profit en fermant automatiquement le trade." },
-      "8": { "title": "Modifier le deal", "description": "Si vous attendez un retournement, ajustez les paramètres de votre deal en un tap." },
-      "9": { "title": "Acheter ou Vendre", "description": "Après avoir défini les paramètres, tapez Acheter ou Vendre pour confirmer." },
-      "10": { "title": "Trade ouvert", "description": "Tapez Acheter pour voir la confirmation — le trade est ouvert." },
-      "11": { "title": "Fermer le trade", "description": "Vous pouvez fermer le trade et récupérer votre profit." },
-      "12": { "title": "Trade fermé", "description": "Tapez Fermer le trade et vérifiez le résultat dans la modal de confirmation." }
+      "1": {
+        "title": "Commencez à apprendre !",
+        "description": "Il est temps de maîtriser les bases : regarder les graphiques, ouvrir des trades, et multiplier les profits."
+      },
+      "2": {
+        "title": "Solde",
+        "description": "Votre solde total et les fonds disponibles pour le trading."
+      },
+      "3": {
+        "title": "Paire de trading",
+        "description": "Sélectionnez la paire de cryptomonnaies que vous voulez trader."
+      },
+      "4": {
+        "title": "Graphique",
+        "description": "Le graphique montre les changements de prix dans le temps avec les axes vertical (prix) et horizontal (temps)."
+      },
+      "5": {
+        "title": "Paramètres du graphique",
+        "description": "Timeframe : choisissez de 1m à 1d. Type : chandelier, barres, ou ligne."
+      },
+      "6": {
+        "title": "Créer un ordre",
+        "description": "Définissez le montant du trade et choisissez un multiplicateur."
+      },
+      "7": {
+        "title": "Prise de Profit et Stop Loss",
+        "description": "Le Stop Loss limite les pertes ; la Prise de Profit verrouille le profit en fermant automatiquement le trade."
+      },
+      "8": {
+        "title": "Modifier le deal",
+        "description": "Si vous attendez un retournement, ajustez les paramètres de votre deal en un tap."
+      },
+      "9": {
+        "title": "Acheter ou Vendre",
+        "description": "Après avoir défini les paramètres, tapez Acheter ou Vendre pour confirmer."
+      },
+      "10": {
+        "title": "Trade ouvert",
+        "description": "Tapez Acheter pour voir la confirmation — le trade est ouvert."
+      },
+      "11": {
+        "title": "Fermer le trade",
+        "description": "Vous pouvez fermer le trade et récupérer votre profit."
+      },
+      "12": {
+        "title": "Trade fermé",
+        "description": "Tapez Fermer le trade et vérifiez le résultat dans la modal de confirmation."
+      }
     }
   },
   "panda": {
@@ -584,17 +565,10 @@
     }
   },
   "share": {
-    "message": "Essayez CryptoCraze — le meilleur simulateur de trading crypto !",
-    "copyLink": "Copier le lien",
-    "more": "Plus",
-    "copied": "Lien copié",
-    "copiedDesc": "Le lien de l'app a été copié dans votre presse-papiers",
-    "copyError": "Échec de copie du lien",
-    "shareError": "Échec du partage",
-    "whatsappAria": "Partager sur WhatsApp",
-    "telegramAria": "Partager sur Telegram",
-    "smsAria": "Partager par SMS",
-    "emailAria": "Partager par Email"
+    "chartAnalysis": "Regardez cette analyse graphique sur CryptoCraze !",
+    "chartPreview": "Aperçu du graphique",
+    "shareImage": "Partager image du graphique",
+    "saveImage": "Enregistrer image du graphique"
   },
   "rating": {
     "last30d": "Classement des 30 derniers jours",
@@ -658,10 +632,19 @@
       "title": "Multiplicateur",
       "desc": "Un coefficient qui multiplie le montant de votre investissement initial. Il augmente à la fois les profits et pertes potentiels."
     },
-    "takeProfit": { "desc": "Définissez votre profit désiré. Une fois atteint, l'ordre se fermera automatiquement." },
-    "stopLoss": { "desc": "Définissez le montant de perte maximum acceptable pour limiter le risque." },
-    "commission": { "desc": "La commission est calculée à partir du volume de trade et peut différer. La commission finale est calculée sur le serveur lors de la fermeture." },
-    "info": { "title": "Information", "desc": "Informations supplémentaires sur la fonctionnalité." }
+    "takeProfit": {
+      "desc": "Définissez votre profit désiré. Une fois atteint, l'ordre se fermera automatiquement."
+    },
+    "stopLoss": {
+      "desc": "Définissez le montant de perte maximum acceptable pour limiter le risque."
+    },
+    "commission": {
+      "desc": "La commission est calculée à partir du volume de trade et peut différer. La commission finale est calculée sur le serveur lors de la fermeture."
+    },
+    "info": {
+      "title": "Information",
+      "desc": "Informations supplémentaires sur la fonctionnalité."
+    }
   },
   "deals": {
     "active": "Actif",
@@ -772,7 +755,19 @@
       "ethereum_trade": "Trading Ethereum",
       "altcoin_trade": "Trading Altcoin",
       "profitable_trade": "Trade Profitable",
-      "volume_trade": "Trading de Volume"
+      "volume_trade": "Trading de Volume",
+      "premium_vip": "Bonus VIP",
+      "video_money": "Vidéo pour Devise",
+      "trade_master": "Maître des Profits",
+      "video_coins": "Vidéo pour Pièces",
+      "video_energy": "Vidéo pour Énergie",
+      "video_mega": "Méga Bonus Vidéo",
+      "daily_trader": "Trader Actif du Jour",
+      "premium_login": "Entrée Premium",
+      "video_wheel": "Vidéo pour Roue",
+      "trade_lucky": "Trade Chanceux",
+      "trade_close": "Fermer Deal",
+      "trade_first_profit": "Premier Profit"
     },
     "descriptions": {
       "daily_bonus": "Obtenez votre récompense quotidienne en vous connectant à l'app",
@@ -795,7 +790,19 @@
       "ethereum_trade": "Ouvrez un trade Ethereum et obtenez des pièces",
       "altcoin_trade": "Ouvrez un trade avec n'importe quel altcoin et obtenez des pièces",
       "profitable_trade": "Fermez un trade profitable et obtenez de l'énergie",
-      "volume_trade": "Terminez des trades d'une valeur supérieure à 1000 USDT et obtenez des pièces"
+      "volume_trade": "Terminez des trades d'une valeur supérieure à 1000 USDT et obtenez des pièces",
+      "trade_lucky": "Gagnez 500$ de profit avec les opérations de trading",
+      "video_money": "Regardez une vidéo et recevez de la devise de trading",
+      "trade_first_profit": "Gagnez vos premiers 100$ de profit en trading",
+      "trade_master": "Démontrez votre maîtrise en gagnant 1000$ de profit",
+      "video_energy": "Restaurez l'énergie en regardant une publicité",
+      "trade_close": "Fermez n'importe quelle position de trading active",
+      "premium_vip": "Bonus spécial pour les membres VIP de la plateforme",
+      "premium_login": "Récompense exclusive pour le statut utilisateur Premium",
+      "video_coins": "Regardez une pub et rechargez votre solde de pièces",
+      "video_wheel": "Regardez une pub et obtenez un tour gratuit à la roue de la fortune",
+      "daily_trader": "Obtenez une récompense pour l'activité de trading quotidienne",
+      "video_mega": "Regardez une vidéo pour une récompense généreuse"
     }
   },
   "video": {
@@ -889,23 +896,24 @@
     }
   },
   "textMarker": {
-    "title": "Ajouter un Marqueur de Texte",
+    "title": "Ajouter Marqueur de Texte",
     "label": {
       "text": "Texte",
       "fontSize": "Taille de Police",
       "color": "Couleur",
-      "preview": "Aperçu",
       "customColor": "Couleur personnalisée"
     },
     "placeholder": "Entrez votre texte ici...",
-    "error": {
-      "emptyText": "Le texte ne peut pas être vide",
-      "tooLong": "Le texte ne peut pas dépasser 100 caractères"
-    },
+    "pixels": "px",
+    "selectColor": "Sélectionner couleur",
     "preview": {
       "empty": "L'aperçu apparaîtra ici..."
     },
-    "save": "Ajouter le Texte"
+    "save": "Ajouter Texte",
+    "error": {
+      "emptyText": "Le texte ne peut pas être vide",
+      "tooLong": "Le texte ne peut pas dépasser 100 caractères"
+    }
   },
   "markers": {
     "title": "Outils de Dessin",
@@ -1020,7 +1028,8 @@
       "startingAd": "Démarrage de la publicité...",
       "initializing": "Initialisation...",
       "claimReward": "Réclamer la Récompense",
-      "claimButton": "Réclamer la Récompense"
+      "claimButton": "Réclamer la Récompense",
+      "videoAd": "Publicité vidéo"
     },
     "chart": {
       "lastUpdate": "Dernière mise à jour :",
@@ -1029,7 +1038,10 @@
       "capturing": "Capture du graphique...",
       "noImage": "Aucune image de graphique disponible",
       "share": "Partager",
-      "saveToDevice": "Enregistrer sur l'Appareil"
+      "saveToDevice": "Enregistrer sur l'Appareil",
+      "timeframeSelection": "Sélection de période",
+      "symbol": "Symbole",
+      "controlPanel": "Panneau de contrôle du graphique"
     },
     "test": {
       "proTutorial": "Test ProTutorial",
@@ -1113,61 +1125,5 @@
     "symbol": "BTCUSDT",
     "amount": "0,00 $",
     "number": "0"
-  },
-  "errors": {
-    "404": {
-      "title": "Page Non Trouvée",
-      "subtitle": "Oups ! La page que vous cherchez n'existe pas.",
-      "description": "La page à laquelle vous tentiez d'accéder a peut-être été déplacée, supprimée, ou vous avez saisi une URL incorrecte.",
-      "goHome": "Aller au Trading",
-      "goBack": "Retour",
-      "searchPlaceholder": "Rechercher des paires de trading...",
-      "suggestions": {
-        "title": "Essayez ces sections populaires :",
-        "trading": "Commencer le Trading",
-        "profile": "Votre Profil",
-        "rating": "Classement",
-        "rewards": "Récompenses",
-        "premium": "Fonctionnalités Premium"
-      },
-      "pandaMessage": "Ne vous inquiétez pas ! Même les traders expérimentés se perdent parfois. Remettons-vous sur la bonne voie !"
-    }
-  },
-  "tutorial": {
-    "error": {
-      "title": "Erreur du Tutoriel",
-      "message": "Une erreur s'est produite dans le tutoriel. Veuillez redémarrer ou ignorer.",
-      "restart": "Redémarrer",
-      "skip": "Ignorer"
-    },
-    "bearCharacter": "Personnage ours",
-    "skills": "vos compétences",
-    "stepsTitle": "Étapes du Tutoriel"
-  },
-  "textMarker": {
-    "title": "Ajouter Marqueur de Texte",
-    "label": {
-      "text": "Texte",
-      "fontSize": "Taille de Police",
-      "color": "Couleur",
-      "customColor": "Couleur personnalisée"
-    },
-    "placeholder": "Entrez votre texte ici...",
-    "pixels": "px",
-    "selectColor": "Sélectionner couleur",
-    "preview": {
-      "empty": "L'aperçu apparaîtra ici..."
-    },
-    "save": "Ajouter Texte",
-    "error": {
-      "emptyText": "Le texte ne peut pas être vide",
-      "tooLong": "Le texte ne peut pas dépasser 100 caractères"
-    }
-  },
-  "share": {
-    "chartAnalysis": "Regardez cette analyse graphique sur CryptoCraze !",
-    "chartPreview": "Aperçu du graphique",
-    "shareImage": "Partager image du graphique",
-    "saveImage": "Enregistrer image du graphique"
   }
 }

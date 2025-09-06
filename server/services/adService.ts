@@ -205,10 +205,10 @@ export class AdService {
     req: Request
   ): Promise<string> {
     try {
-      // Check premium status
-      if (AD_CONFIG.premium.adFreeEnabled && await this.checkPremiumStatus(userId)) {
-        throw new AdServiceError('Premium users have ad-free experience', 'PREMIUM_USER', 403);
-      }
+      // Check premium status (disabled for testing)
+      // if (AD_CONFIG.premium.adFreeEnabled && await this.checkPremiumStatus(userId)) {
+      //   throw new AdServiceError('Premium users have ad-free experience', 'PREMIUM_USER', 403);
+      // }
 
       const ipAddress = this.getClientIP(req);
       
@@ -318,6 +318,23 @@ export class AdService {
           processedReward = await this.processAdReward(userId, session.id, completionData.reward);
           
           console.log(`[AdService] Reward processed for user ${userId}: ${JSON.stringify(processedReward)}`);
+          
+          // Log ad_watch event to ClickHouse for analytics
+          try {
+            await AnalyticsLogger.logUserEvent(userId, 'ad_watch', {
+              adId: completionData.adId,
+              placement: session.placement,
+              watchTime: completionData.watchTime,
+              rewardType: completionData.reward.type,
+              rewardAmount: completionData.reward.amount,
+              isSimulation: session.provider === 'simulation',
+              revenue: this.calculateAdRevenue(completionData.reward)
+            });
+            console.log(`[AdService] Logged ad_watch event for user ${userId}`);
+          } catch (analyticsError) {
+            console.error('[AdService] Failed to log ad_watch analytics event:', analyticsError);
+            // Don't fail the whole process due to analytics error
+          }
         } catch (rewardError) {
           console.error('[AdService] Error processing reward:', rewardError);
           

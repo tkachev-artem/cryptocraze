@@ -43,7 +43,7 @@ const fetchPricesFromAPI = async (symbols: string[]): Promise<PricesState> => {
             symbol: symbol.toUpperCase(),
             price: item.price || 0,
             volume24h: item.volume24h || 0,
-            priceChange24h: item.change || 0, // API uses 'change' not 'priceChange24h'
+            priceChange24h: item.changePercent || 0, // API uses 'changePercent' for percentage change
             timestamp: Date.now(),
           }
         }

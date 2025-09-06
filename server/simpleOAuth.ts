@@ -4,6 +4,7 @@ import { applyAutoRewards } from './services/autoRewards.js';
 import session from 'express-session';
 import connectPg from 'connect-pg-simple';
 import AnalyticsLogger from './middleware/analyticsLogger.js';
+import NgrokService from './services/ngrokService.js';
 
 // Simple OAuth without Passport.js
 export function setupSimpleOAuth(app: Express) {
@@ -41,10 +42,20 @@ export function setupSimpleOAuth(app: Express) {
   // Google OAuth URLs - use env vars for Docker compatibility
   const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '707632794493-5lhl2avka63s62n4nje0qlvg7vd90dc4.apps.googleusercontent.com';
   const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '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';
-  const CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || 'http://localhost:1111/api/auth/google/callback';
+  // Dynamic callback URL - use ngrok if available, otherwise fallback to env or localhost
+  const getCallbackUrl = () => {
+    const ngrokUrl = NgrokService.getOAuthCallbackUrl();
+    if (ngrokUrl) {
+      console.log(`🔗 Using Ngrok OAuth callback: ${ngrokUrl}`);
+      return ngrokUrl;
+    }
+    const fallbackUrl = process.env.GOOGLE_CALLBACK_URL || 'http://localhost:1111/api/auth/google/callback';
+    console.log(`🔗 Using fallback OAuth callback: ${fallbackUrl}`);
+    return fallbackUrl;
+  };
   const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:1111';
 
-  console.log(`🔗 OAuth Callback URL: ${CALLBACK_URL}`);
+  console.log(`🔗 OAuth Callback URL: ${getCallbackUrl()}`);
 
   // Start Google OAuth flow
   app.get('/api/auth/google', (req: Request, res: Response) => {
@@ -58,7 +69,7 @@ export function setupSimpleOAuth(app: Express) {
     
     const googleAuthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     googleAuthUrl.searchParams.set('client_id', GOOGLE_CLIENT_ID);
-    googleAuthUrl.searchParams.set('redirect_uri', CALLBACK_URL);
+    googleAuthUrl.searchParams.set('redirect_uri', getCallbackUrl());
     googleAuthUrl.searchParams.set('response_type', 'code');
     googleAuthUrl.searchParams.set('scope', scopes.join(' '));
     googleAuthUrl.searchParams.set('state', state);
@@ -100,7 +111,7 @@ export function setupSimpleOAuth(app: Express) {
           client_secret: GOOGLE_CLIENT_SECRET,
           code: code as string,
           grant_type: 'authorization_code',
-          redirect_uri: CALLBACK_URL,
+          redirect_uri: getCallbackUrl(),
         }),
       });
 

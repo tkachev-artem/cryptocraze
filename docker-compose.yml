@@ -26,25 +26,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 60s
-    environment:
-      - NODE_ENV=production
-      - PORT=1111
-      - DATABASE_URL=postgresql://postgres:password@postgres:5432/crypto_analyzer
-      - REDIS_URL=redis://redis:6379
-      - CLICKHOUSE_URL=http://clickhouse:8123
-      - CLICKHOUSE_USERNAME=default
-      - CLICKHOUSE_PASSWORD=clickhouse123
-      - DISABLE_CLICKHOUSE=false
-      - CLICKHOUSE_DATABASE=cryptocraze_analytics
-      - ENABLE_REDIS_SCALING=false
-      - SKIP_MIGRATIONS=false
-      - STATIC_ONLY=false
-      - DISABLE_WORKERS=true
-      - GOOGLE_CLIENT_ID=707632794493-5lhl2avka63s62n4nje0qlvg7vd90dc4.apps.googleusercontent.com
-      - GOOGLE_CLIENT_SECRET=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
-      - GOOGLE_CALLBACK_URL=http://localhost:1111/api/auth/google/callback
-      - SESSION_SECRET=production-secret-change-me-123456789
-      - FRONTEND_URL=http://localhost:1111
+    env_file:
+      - .env.production
     depends_on:
       postgres:
         condition: service_healthy

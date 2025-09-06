@@ -75,7 +75,7 @@ const CryptoItem: React.FC<{ crypto: CryptoData; index: number; total: number; o
           className="text-[9px] sm:text-[10px] font-semibold"
           style={{ color: crypto.change24h >= 0 ? '#2EBD85' : '#F6465D' }}
         >
-          {crypto.change24h >= 0 ? '+' : ''}{crypto.change24h.toFixed(2)}%
+          {crypto.change24h >= 0 ? '+' : ''}{Math.max(-99.99, Math.min(999.99, crypto.change24h)).toFixed(2)}%
         </span>
       </div>
     </div>
@@ -141,7 +141,7 @@ const ListCrypto: React.FC = () => {
           name: name,
           symbol: symbol,
           price: live.price,
-          change24h: live.priceChange24h || 0,
+          change24h: Math.max(-99.99, Math.min(999.99, live.priceChange24h || 0)),
           icon: '/trade/bitcoin.svg',
           color: '#ffffff',
         };
@@ -160,7 +160,7 @@ const ListCrypto: React.FC = () => {
         name: name,
         symbol: symbol,
         price: fallbackPrices[symbol] || Math.random() * 100,
-        change24h: (Math.random() - 0.5) * 10,
+        change24h: (Math.random() - 0.5) * 10, // Диапазон от -5% до +5%
         icon: '/trade/bitcoin.svg',
         color: '#000000',
       };
@@ -254,7 +254,7 @@ const ListCrypto: React.FC = () => {
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         price: (live && Number.isFinite(live.price)) ? live.price : (fallbackPrices[symbol] || 100),
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        change24h: (live && Number.isFinite(live.priceChange24h)) ? live.priceChange24h : 0,
+        change24h: (live && Number.isFinite(live.priceChange24h)) ? Math.max(-99.99, Math.min(999.99, live.priceChange24h)) : 0,
         icon: '/trade/bitcoin.svg',
         color: '#ffffff',
       } as CryptoData;

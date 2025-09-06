@@ -165,46 +165,39 @@ const createViewportMeta = (): HTMLMetaElement => {
 
 /**
  * Определяет, является ли устройство телефоном (не планшет и не десктоп).
- * Использует userAgentData, userAgent и небольшие эвристики по viewport.
+ * Простая проверка по размеру экрана и тачу.
  */
 export const isPhoneDevice = (): boolean => {
-  if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;
+  if (typeof window === 'undefined') return false;
 
-  // Define extended navigator interface for userAgentData
-  type NavigatorWithUserAgentData = {
-    userAgentData?: {
-      mobile?: boolean;
-    };
-    vendor?: string;
-    maxTouchPoints?: number;
-  } & Navigator
+  // Получаем размеры экрана
+  const screenWidth = window.screen.width;
+  const screenHeight = window.screen.height;
+  const windowWidth = window.innerWidth;
   
-  const extendedNavigator = navigator as NavigatorWithUserAgentData;
-  const uaDataMobile: boolean | undefined = extendedNavigator.userAgentData?.mobile;
-  const ua: string = navigator.userAgent || '';
+  // Проверяем есть ли тач
+  const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  
+  // Проверяем размеры экрана - телефоны обычно имеют ширину экрана до 768px
+  const isSmallScreen = Math.min(screenWidth, screenHeight) <= 768;
+  const isVerySmallScreen = windowWidth <= 480;
+  
+  console.log('🔍 Device detection:', {
+    screenWidth,
+    screenHeight, 
+    windowWidth,
+    hasTouch,
+    isSmallScreen,
+    isVerySmallScreen,
+    userAgent: navigator.userAgent.substring(0, 100)
+  });
 
-  // iPadOS 13+ маскируется под Mac, но имеет тач  
-  const isIpadOs13Plus = (extendedNavigator.maxTouchPoints || 0) > 1;
-  const isIpad = ua.includes('iPad') || isIpadOs13Plus;
-
-  const isIphone = /iPhone|iPod/.test(ua);
-  const isAndroid = ua.includes('Android');
-  const isAndroidPhone = isAndroid && ua.includes('Mobile');
-  const isWindowsPhone = ua.includes('Windows Phone');
-  const isTabletKeyword = ua.includes('Tablet') || /SM-T|Lenovo Tab|Nexus 7|Nexus 9|Kindle Fire|KF[A-Z]/.test(ua);
-
-  const looksLikePhoneByUA = (
-    isIphone || isAndroidPhone || isWindowsPhone || ua.includes('Mobi')
-  ) && !isIpad && !isTabletKeyword;
-
-  if (uaDataMobile === true) {
-    return !isIpad && !isTabletKeyword;
-  }
-
-  if (uaDataMobile === false) {
-    return looksLikePhoneByUA;
-  }
-
-  return looksLikePhoneByUA;
+  // Если экран маленький И есть тач - это телефон
+  // ИЛИ если окно очень узкое (мобильный браузер)
+  const isPhone = (isSmallScreen && hasTouch) || isVerySmallScreen;
+  
+  console.log('🔍 Device detection result:', isPhone ? 'PHONE' : 'NOT PHONE');
+  
+  return isPhone;
 };
 

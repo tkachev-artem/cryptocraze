@@ -8,6 +8,7 @@ import { registerRoutes } from "./routes";
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { db } from './db';
 import { initializeWorkerSystem, shutdownWorkerSystem } from './services/workers/index.js';
+import NgrokService from './services/ngrokService.js';
 
 // Load environment variables with environment-specific file support
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -122,6 +123,17 @@ async function bootstrap() {
 
     // Initialize background services after server is listening
     console.log('🔄 Initializing background services...');
+
+    // Initialize Ngrok tunnel if enabled
+    try {
+      const publicUrl = await NgrokService.start();
+      if (publicUrl) {
+        console.log(`🌍 Ngrok tunnel active: ${publicUrl}`);
+        console.log(`🔐 OAuth callback URL: ${NgrokService.getOAuthCallbackUrl()}`);
+      }
+    } catch (error) {
+      console.warn('⚠️ Ngrok initialization failed:', error instanceof Error ? error.message : error);
+    }
     
     // Optionally skip DB migrations to allow static serving without DB
     const shouldSkipMigrations = (process.env.SKIP_MIGRATIONS || '').toLowerCase() === 'true';
@@ -150,6 +162,9 @@ async function bootstrap() {
     }
 
     console.log('🎉 All services initialized successfully');
+
+    // Setup Ngrok graceful shutdown
+    NgrokService.setupGracefulShutdown();
 
     // Graceful shutdown handlers (worker system has its own handlers)
     const gracefulShutdown = async (signal: string) => {

@@ -6842,6 +6842,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('❌ Index.html NOT FOUND! This will cause 404 errors.');
   }
   
+  // Serve uploaded files (avatars)
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
+    maxAge: '1d', // Cache for 1 day
+    etag: true,
+    lastModified: true
+  }));
+  
   // Serve static assets with proper caching headers
   app.use('/assets', express.static(path.join(distPath, 'assets'), {
     maxAge: '1y', // Cache assets for 1 year

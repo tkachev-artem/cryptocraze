@@ -1,1 +1,0 @@
-ALTER TABLE "users" ADD COLUMN "energy_tasks_completed" integer DEFAULT 0;

@@ -50,7 +50,7 @@ const Language: FC = () => {
   return (
     <div className="bg-white min-h-screen">
       {/* Navigation Bar */}
-      <div className="bg-white">
+      <div className="bg-white sticky top-0 z-10">
         {/* Top App Bar */}
         <div className="flex items-center justify-between px-2 pt-4 pb-2">
           <div className="flex items-center gap-1">

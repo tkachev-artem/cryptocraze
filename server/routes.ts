@@ -6640,6 +6640,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         takeProfit: takeProfit ? Number(takeProfit) : undefined,
         stopLoss: stopLoss ? Number(stopLoss) : undefined,
       });
+      
+      // Логирование торговых операций после успешного ответа (без middleware)
+      setImmediate(async () => {
+        try {
+          console.log(`[TRADE] Deal opened by user ${userId}: ${symbol} ${direction} ${amount}x${multiplier}`);
+          
+          // Обновляем задания на открытие сделок
+          const userTasks = await TaskService.getUserTasks(userId);
+          for (const task of userTasks) {
+            // Обновляем задания типа daily_trader (открытие сделок)
+            if (task.taskType === 'daily_trader' && task.status === 'active') {
+              console.log(`[TRADE] Updating daily_trader task ${task.id} for user ${userId}`);
+              await TaskService.updateTaskProgress(parseInt(task.id), userId, task.progress.current + 1);
+            }
+          }
+        } catch (error) {
+          console.error('[TRADE] Logging/Task update error:', error);
+        }
+      });
+      
       res.json({ success: true, ...result });
     } catch (error: any) {
       res.status(400).json({ success: false, error: error.message });
@@ -6660,6 +6680,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const result = await dealsService.closeDeal({ userId, dealId: Number(dealId) });
       console.log(`🔥 [ROUTES] REST API закрытие завершено успешно для dealId=${dealId}`);
+      
+      // Логирование закрытия сделок после успешного ответа
+      setImmediate(async () => {
+        try {
+          console.log(`[TRADE] Deal closed by user ${userId}: dealId=${dealId}, profit=${result.deal?.pnl || 0}`);
+          
+          // Обновляем задания на закрытие сделок и прибыль
+          const userTasks = await TaskService.getUserTasks(userId);
+          const dealProfit = parseFloat(result.deal?.pnl || '0');
+          
+          for (const task of userTasks) {
+            // Обновляем задания типа trade_close (закрытие сделок)
+            if (task.taskType === 'trade_close' && task.status === 'active') {
+              console.log(`[TRADE] Updating trade_close task ${task.id} for user ${userId}`);
+              await TaskService.updateTaskProgress(parseInt(task.id), userId, task.progress.current + 1);
+            }
+            
+            // Обновляем задания на первую прибыль, если сделка прибыльная
+            if (task.taskType === 'trade_first_profit' && task.status === 'active' && dealProfit > 0) {
+              console.log(`[TRADE] Updating trade_first_profit task ${task.id} for user ${userId} (profit: ${dealProfit})`);
+              await TaskService.updateTaskProgress(parseInt(task.id), userId, task.progress.current + 1);
+            }
+          }
+        } catch (error) {
+          console.error('[TRADE] Logging/Task update error:', error);
+        }
+      });
+      
       res.json({ success: true, ...result });
     } catch (error: any) {
       console.error(`🔥 [ROUTES] REST API ошибка закрытия dealId=${dealId}:`, error.message);

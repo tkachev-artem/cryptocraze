@@ -88,7 +88,7 @@ export function Home() {
           </div>
 
           <div className='absolute right-4 top-4'> {/* сейф */}
-             <img src="/vault.png" alt="vault" className='w-[113px] h-[77px]' />
+             <img src="/vault.webp" alt="vault" className='w-[113px] h-[77px]' />
           </div>
 
         </div>

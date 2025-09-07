@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Modal } from '../components/ui/modal';
 import { useUser } from '../hooks/useUser';
-import { useImageCache } from '../hooks/useImageCache';
 import { API_BASE_URL } from '@/lib/api';
 import { useTranslation } from '@/lib/i18n';
 
@@ -10,7 +9,6 @@ export function Welcome() {
   const { isAuthenticated, isLoading, user } = useUser();
   const [showErrorModal, setShowErrorModal] = useState(false);
   const { t } = useTranslation();
-  const { isLoading: imagesLoading, progress, isComplete, failedImages } = useImageCache();
 
 
   // Проверяем ошибки авторизации в URL

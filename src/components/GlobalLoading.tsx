@@ -63,10 +63,11 @@ const CRITICAL_IMAGES = [
   '/dashboard/energy.svg'
 ];
 
-// Принудительная предзагрузка с Promise
+// Принудительная предзагрузка с Promise - загружаем максимум 3 секунды
 const forcePreloadImages = (): Promise<void> => {
   return new Promise((resolve) => {
     let loadedCount = 0;
+    let errorCount = 0;
     const totalImages = CRITICAL_IMAGES.length;
     
     if (totalImages === 0) {
@@ -74,10 +75,17 @@ const forcePreloadImages = (): Promise<void> => {
       return;
     }
     
+    // Таймаут на случай медленного соединения
+    const timeout = setTimeout(() => {
+      console.log(`⏰ Таймаут загрузки изображений: ${loadedCount}/${totalImages} загружено, ${errorCount} ошибок`);
+      resolve();
+    }, 3000);
+    
     const checkComplete = () => {
       loadedCount++;
       if (loadedCount >= totalImages) {
-        console.log(`✅ Все ${totalImages} изображений загружены в кэш`);
+        clearTimeout(timeout);
+        console.log(`✅ Все ${totalImages} изображений обработаны: ${totalImages - errorCount} загружено, ${errorCount} ошибок`);
         resolve();
       }
     };
@@ -87,6 +95,7 @@ const forcePreloadImages = (): Promise<void> => {
       
       img.onload = checkComplete;
       img.onerror = () => {
+        errorCount++;
         console.warn(`❌ Не удалось загрузить: ${src}`);
         checkComplete(); // Продолжаем даже при ошибке
       };
@@ -107,8 +116,12 @@ const GlobalLoading: FC<GlobalLoadingProps> = ({
       console.log('🚀 Начинаем предзагрузку изображений...');
       
       // Запускаем предзагрузку изображений и минимальное время параллельно
+      // Добавляем максимальный таймаут, чтобы избежать бесконечной загрузки
       const [, ] = await Promise.all([
-        forcePreloadImages(),
+        Promise.race([
+          forcePreloadImages(),
+          new Promise(resolve => setTimeout(resolve, 5000)) // максимум 5 секунд
+        ]),
         new Promise(resolve => setTimeout(resolve, minimumLoadingTime))
       ]);
       

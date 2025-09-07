@@ -65,7 +65,7 @@ if ! command -v docker &> /dev/null; then
     error "Docker не установлен!"
 fi
 
-if ! command -v docker-compose &> /dev/null; then
+if ! command -v docker compose &> /dev/null; then
     error "Docker Compose не установлен!"
 fi
 
@@ -76,10 +76,10 @@ log "✅ Все файлы на месте"
 # ============================================
 
 log "🧹 Остановка старых контейнеров..."
-docker-compose down --remove-orphans || warn "Нет запущенных контейнеров"
+docker compose down --remove-orphans || warn "Нет запущенных контейнеров"
 
 log "🏗️ Сборка и запуск контейнеров..."
-docker-compose up --build -d
+docker compose up --build -d
 
 log "⏳ Ожидание готовности сервисов..."
 
@@ -105,8 +105,8 @@ wait_for_service() {
 }
 
 # Ждем готовности всех сервисов
-wait_for_service "PostgreSQL" "docker-compose exec -T postgres pg_isready -U postgres -d crypto_analyzer"
-wait_for_service "Redis" "docker-compose exec -T redis redis-cli ping"
+wait_for_service "PostgreSQL" "docker compose exec -T postgres pg_isready -U postgres -d crypto_analyzer"
+wait_for_service "Redis" "docker compose exec -T redis redis-cli ping"
 wait_for_service "ClickHouse" "curl -s http://localhost:8123/ping"
 wait_for_service "Приложение" "curl -s http://localhost:1111/health"
 
@@ -118,13 +118,13 @@ log "🔍 Финальная проверка системы..."
 
 echo
 info "📊 Статус сервисов:"
-docker-compose ps
+docker compose ps
 
 echo
 info "🔗 Проверка подключений:"
 
 # Проверяем количество таблиц в PostgreSQL
-TABLES_COUNT=$(docker-compose exec -T postgres psql -U postgres -d crypto_analyzer -t -c "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | tr -d ' ' || echo "0")
+TABLES_COUNT=$(docker compose exec -T postgres psql -U postgres -d crypto_analyzer -t -c "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | tr -d ' ' || echo "0")
 
 if [ "$TABLES_COUNT" -gt 20 ]; then
     echo "✅ PostgreSQL: $TABLES_COUNT таблиц создано"
@@ -144,15 +144,15 @@ echo
 log "📈 Проверка начальных данных:"
 
 # Premium планы
-PREMIUM_PLANS=$(docker-compose exec -T postgres psql -U postgres -d crypto_analyzer -t -c "SELECT count(*) FROM premium_plans WHERE is_active = true;" 2>/dev/null | tr -d ' ' || echo "0")
+PREMIUM_PLANS=$(docker compose exec -T postgres psql -U postgres -d crypto_analyzer -t -c "SELECT count(*) FROM premium_plans WHERE is_active = true;" 2>/dev/null | tr -d ' ' || echo "0")
 echo "Premium планы: $PREMIUM_PLANS"
 
 # Шаблоны заданий  
-TASK_TEMPLATES=$(docker-compose exec -T postgres psql -U postgres -d crypto_analyzer -t -c "SELECT count(*) FROM task_templates WHERE is_active = true;" 2>/dev/null | tr -d ' ' || echo "0")
+TASK_TEMPLATES=$(docker compose exec -T postgres psql -U postgres -d crypto_analyzer -t -c "SELECT count(*) FROM task_templates WHERE is_active = true;" 2>/dev/null | tr -d ' ' || echo "0")
 echo "Шаблоны заданий: $TASK_TEMPLATES"
 
 # Типы коробок
-BOX_TYPES=$(docker-compose exec -T postgres psql -U postgres -d crypto_analyzer -t -c "SELECT count(*) FROM box_types WHERE is_active = true;" 2>/dev/null | tr -d ' ' || echo "0")
+BOX_TYPES=$(docker compose exec -T postgres psql -U postgres -d crypto_analyzer -t -c "SELECT count(*) FROM box_types WHERE is_active = true;" 2>/dev/null | tr -d ' ' || echo "0")
 echo "Типы коробок: $BOX_TYPES"
 
 # ============================================
@@ -170,9 +170,9 @@ echo "   🔄 Redis: localhost:6379"
 echo "   📊 ClickHouse: http://localhost:8123"
 echo
 info "🛠️ Полезные команды:"
-echo "   Логи: docker-compose logs -f [service]"
-echo "   Остановка: docker-compose down"
-echo "   Перезапуск: docker-compose restart [service]"
+echo "   Логи: docker compose logs -f [service]"
+echo "   Остановка: docker compose down"
+echo "   Перезапуск: docker compose restart [service]"
 echo
 info "📊 Созданные функции:"
 echo "   ✅ $PREMIUM_PLANS премиум плана"
@@ -188,7 +188,7 @@ if [ "$TABLES_COUNT" -gt 20 ] && [ "$PREMIUM_PLANS" -gt 0 ] && [ "$TASK_TEMPLATE
     echo "🔗 Откройте http://localhost:1111 в браузере"
 else
     warn "⚠️ Некоторые компоненты могут работать неправильно"
-    echo "Проверьте логи: docker-compose logs"
+    echo "Проверьте логи: docker compose logs"
 fi
 
 log "✨ Развертывание завершено!"

@@ -7,7 +7,6 @@ import { store } from "./app/store"
 import "./index.css"
 import { ensureLanguageInitialized } from "./lib/languageUtils"
 import { installKeyboardZoomFix, installNativeLikeGestureGuards } from "./lib/viewportUtils"
-import { preloadCriticalImages, preloadSecondaryImages } from "./utils/preloadImages"
 
 const queryClient = new QueryClient()
 
@@ -20,9 +19,6 @@ if (container) {
   installKeyboardZoomFix()
   // Глобальные гварды жестов (pinch/multitouch/double-tap/drag)
   installNativeLikeGestureGuards()
-  // Предзагружаем критичные изображения
-  preloadCriticalImages()
-  preloadSecondaryImages()
 
   const root = createRoot(container)
 

@@ -1,6 +1,7 @@
 import type { FC } from 'react';
 import { useState, useEffect } from 'react';
 import LoadingScreen from './LoadingScreen';
+import { preloadCriticalImages, preloadSecondaryImages } from '../utils/preloadImages';
 
 type GlobalLoadingProps = {
   children: React.ReactNode;
@@ -14,6 +15,10 @@ const GlobalLoading: FC<GlobalLoadingProps> = ({
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   useEffect(() => {
+    // Сразу запускаем предзагрузку критичных изображений
+    preloadCriticalImages();
+    preloadSecondaryImages();
+    
     const timer = setTimeout(() => {
       setIsInitialLoading(false);
     }, initialLoadingTime);

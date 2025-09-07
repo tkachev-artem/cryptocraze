@@ -76,19 +76,19 @@ export function Home() {
               onClick={() => dispatch(openCoinExchange())}
               className='flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-sm hover:bg-gray-50 transition-colors cursor-pointer'
             >
-              <img src="/money.svg" alt="coins" className='w-6 h-6' />
+              <img src="/money.svg" alt="coins" className='w-6 h-6' loading="eager" />
               <span className='text-black font-semibold text-base'>{user.coins || 0}</span>
             </button>
 
             {/* Награды/уровни */}
             <div className='flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-sm'>
-              <img src="/awards.svg" alt="awards" className='w-6 h-6' />
+              <img src="/awards.svg" alt="awards" className='w-6 h-6' loading="eager" />
               <span className='text-black font-semibold text-base'>{user.rewardsCount || 0}</span>
             </div>
           </div>
 
           <div className='absolute right-4 top-4'> {/* сейф */}
-             <img src="/vault.webp" alt="vault" className='w-[113px] h-[77px]' />
+             <img src="/vault.webp" alt="vault" className='w-[113px] h-[77px]' loading="eager" />
           </div>
 
         </div>

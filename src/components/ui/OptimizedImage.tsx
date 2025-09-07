@@ -1,42 +1,28 @@
 import React from 'react';
-import { getOptimizedImageSrc } from '@/utils/imageOptimizer';
 
-interface OptimizedImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'> {
+interface OptimizedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
-  fallbackSrc?: string;
+  alt: string;
+  eager?: boolean; // Для критичных изображений на /home
+  className?: string;
 }
 
 export const OptimizedImage: React.FC<OptimizedImageProps> = ({ 
   src, 
-  fallbackSrc,
-  onError,
+  alt, 
+  eager = false, 
+  className = '',
   ...props 
 }) => {
-  const optimizedSrc = getOptimizedImageSrc(src);
-  
-  const handleError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget;
-    
-    // Если это уже fallback, не делаем ничего
-    if (img.src.includes('optimized') && fallbackSrc) {
-      img.src = fallbackSrc;
-    } else if (img.src.includes('optimized')) {
-      // Откатываемся к оригинальному изображению
-      img.src = src;
-    }
-    
-    if (onError) {
-      onError(e);
-    }
-  };
-
   return (
     <img
-      src={optimizedSrc}
-      onError={handleError}
-      loading="lazy"
-      decoding="async"
+      src={src}
+      alt={alt}
+      className={className}
+      loading={eager ? "eager" : "lazy"}
       {...props}
     />
   );
 };
+
+export default OptimizedImage;

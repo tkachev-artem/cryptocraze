@@ -7,6 +7,8 @@ import { store } from "./app/store"
 import "./index.css"
 import { ensureLanguageInitialized } from "./lib/languageUtils"
 import { installKeyboardZoomFix, installNativeLikeGestureGuards } from "./lib/viewportUtils"
+import { preloadCriticalImages } from "./utils/preloadImages"
+import { setupGlobalLazyLoading } from "./utils/globalLazyLoading"
 
 const queryClient = new QueryClient()
 
@@ -19,6 +21,13 @@ if (container) {
   installKeyboardZoomFix()
   // Глобальные гварды жестов (pinch/multitouch/double-tap/drag)
   installNativeLikeGestureGuards()
+  
+  // 🚀 Предзагружаем критичные изображения немедленно
+  console.log('🚀 Запускаем предзагрузку критичных изображений в main.tsx');
+  preloadCriticalImages()
+  
+  // 🔧 Глобально настраиваем lazy loading для всех изображений
+  setupGlobalLazyLoading()
 
   const root = createRoot(container)
 

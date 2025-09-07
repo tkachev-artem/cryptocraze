@@ -1,5 +1,26 @@
 @import "tailwindcss";
 
+/* Оптимизации производительности */
+* {
+  /* Улучшаем производительность рендеринга */
+  will-change: auto;
+}
+
+/* Оптимизируем анимации для слабых устройств */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Ускоряем загрузку изображений */
+img {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 1px;
+}
+
 body {
   background-color: white;
   margin: 0;

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { getCryptoIconFromCache, setCryptoIconToCache } from '../lib/cookieUtils';
 import { API_BASE_URL } from '@/lib/api';
 
-// Тип для возвращаемого значения
 type UseCoinGeckoIconResult = {
   iconUrl: string | null;
   loading: boolean;
@@ -22,7 +21,7 @@ export const useCoinGeckoIcon = (coinId: string): UseCoinGeckoIconResult => {
       return;
     }
 
-    // Сначала проверяем кэш
+    // Проверяем кэш
     const cachedIcon = getCryptoIconFromCache(coinId);
     if (cachedIcon) {
       setIconUrl(cachedIcon);
@@ -32,12 +31,22 @@ export const useCoinGeckoIcon = (coinId: string): UseCoinGeckoIconResult => {
     }
 
     let cancelled = false;
+    const controller = new AbortController();
     setLoading(true);
     setError(null);
     setIconUrl(null);
     
-    fetch(`${API_BASE_URL}/coingecko/icon/${coinId}`)
+    // Оптимизация: добавляем таймаут для медленного интернета
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 3000); // 3 секунды таймаут
+    
+    fetch(`${API_BASE_URL}/coingecko/icon/${coinId}`, {
+      signal: controller.signal,
+      cache: 'force-cache' // Используем кэш браузера агрессивно
+    })
       .then((res) => {
+        clearTimeout(timeoutId);
         if (!res.ok) throw new Error('Network response was not ok');
         return res.json();
       })
@@ -47,21 +56,24 @@ export const useCoinGeckoIcon = (coinId: string): UseCoinGeckoIconResult => {
           setIconUrl(iconUrl);
           setLoading(false);
           
-          // Сохраняем в кэш если получили иконку
           if (iconUrl) {
             setCryptoIconToCache(coinId, iconUrl);
           }
         }
       })
-      .catch(() => {
-        if (!cancelled) {
+      .catch((err) => {
+        clearTimeout(timeoutId);
+        if (!cancelled && err.name !== 'AbortError') {
           setError('Не удалось загрузить иконку');
           setIconUrl(null);
           setLoading(false);
         }
       });
+    
     return () => {
       cancelled = true;
+      clearTimeout(timeoutId);
+      controller.abort();
     };
   }, [coinId]);
 

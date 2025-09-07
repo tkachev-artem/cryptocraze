@@ -63,7 +63,8 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
-      // Force cache invalidation by changing output filenames
+      // Optimize for performance
+      target: 'esnext',
       rollupOptions: {
         output: {
           // Add timestamp to force cache busting
@@ -101,11 +102,13 @@ export default defineConfig(({ mode }) => {
         compress: {
           drop_console: mode === 'production',
           drop_debugger: mode === 'production',
+          pure_funcs: mode === 'production' ? ['console.log', 'console.info'] : [],
         }
       },
       // Asset optimization
-      chunkSizeWarningLimit: 1000,
-      assetsInlineLimit: 4096,
+      chunkSizeWarningLimit: 500,
+      assetsInlineLimit: 2048,
+      reportCompressedSize: false, // Faster builds
     },
     server: {
       host: "0.0.0.0",

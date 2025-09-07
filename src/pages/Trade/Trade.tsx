@@ -16,6 +16,7 @@ import useLiveStats from '@/hooks/useLiveStats';
 import useLivePrices from '@/hooks/useLivePrices';
 import { selectBinanceStats, selectBinanceLoading, selectBinanceError } from '../../app/binanceSlice';
 import { useCoinGeckoIcon } from '../../hooks/useCoinGeckoIcon';
+import { FastImage } from '../../components/ui/FastImage';
 import { symbolToCoinId } from '../../hooks/symbolToCoinId';
 import { openEditDeal } from '../../app/dealModalSlice';
 import { dealService } from '../../services/dealService';
@@ -301,28 +302,13 @@ const { height: bottomNavHeight, ref: bottomNavRef } = useBottomNavigationHeight
           <div className="flex items-center gap-1.5 mb-3">
             {/* Информация о криптовалюте */}
             <div className="flex items-center gap-2">
-              <div className={
-                !loading && iconUrl
-                  ? ''
-                  : 'w-9 h-9 bg-gray-300 rounded-full flex items-center justify-center'
-              }>
-                {loading && (
-                   <div className="w-7 h-7 rounded-full bg-gray-200 animate-pulse" aria-label={t('common.loading')} tabIndex={0} />
-                )}
-                {!loading && iconUrl && (
-                  <img
-                    src={iconUrl}
-                    alt={selectedCrypto.name}
-                    aria-label={selectedCrypto.name}
-                    className="w-9 h-9 rounded-full"
-                    tabIndex={0}
-                    onError={e => { e.currentTarget.src = '/trade/bitcoin.svg'; }}
-                  />
-                )}
-                 {!loading && !iconUrl && (
-                  <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs" aria-label={t('common.error')} tabIndex={0}>?</div>
-                )}
-              </div>
+              <FastImage
+                src={iconUrl}
+                coinId={coinId}
+                alt={selectedCrypto.name}
+                className="w-9 h-9 rounded-full"
+                fallbackClassName="w-9 h-9 rounded-full"
+              />
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-black">{selectedCrypto.name}</span>

@@ -250,7 +250,7 @@ $64.99
                     </div>
                 ) : isPremium ? (
                     <div className="w-full bg-[#F5A600] text-black font-bold text-base py-3 px-6 rounded-full text-center flex items-center justify-center gap-2">
-                        <img src="/crown.png" alt="premium" className='w-6 h-6' />
+                        <img src="/crown.webp" alt="premium" className='w-6 h-6' />
                          <span>{t('settings.premium.pro')}</span>
                     </div>
                 ) : (

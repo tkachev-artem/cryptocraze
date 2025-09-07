@@ -17,7 +17,7 @@ const TopMenu = ({ variant = 'home' }: TopMenuProps) => {
   const { unreadCount } = useNotifications();
 
   // Получаем URL аватарки из Redux или используем дефолтную
-  const avatarUrl = user?.profileImageUrl ?? '/avatar.png';
+  const avatarUrl = user?.profileImageUrl ?? '/avatar.webp';
 
   if (variant === 'profile') {
     return (
@@ -55,7 +55,7 @@ const TopMenu = ({ variant = 'home' }: TopMenuProps) => {
           }}
           aria-label={t('settings.premium.goPremium')}
         >
-          <img src="/crown.png" alt="premium" className='w-6 h-6' />
+          <img src="/crown.webp" alt="premium" className='w-6 h-6' />
           <p className="text-sm font-bold text-black">
             {isPremium ? t('settings.premium.pro') : t('settings.premium.goPremium')}
           </p>

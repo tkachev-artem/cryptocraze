@@ -51,7 +51,7 @@ export function Welcome() {
         <div className='flex flex-col items-center pt-8'>
           {/* Panda Mascot */}
           <img 
-            src="/panda.png" 
+            src="/panda.webp" 
             alt="Logo" 
             className="w-64 h-64 mx-auto select-none pointer-events-none" 
           />

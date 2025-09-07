@@ -257,7 +257,7 @@ const EditProfile: React.FC = () => {
                   />
                 ) : null}
                 <img 
-                  src="/panda.png" 
+                  src="/panda.webp" 
                   alt={t('profile.avatarDefault') || 'Default Avatar'} 
                   className={`w-[72px] h-[74px] ${photoPreview || user.profileImageUrl ? 'hidden' : ''}`}
                 />
@@ -413,7 +413,7 @@ const EditProfile: React.FC = () => {
       >
         <div className="text-center">
           {/* Success Icon */}
-          <img src="/accept.png" alt={t('common.success')} className="w-46 h-46 mx-auto mb-4" />
+          <img src="/accept.webp" alt={t('common.success')} className="w-46 h-46 mx-auto mb-4" />
           
           <h3 className="text-2xl font-bold text-black mb-10">{t('profile.updated') || 'Ваши данные успешно обновлены'}</h3>
           

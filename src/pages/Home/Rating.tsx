@@ -45,7 +45,7 @@ const Row = ({ leader }: { leader: Leader }) => {
       {showPremium && (
         <div className="absolute top-0 left-0 z-10">
           <div className="flex items-center gap-1 bg-[#F5A600] text-black px-1 py-1 rounded-full">
-            <img src="/crown.png" alt={t('rating.premium')} className="w-5 h-5" />
+            <img src="/crown.webp" alt={t('rating.premium')} className="w-5 h-5" />
           </div>
         </div>
       )}
@@ -54,7 +54,7 @@ const Row = ({ leader }: { leader: Leader }) => {
        {isTop3 && (
         <div
           className="absolute right-0 top-1/2 -translate-y-1/2 flex min-w-[121px] h-full p-0 items-center gap-[12px] rounded-none"
-          style={{ backgroundImage: 'url(/rating/top-bg.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}
+          style={{ backgroundImage: 'url(/rating/top-bg.webp)', backgroundSize: 'cover', backgroundPosition: 'center' }}
         >
           <div className="flex w-full items-center justify-end gap-2 px-3">
             <span className="text-[12px] font-extrabold text-[#F5A600]">
@@ -75,10 +75,10 @@ const Row = ({ leader }: { leader: Leader }) => {
       <div className={`flex items-center justify-between p-3 ${isTop3 ? 'pr-[132px]' : ''}`}>
         <div className="flex items-center gap-3 min-w-0">
           <img
-            src={leader.avatarUrl ?? '/avatar.png'}
+            src={leader.avatarUrl ?? '/avatar.webp'}
             alt={leader.username}
             className="w-12 h-12 rounded-full object-cover"
-            onError={(e) => { e.currentTarget.src = '/avatar.png'; }}
+            onError={(e) => { e.currentTarget.src = '/avatar.webp'; }}
           />
           <div className="flex flex-col min-w-0">
             <span className="text-sm font-bold text-black truncate max-w-[160px]">{leader.username}</span>
@@ -233,7 +233,7 @@ const Rating = () => {
         <div className="px-4 pb-4">
           <div 
             className="flex w-full h-[50px] p-[16px] justify-center items-center gap-[10px] flex-shrink-0 rounded-[16px] mx-auto"
-            style={{ backgroundImage: 'url(/rating/rating-bg.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}
+            style={{ backgroundImage: 'url(/rating/rating-bg.webp)', backgroundSize: 'cover', backgroundPosition: 'center' }}
           >
             <span className="text-[#FFF] text-center text-[16px] font-bold tracking-[0px]">{t('rating.last30d')}</span>
           </div>

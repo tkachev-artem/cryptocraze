@@ -5,7 +5,7 @@ import { useAppSelector } from '../../app/hooks';
 import { selectUser, selectUnreadCount } from '../../app/userSlice';
 import { usePremium } from '../../hooks/usePremium';
 import { useTranslation } from '@/lib/i18n';
-import { Copy } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
 
 const Settings: FC = () => {
   const navigate = useNavigate();
@@ -185,7 +185,11 @@ const Settings: FC = () => {
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCopyAccountId(); } }}
               title={copied ? (t('common.copied') || 'Copied') : (t('common.copy') || 'Copy')}
             >
-              <Copy className="w-4 h-4 text-black opacity-70" />
+              {copied ? (
+                <Check className="w-4 h-4 text-green-600" />
+              ) : (
+                <Copy className="w-4 h-4 text-black opacity-70" />
+              )}
             </button>
           )}
         </div>

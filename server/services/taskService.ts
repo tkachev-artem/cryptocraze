@@ -4,6 +4,7 @@ import { eq, and, count, desc, gte, lt } from 'drizzle-orm';
 import { EnergyService } from './energyService.js';
 import { TaskTemplateService as StaticTaskTemplateService } from './taskTemplates.js';
 import { notificationService } from './notifications.js';
+import { AnalyticsLogger } from '../middleware/analyticsLogger.js';
 
 export interface TaskReward {
   type: 'money' | 'coins' | 'energy' | 'mixed' | 'wheel';
@@ -380,7 +381,7 @@ export class TaskService {
       await this.giveReward(userId, {
         type: task.rewardType as 'money' | 'coins' | 'energy' | 'mixed' | 'wheel',
         amount: task.rewardAmount
-      });
+      }, task.taskType); // Pass taskType to giveReward
 
       console.log(`[TaskService] Gave reward: ${task.rewardType} ${task.rewardAmount}`);
 
@@ -422,8 +423,8 @@ export class TaskService {
   /**
    * Give reward to user
    */
-  private static async giveReward(userId: string, reward: TaskReward): Promise<void> {
-    console.log(`[TaskService] Giving reward to user ${userId}:`, reward);
+  private static async giveReward(userId: string, reward: TaskReward, taskType?: string): Promise<void> {
+    console.log(`[TaskService] Giving reward to user ${userId}:`, reward, `taskType: ${taskType}`);
 
     const [user] = await db.select()
       .from(users)
@@ -497,6 +498,29 @@ export class TaskService {
         .where(eq(users.id, userId));
       console.log(`[TaskService] Updated user data:`, updateData);
     }
+
+    // Log ad_watch event for video tasks
+    if (taskType && taskType.startsWith('video_')) {
+      try {
+        console.log(`[TaskService] Logging ad_watch event for video task: ${taskType}`);
+        await AnalyticsLogger.logUserEvent(
+          parseInt(userId),
+          'ad_watch', 
+          {
+            placement: 'task_completion',
+            rewardType: reward.type,
+            rewardAmount: this.parseRewardAmount(reward.amount),
+            taskType: taskType,
+            isSimulation: true,
+            revenue: this.calculateAdRevenue(reward.type, reward.amount)
+          }
+        );
+        console.log(`[TaskService] ✅ Successfully logged ad_watch event for user ${userId}`);
+      } catch (error) {
+        console.error(`[TaskService] ❌ Failed to log ad_watch event:`, error);
+        // Don't fail the whole reward process due to analytics error
+      }
+    }
   }
 
   /**
@@ -510,6 +534,32 @@ export class TaskService {
       return parseInt(amount.replace('M', '')) * 1000000;
     }
     return parseInt(amount) || 0;
+  }
+
+  /**
+   * Calculate estimated ad revenue from task reward
+   */
+  private static calculateAdRevenue(rewardType: string, rewardAmount: string): number {
+    // Estimate revenue based on reward type and industry standards for mobile gaming
+    switch (rewardType) {
+      case 'money':
+        // If we give virtual money, we typically earn $0.05-0.10 from ad networks
+        return 0.08;
+      case 'coins':
+        // Similar calculation for coins
+        return 0.06;
+      case 'energy':
+        // Energy rewards are typically for lighter engagement
+        return 0.04;
+      case 'wheel':
+        // Wheel spins are valuable as they increase engagement
+        return 0.10;
+      case 'mixed':
+        // Mixed rewards often have higher value
+        return 0.12;
+      default:
+        return 0.05; // Default revenue per video ad view
+    }
   }
 
   /**

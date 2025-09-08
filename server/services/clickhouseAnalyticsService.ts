@@ -204,7 +204,8 @@ export class ClickHouseAnalyticsService {
     
     try {
       console.log('[ClickHouse Service] Calling client.insert...');
-      await this.client.insert({
+      const client = this.getClient();
+      await client.insert({
         table: 'cryptocraze_analytics.user_events',
         values: [eventRecord],
         format: 'JSONEachRow'
@@ -220,7 +221,7 @@ export class ClickHouseAnalyticsService {
         // Записать в специальную таблицу ad_events
         try {
           console.log('[ClickHouse Service] Inserting into ad_events table');
-          await this.client.insert({
+          await client.insert({
             table: 'cryptocraze_analytics.ad_events',
             values: [{
               event_id: uuidv4(),
@@ -267,7 +268,8 @@ export class ClickHouseAnalyticsService {
     subscriptionId?: string
   ): Promise<void> {
     try {
-      await this.client.insert({
+      const client = this.getClient();
+      await client.insert({
         table: 'cryptocraze_analytics.revenue_events',
         values: [{
           event_id: uuidv4(),
@@ -296,7 +298,8 @@ export class ClickHouseAnalyticsService {
       console.log(`[ClickHouse] Syncing deal ${deal.id}, openedAt: ${deal.openedAt}, createdAt: ${deal.createdAt}, closedAt: ${deal.closedAt}`);
       
       // Вставляем запись - ReplacingMergeTree автоматически заменит дубликаты
-      await this.client.insert({
+      const client = this.getClient();
+      await client.insert({
         table: 'deals_analytics',
         values: [{
           deal_id: deal.id,
@@ -369,7 +372,8 @@ export class ClickHouseAnalyticsService {
     try {
       console.log('[ClickHouse] Getting user metrics with NEW query...');
       // Основные пользовательские метрики
-      const userResult = await this.client.query({
+      const client = this.getClient();
+      const userResult = await client.query({
         query: `
           WITH 
             first_seen_users AS (
@@ -397,7 +401,7 @@ export class ClickHouseAnalyticsService {
       });
 
       // Расчет retention метрик
-      const retentionResult = await this.client.query({
+      const retentionResult = await client.query({
         query: `
           WITH 
             installs AS (
@@ -501,7 +505,8 @@ export class ClickHouseAnalyticsService {
    */
   private async getTradingMetrics(): Promise<any> {
     // Получаем закрытые сделки из ClickHouse
-    const result = await this.client.query({
+    const client = this.getClient();
+    const result = await client.query({
       query: `
         SELECT 
           count() as total_trades,
@@ -545,7 +550,8 @@ export class ClickHouseAnalyticsService {
   private async getRevenueMetrics(): Promise<any> {
     try {
       // Пытаемся получить данные из ClickHouse
-      const revenueResult = await this.client.query({
+      const client = this.getClient();
+      const revenueResult = await client.query({
         query: `
           SELECT 
             sum(revenue) as total_revenue,
@@ -595,7 +601,8 @@ export class ClickHouseAnalyticsService {
   
   private async getUsersCount(): Promise<number> {
     try {
-      const result = await this.client.query({
+      const client = this.getClient();
+      const result = await client.query({
         query: 'SELECT count(DISTINCT user_id) as total FROM user_events',
         format: 'JSONEachRow'
       });
@@ -611,7 +618,8 @@ export class ClickHouseAnalyticsService {
    */
   private async getEngagementMetrics(): Promise<any> {
     // Основные метрики вовлеченности
-    const mainResult = await this.client.query({
+    const client = this.getClient();
+    const mainResult = await client.query({
       query: `
         SELECT 
           count() as total_events,
@@ -628,7 +636,7 @@ export class ClickHouseAnalyticsService {
     });
 
     // Расчет среднего времени сессии
-    const sessionDurationResult = await this.client.query({
+    const sessionDurationResult = await client.query({
       query: `
         WITH session_durations AS (
           SELECT 
@@ -648,7 +656,7 @@ export class ClickHouseAnalyticsService {
     });
 
     // Метрики туториала
-    const tutorialResult = await this.client.query({
+    const tutorialResult = await client.query({
       query: `
         SELECT 
           countIf(event_type = 'tutorial_progress' AND JSONExtractString(event_data, 'action') = 'start') as tutorial_starts,
@@ -689,7 +697,8 @@ export class ClickHouseAnalyticsService {
    */
   private async getAdvancedAdMetrics(): Promise<any> {
     try {
-      const result = await this.client.query({
+      const client = this.getClient();
+      const result = await client.query({
         query: `
           SELECT 
             countIf(event_type = 'ad_watch') as total_impressions,
@@ -778,7 +787,8 @@ export class ClickHouseAnalyticsService {
           return [];
       }
 
-      const result = await this.client.query({
+      const client = this.getClient();
+      const result = await client.query({
         query,
         format: 'JSONEachRow'
       });
@@ -795,7 +805,8 @@ export class ClickHouseAnalyticsService {
    */
   async getSymbolStats(days: number = 7): Promise<any[]> {
     try {
-      const result = await this.client.query({
+      const client = this.getClient();
+      const result = await client.query({
         query: `
           SELECT 
             symbol,
@@ -825,10 +836,11 @@ export class ClickHouseAnalyticsService {
    */
   async cleanupTestData(): Promise<void> {
     try {
-      await this.client.exec({
+      const client = this.getClient();
+      await client.exec({
         query: 'TRUNCATE TABLE user_events'
       });
-      await this.client.exec({
+      await client.exec({
         query: 'TRUNCATE TABLE deals_analytics' 
       });
       console.log('[ClickHouse] Test data cleaned up');
@@ -842,7 +854,8 @@ export class ClickHouseAnalyticsService {
    */
   async healthCheck(): Promise<{ healthy: boolean; error?: string; stats?: any }> {
     try {
-      const result = await this.client.query({
+      const client = this.getClient();
+      const result = await client.query({
         query: 'SELECT 1 as health_check',
         format: 'JSONEachRow'
       });

@@ -335,6 +335,8 @@ const Rewards: React.FC = () => {
               </div>
             )}
           </div>
+          {/* Белая заливка под шапкой вместо зазора */}
+          <div className="h-3 bg-white" />
         </div>
 
         <div className="flex-1 bg-white">

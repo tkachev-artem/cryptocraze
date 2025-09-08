@@ -1,9 +1,11 @@
 import type { FC } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../app/hooks';
 import { selectUser, selectUnreadCount } from '../../app/userSlice';
 import { usePremium } from '../../hooks/usePremium';
 import { useTranslation } from '@/lib/i18n';
+import { Copy } from 'lucide-react';
 
 const Settings: FC = () => {
   const navigate = useNavigate();
@@ -34,6 +36,20 @@ const Settings: FC = () => {
   };
 
 
+
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyAccountId = async () => {
+    const id = user?.id || '';
+    if (!id) return;
+    try {
+      await navigator.clipboard.writeText(id);
+      setCopied(true);
+      setTimeout(() => { setCopied(false); }, 1500);
+    } catch {
+      // ignore
+    }
+  };
 
   return (
     <div className="bg-white min-h-screen pb-[env(safe-area-inset-bottom)]">
@@ -156,9 +172,23 @@ const Settings: FC = () => {
         <p className="text-black font-medium text-xs opacity-50 tracking-wide">
           {t('settings.version')} 0.1.2
         </p>
-        <p className="text-black font-medium text-xs opacity-50 tracking-wide">
-          {t('settings.accountId')} {user?.id ?? t('common.loading')}
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-black font-medium text-xs opacity-50 tracking-wide">
+            {t('settings.accountId')} {user?.id ?? t('common.loading')}
+          </p>
+          {user?.id && (
+            <button
+              onClick={handleCopyAccountId}
+              aria-label={t('common.copy') || 'Copy'}
+              className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100 active:bg-gray-200"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCopyAccountId(); } }}
+              title={copied ? (t('common.copied') || 'Copied') : (t('common.copy') || 'Copy')}
+            >
+              <Copy className="w-4 h-4 text-black opacity-70" />
+            </button>
+          )}
+        </div>
       </div>
 
 

@@ -6684,37 +6684,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Логирование закрытия сделок после успешного ответа
       setImmediate(async () => {
         try {
-          console.log(`[TRADE] Deal closed by user ${userId}: dealId=${dealId}, profit=${result.deal?.pnl || 0}`);
+          console.log(`[TRADE] Deal closed by user ${userId}: dealId=${dealId}, profit=${Number(result.profit || 0)}`);
           
           // Обновляем задания на закрытие сделок и прибыль
           const userTasks = await TaskService.getUserTasks(userId);
-          const dealProfit = parseFloat(result.deal?.pnl || '0');
+          const dealProfit = Number(result.profit || 0);
           
           for (const task of userTasks) {
-            // Обновляем задания типа trade_close (закрытие сделок)
-            if (task.taskType === 'trade_close' && task.status === 'active') {
+            if (task.status !== 'active') continue;
+
+            const type = task.taskType || '';
+
+            // 1) Любое закрытие сделки
+            if (type === 'trade_close') {
               console.log(`[TRADE] Updating trade_close task ${task.id} for user ${userId}`);
               await TaskService.updateTaskProgress(parseInt(task.id), userId, task.progress.current + 1);
+              continue;
             }
-            
-            // Обновляем задания на первую прибыль, если сделка прибыльная
-            if (task.taskType === 'trade_first_profit' && task.status === 'active' && dealProfit > 0) {
+
+            // 2) Первая прибыль (счётчик по количеству прибыльных закрытий)
+            if (type === 'trade_first_profit' && dealProfit > 0) {
               console.log(`[TRADE] Updating trade_first_profit task ${task.id} for user ${userId} (profit: ${dealProfit})`);
               await TaskService.updateTaskProgress(parseInt(task.id), userId, task.progress.current + 1);
+              continue;
             }
-            
-            // Обновляем задания на накопление прибыли ($500), если сделка прибыльная
-            if (task.taskType === 'trade_lucky' && task.status === 'active' && dealProfit > 0) {
+
+            // 3) Любые задания на накопление прибыли: trade_*profit*
+            if (type.startsWith('trade_') && type.includes('profit') && dealProfit > 0) {
               const newProgress = Math.min(task.progress.current + Math.floor(dealProfit), task.progress.total);
-              console.log(`[TRADE] Updating trade_lucky task ${task.id} for user ${userId} (profit: $${dealProfit}, progress: ${task.progress.current} -> ${newProgress})`);
+              console.log(`[TRADE] Updating ${type} task ${task.id} for user ${userId} (profit: $${dealProfit}, progress: ${task.progress.current} -> ${newProgress})`);
               await TaskService.updateTaskProgress(parseInt(task.id), userId, newProgress);
+              continue;
             }
-            
-            // Обновляем задания на накопление прибыли ($1000), если сделка прибыльная  
-            if (task.taskType === 'trade_master' && task.status === 'active' && dealProfit > 0) {
+
+            // 4) Совместимость: конкретные типы на накопление прибыли
+            if ((type === 'trade_lucky' || type === 'trade_master') && dealProfit > 0) {
               const newProgress = Math.min(task.progress.current + Math.floor(dealProfit), task.progress.total);
-              console.log(`[TRADE] Updating trade_master task ${task.id} for user ${userId} (profit: $${dealProfit}, progress: ${task.progress.current} -> ${newProgress})`);
+              console.log(`[TRADE] Updating ${type} task ${task.id} for user ${userId} (profit: $${dealProfit}, progress: ${task.progress.current} -> ${newProgress})`);
               await TaskService.updateTaskProgress(parseInt(task.id), userId, newProgress);
+              continue;
+            }
+
+            // 5) Наследие: crypto_king — накапливает только положительную прибыль
+            if (type === 'crypto_king' && dealProfit > 0) {
+              const newProgress = Math.min(task.progress.current + Math.floor(dealProfit), task.progress.total);
+              console.log(`[TRADE] Updating crypto_king task ${task.id} for user ${userId} (profit: $${dealProfit}, progress: ${task.progress.current} -> ${newProgress})`);
+              await TaskService.updateTaskProgress(parseInt(task.id), userId, newProgress);
+              continue;
             }
           }
         } catch (error) {

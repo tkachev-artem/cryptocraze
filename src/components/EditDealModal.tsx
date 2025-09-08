@@ -294,6 +294,9 @@ export const EditDealModal = ({ bottomOffset = 0 }: EditDealModalProps) => {
                     dispatch(fetchUser({ forceRefresh: true }) as any),
                     dispatch(fetchUserBalance() as any),
                 ]);
+                // Fallback: повторная синхронизация через короткую задержку, если сеть лагает
+                setTimeout(() => { void dispatch(fetchUserBalance() as any); }, 400);
+                setTimeout(() => { void dispatch(fetchUser({ forceRefresh: true }) as any); }, 1200);
             } catch {}
 
             // Скрываем модалку редактирования после показа DealInfo (без отметки ручного закрытия)

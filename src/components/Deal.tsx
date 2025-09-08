@@ -188,8 +188,10 @@ const Deal = ({ isOpen, onClose, cryptoData, userBalance, direction, bottomOffse
             setDealStatus('open');
             setPendingOpenedDealId(response.id);
 
-            // Обновляем баланс пользователя
+            // Обновляем баланс пользователя сразу и повторно (иногда API отвечает с задержкой)
             await dispatch(fetchUserBalance());
+            setTimeout(() => { void dispatch(fetchUserBalance()); }, 300);
+            setTimeout(() => { void dispatch(fetchUserBalance()); }, 900);
 
             // Создаём уведомление об открытии сделки
             await createNotificationViaAPI({ type: 'trade_opened', title: t('trading.tradeOpened'), message: `${t('trading.openTrade')}: ${cryptoData.symbol} ${t('trading.amount')}: ${amount} USDT` });

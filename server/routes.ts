@@ -6702,6 +6702,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.log(`[TRADE] Updating trade_first_profit task ${task.id} for user ${userId} (profit: ${dealProfit})`);
               await TaskService.updateTaskProgress(parseInt(task.id), userId, task.progress.current + 1);
             }
+            
+            // Обновляем задания на накопление прибыли ($500), если сделка прибыльная
+            if (task.taskType === 'trade_lucky' && task.status === 'active' && dealProfit > 0) {
+              const newProgress = Math.min(task.progress.current + Math.floor(dealProfit), task.progress.total);
+              console.log(`[TRADE] Updating trade_lucky task ${task.id} for user ${userId} (profit: $${dealProfit}, progress: ${task.progress.current} -> ${newProgress})`);
+              await TaskService.updateTaskProgress(parseInt(task.id), userId, newProgress);
+            }
+            
+            // Обновляем задания на накопление прибыли ($1000), если сделка прибыльная  
+            if (task.taskType === 'trade_master' && task.status === 'active' && dealProfit > 0) {
+              const newProgress = Math.min(task.progress.current + Math.floor(dealProfit), task.progress.total);
+              console.log(`[TRADE] Updating trade_master task ${task.id} for user ${userId} (profit: $${dealProfit}, progress: ${task.progress.current} -> ${newProgress})`);
+              await TaskService.updateTaskProgress(parseInt(task.id), userId, newProgress);
+            }
           }
         } catch (error) {
           console.error('[TRADE] Logging/Task update error:', error);

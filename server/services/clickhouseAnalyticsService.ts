@@ -148,11 +148,14 @@ export class ClickHouseAnalyticsService {
         event_id String,
         user_id String,
         ad_type LowCardinality(String),
+        ad_placement LowCardinality(String),
         event_type LowCardinality(String),
         reward_amount Nullable(Decimal64(8)),
         timestamp DateTime64(3),
         date Date MATERIALIZED toDate(timestamp),
-        session_id String
+        session_id String,
+        ip_hash String DEFAULT '',
+        user_agent_hash String DEFAULT ''
       ) ENGINE = MergeTree()
       PARTITION BY toYYYYMM(date)
       ORDER BY (date, user_id, ad_type, timestamp)
@@ -213,6 +216,30 @@ export class ClickHouseAnalyticsService {
         console.log('[ClickHouse Service] Processing ad_watch event for revenue tracking');
         const adData = typeof eventData === 'object' ? eventData : {};
         const revenue = adData.revenue || 0; // Для симуляции revenue = 0
+        
+        // Записать в специальную таблицу ad_events
+        try {
+          console.log('[ClickHouse Service] Inserting into ad_events table');
+          await this.client.insert({
+            table: 'cryptocraze_analytics.ad_events',
+            values: [{
+              event_id: uuidv4(),
+              user_id: userId.toString(),
+              ad_type: adData.rewardType || 'rewarded_video',
+              ad_placement: adData.placement || 'unknown',
+              event_type: 'ad_view',
+              reward_amount: adData.rewardAmount || 0,
+              timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
+              session_id: sessionId || uuidv4(),
+              ip_hash: '',
+              user_agent_hash: ''
+            }],
+            format: 'JSONEachRow'
+          });
+          console.log('[ClickHouse Service] ✅ Ad event inserted into ad_events table');
+        } catch (adEventError) {
+          console.error('[ClickHouse Service] ❌ Failed to insert ad event:', adEventError);
+        }
         
         if (typeof revenue === 'number') {
           console.log(`[ClickHouse Service] Logging ad revenue: $${revenue} (simulation: ${adData.isSimulation})`);

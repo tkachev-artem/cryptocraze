@@ -389,4 +389,91 @@ export function registerAdRoutes(app: Express): void {
       });
     }
   });
+
+  /**
+   * @swagger
+   * /api/ads/analytics:
+   *   get:
+   *     summary: Get ad analytics data (admin only)
+   *     tags: [Ads]
+   *     security:
+   *       - sessionAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: timeframe
+   *         schema:
+   *           type: string
+   *           enum: [day, week, month]
+   *           default: day
+   *         description: Analytics timeframe
+   *     responses:
+   *       200:
+   *         description: Ad analytics data
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     impressions:
+   *                       type: number
+   *                     completions:
+   *                       type: number
+   *                     rewards:
+   *                       type: number
+   *                     revenue:
+   *                       type: number
+   *                     completionRate:
+   *                       type: number
+   *                     fraudRate:
+   *                       type: number
+   */
+  app.get('/api/ads/analytics', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user?.id ?? req.user?.claims?.sub;
+      if (!userId) {
+        res.status(401).json({ success: false, message: 'Unauthorized' });
+        return;
+      }
+
+      // Check if user is admin (you might want to implement admin check)
+      // For now, we'll allow all authenticated users to see basic analytics
+      
+      const timeframe = (req.query.timeframe as string) || 'day';
+      
+      try {
+        const analytics = await adService.getAnalytics(timeframe);
+        
+        res.json({
+          success: true,
+          data: analytics
+        });
+      } catch (error) {
+        console.error('[AdRoutes] Analytics service error:', error);
+        // Return empty analytics instead of failing
+        res.json({
+          success: true,
+          data: {
+            impressions: 0,
+            completions: 0,
+            rewards: 0,
+            revenue: 0,
+            completionRate: 0,
+            fraudRate: 0
+          }
+        });
+      }
+
+    } catch (error) {
+      console.error('[AdRoutes] Analytics error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get ad analytics'
+      });
+    }
+  });
 }

@@ -1,6 +1,6 @@
 import { db } from '../db.js';
 import { userNotifications, notificationTypeEnum } from '../../shared/schema';
-import { eq, and, desc, lt, sql } from 'drizzle-orm';
+import { eq, and, desc, lt, sql, inArray } from 'drizzle-orm';
 import { serverTranslations } from '../lib/translations.js';
 
 export type NotificationType = typeof notificationTypeEnum.enumValues[number];
@@ -248,7 +248,7 @@ export class NotificationService {
               and(
                 eq(userNotifications.userId, userId),
                 // Use drizzle's inArray function for multiple IDs
-                sql`${userNotifications.id} = ANY(ARRAY[${idsToDelete.join(',')}])`
+                inArray(userNotifications.id, idsToDelete)
               )
             );
           

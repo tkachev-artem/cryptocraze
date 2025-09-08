@@ -515,7 +515,7 @@ const VideoAdModal: React.FC<VideoAdModalProps> = ({
 				<div 
 					style={{
 						position: 'absolute',
-						bottom: '20px',
+						bottom: '80px',
 						left: '50%',
 						transform: 'translateX(-50%)',
 						padding: '0 20px',

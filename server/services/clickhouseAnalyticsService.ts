@@ -212,35 +212,11 @@ export class ClickHouseAnalyticsService {
       });
       console.log('[ClickHouse Service] ✅ Successfully inserted user event');
       
-      // Специальная обработка событий просмотра рекламы
+      // Логирование revenue для рекламы (без дублирования в ad_events, так как это уже делается в TaskService)
       if (eventType === 'ad_watch') {
         console.log('[ClickHouse Service] Processing ad_watch event for revenue tracking');
         const adData = typeof eventData === 'object' ? eventData : {};
         const revenue = adData.revenue || 0; // Для симуляции revenue = 0
-        
-        // Записать в специальную таблицу ad_events
-        try {
-          console.log('[ClickHouse Service] Inserting into ad_events table');
-          await client.insert({
-            table: 'cryptocraze_analytics.ad_events',
-            values: [{
-              event_id: uuidv4(),
-              user_id: String(userId),
-              ad_type: adData.rewardType || 'rewarded_video',
-              ad_placement: adData.placement || 'unknown',
-              event_type: 'ad_view',
-              reward_amount: adData.rewardAmount || 0,
-              timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
-              session_id: sessionId || uuidv4(),
-              ip_hash: '',
-              user_agent_hash: ''
-            }],
-            format: 'JSONEachRow'
-          });
-          console.log('[ClickHouse Service] ✅ Ad event inserted into ad_events table');
-        } catch (adEventError) {
-          console.error('[ClickHouse Service] ❌ Failed to insert ad event:', adEventError);
-        }
         
         if (typeof revenue === 'number') {
           console.log(`[ClickHouse Service] Logging ad revenue: $${revenue} (simulation: ${adData.isSimulation})`);

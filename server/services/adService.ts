@@ -319,22 +319,8 @@ export class AdService {
           
           console.log(`[AdService] Reward processed for user ${userId}: ${JSON.stringify(processedReward)}`);
           
-          // Log ad_watch event to ClickHouse for analytics
-          try {
-            await AnalyticsLogger.logUserEvent(userId, 'ad_watch', {
-              adId: completionData.adId,
-              placement: session.placement,
-              watchTime: completionData.watchTime,
-              rewardType: completionData.reward.type,
-              rewardAmount: completionData.reward.amount,
-              isSimulation: session.provider === 'simulation',
-              revenue: this.calculateAdRevenue(completionData.reward)
-            });
-            console.log(`[AdService] Logged ad_watch event for user ${userId}`);
-          } catch (analyticsError) {
-            console.error('[AdService] Failed to log ad_watch analytics event:', analyticsError);
-            // Don't fail the whole process due to analytics error
-          }
+          // Note: ad_watch events are now logged by TaskService when video tasks are completed
+          // This prevents duplicate event recording
         } catch (rewardError) {
           console.error('[AdService] Error processing reward:', rewardError);
           

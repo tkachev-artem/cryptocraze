@@ -555,7 +555,7 @@ export class AdService {
   // Start ad session tracking
   private async startAdSession(adId: string, placement: AdPlacement): Promise<void> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/ads/session/start`, {
+      const response = await fetch(`${API_BASE_URL}/ads/session/start`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -590,7 +590,7 @@ export class AdService {
         throw new AdFraudError('Watch time too short', result.placement, adId);
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/ads/session/complete`, {
+      const response = await fetch(`${API_BASE_URL}/ads/session/complete`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -627,7 +627,7 @@ export class AdService {
   // Get ad analytics
   public async getAnalytics(timeframe: 'day' | 'week' | 'month' = 'day'): Promise<AdAnalytics> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/ads/analytics?timeframe=${timeframe}`, {
+      const response = await fetch(`${API_BASE_URL}/ads/analytics?timeframe=${timeframe}`, {
         credentials: 'include'
       });
 

@@ -88,7 +88,7 @@ export const useAds = (): UseAdReturn => {
         return premiumEligibility;
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/ads/check-eligibility?placement=${placement}`, {
+      const response = await fetch(`${API_BASE_URL}/ads/check-eligibility?placement=${placement}`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -157,7 +157,7 @@ export const useAds = (): UseAdReturn => {
       // Start ad session
       const adId = `ad_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      const startResponse = await fetch(`${API_BASE_URL}/api/ads/session/start`, {
+      const startResponse = await fetch(`${API_BASE_URL}/ads/session/start`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -203,7 +203,7 @@ export const useAds = (): UseAdReturn => {
         bonusPercentage: placement === 'trading_bonus' ? 5 : undefined,
       };
 
-      const completeResponse = await fetch(`${API_BASE_URL}/api/ads/session/complete`, {
+      const completeResponse = await fetch(`${API_BASE_URL}/ads/session/complete`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -309,7 +309,7 @@ export const useAdAnalytics = () => {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(`${API_BASE_URL}/api/ads/analytics?timeframe=${timeframe}`, {
+      const response = await fetch(`${API_BASE_URL}/ads/analytics?timeframe=${timeframe}`, {
         method: 'GET',
         credentials: 'include',
         headers: {

@@ -31,6 +31,7 @@ type ProChartProps = {
   onSelectDrawingObject?: (id: string | null) => void;
   sidePaddingPx?: number; // горизонтальные отступы контейнера, для «сжатия» при модалке
   onTextPlacementRequest?: (position: { x: number; y: number; price: number; time: number; logical?: number }) => void;
+  isEditDealOpenOverride?: boolean;
 };
 
 type Candle = {
@@ -56,7 +57,8 @@ const ProChart = forwardRef<ProChartHandle, ProChartProps>(({
   selectedDrawingId,
   onSelectDrawingObject,
   sidePaddingPx = 0,
-  onTextPlacementRequest
+  onTextPlacementRequest,
+  isEditDealOpenOverride = false
 }, ref) => {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -336,7 +338,9 @@ const ProChart = forwardRef<ProChartHandle, ProChartProps>(({
   useEffect(() => {
     if (!containerRef.current) return;
     const totalWidth = containerRef.current.clientWidth || 360;
-    const totalHeight = containerRef.current.clientHeight || 360;
+    const totalHeight = isEditDealOpenOverride
+      ? Math.max(260, Math.floor((window.innerHeight || 0) * 0.6))
+      : (containerRef.current.clientHeight || 360);
     const rsiEnabled = indicators.rsi;
     const priceHeight = rsiEnabled ? Math.max(160, Math.floor(totalHeight * 0.7)) : totalHeight;
     const rsiHeight = rsiEnabled ? Math.max(80, totalHeight - priceHeight) : 0;
@@ -501,7 +505,9 @@ const ProChart = forwardRef<ProChartHandle, ProChartProps>(({
     const onResize = () => {
       if (!containerRef.current || !priceChartRef.current || !rsiChartRef.current) return;
       const w = containerRef.current.clientWidth || totalWidth;
-      const h = containerRef.current.clientHeight || totalHeight;
+      const h = isEditDealOpenOverride
+        ? Math.max(260, Math.floor((window.innerHeight || 0) * 0.6))
+        : (containerRef.current.clientHeight || totalHeight);
       const rsiOn = indicators.rsi;
       const ph = rsiOn ? Math.max(160, Math.floor(h * 0.7)) : h;
       const rh = rsiOn ? Math.max(80, h - ph) : 0;

@@ -148,7 +148,7 @@ const Chart: React.FC<ChartProps> = ({ onProModeClick, onCryptoChange, forcedCry
     const dateLocale = localeMap[currentLocale] || 'en-US';
     // Stable base height computed from window.innerHeight to avoid frequent resizes on mobile
 
-    // Адаптивная высота графика: 40% от высоты экрана, но не меньше 220px и не больше 600px
+    // Адаптивная высота графика: базово 40% от экрана; при открытом EditDeal даём ~55% (лучше видно на малых экранах)
     const [chartHeight, setChartHeight] = useState<number>(220);
     const chartHeightRef = useRef<number>(220);
     const baseHeightRef = useRef<number>(220);
@@ -157,22 +157,38 @@ const Chart: React.FC<ChartProps> = ({ onProModeClick, onCryptoChange, forcedCry
         const computeBase = () => clamp((window.innerHeight || 0) * 0.4);
         // initial compute
         baseHeightRef.current = computeBase();
-        const next = isDealModalOpen ? 220 : (isEditDealOpen ? 320 : baseHeightRef.current);
+        const next = isDealModalOpen
+            ? 220
+            : (isEditDealOpen
+                ? clamp((window.innerHeight || 0) * 0.55)
+                : baseHeightRef.current);
         chartHeightRef.current = next;
         setChartHeight(next);
 
         const onOrientation = () => {
             baseHeightRef.current = computeBase();
-            if (!isDealModalOpen && !isEditDealOpen) {
-                const n = baseHeightRef.current;
-                if (Math.abs(n - chartHeightRef.current) >= 24) {
-                    chartHeightRef.current = n;
-                    setChartHeight(n);
-                }
+            const target = isDealModalOpen
+                ? 220
+                : (isEditDealOpen ? clamp((window.innerHeight || 0) * 0.55) : baseHeightRef.current);
+            if (Math.abs(target - chartHeightRef.current) >= 16) {
+                chartHeightRef.current = target;
+                setChartHeight(target);
             }
         };
         window.addEventListener('orientationchange', onOrientation);
         return () => { window.removeEventListener('orientationchange', onOrientation); };
+    }, [isDealModalOpen, isEditDealOpen]);
+
+    // Обновляем высоту при изменении состояния модалок напрямую (без ориентации)
+    useEffect(() => {
+        const clamp = (h: number) => Math.max(220, Math.min(600, Math.floor(h)));
+        const next = isDealModalOpen
+            ? 220
+            : (isEditDealOpen ? clamp((window.innerHeight || 0) * 0.55) : baseHeightRef.current);
+        if (Math.abs(next - chartHeightRef.current) >= 8) {
+            chartHeightRef.current = next;
+            setChartHeight(next);
+        }
     }, [isDealModalOpen, isEditDealOpen]);
 
     const currentTimeframeRef = useRef<string>(selectedTimeframe.value);

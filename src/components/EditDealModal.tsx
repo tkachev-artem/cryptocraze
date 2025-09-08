@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import type React from 'react';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
-import { closeEditDeal, updateEditDealData, openDealInfo, setLastDismissedEditDealId } from '../app/dealModalSlice';
+import { closeEditDeal, updateEditDealData, openDealInfo } from '../app/dealModalSlice';
+import { fetchUser, fetchUserBalance } from '@/app/userSlice';
 import { dealService, type UpdateDealRequest } from '../services/dealService';
 import { useLiveDealProfits } from '@/hooks/useLiveDealProfits';
 import { Button } from './ui/button';
@@ -286,6 +287,14 @@ export const EditDealModal = ({ bottomOffset = 0 }: EditDealModalProps) => {
                 profit: parseFloat(profitValue.toFixed(2)),
                 isProfit: profitValue >= 0,
             }));
+
+            // Немедленно обновляем баланс пользователя (freeBalance) после закрытия
+            try {
+                await Promise.all([
+                    dispatch(fetchUser({ forceRefresh: true }) as any),
+                    dispatch(fetchUserBalance() as any),
+                ]);
+            } catch {}
 
             // Скрываем модалку редактирования после показа DealInfo (без отметки ручного закрытия)
             dispatch(closeEditDeal());

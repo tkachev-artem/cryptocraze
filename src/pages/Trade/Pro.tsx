@@ -407,6 +407,7 @@ const Pro: React.FC = () => {
             onPriceUpdate={setLastPrice} 
             onOHLCUpdate={setOhlc}
             sidePaddingPx={isDealOpen ? 8 : 0}
+            isEditDealOpenOverride={isEditDealOpen}
             drawingMode={drawingMode}
             activeTool={activeTool}
             drawingObjects={drawingObjects}

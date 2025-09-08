@@ -11,7 +11,7 @@ import { Box } from '@/components/Box';
 import { useAppDispatch } from '@/app/hooks';
 import { forceUserUpdate } from '@/app/userSlice';
 import { fetchUserDataNoCache } from '@/lib/noCacheApi';
-import type { LevelProgressProps, BoxType, BoxPositions } from '@/types/task';
+import type { LevelProgressProps, BoxPositions } from '@/types/task';
 
 // Constants for better maintainability
 const BOX_POSITIONS: BoxPositions = {
@@ -164,7 +164,7 @@ export function Trials() {
   const [greenBoxModalOpen, setGreenBoxModalOpen] = useState(false);
   const [xBoxModalOpen, setXBoxModalOpen] = useState(false);
   const [isWheelOpen, setIsWheelOpen] = useState(false);
-  const [activeWheelTaskId, setActiveWheelTaskId] = useState<string | null>(null);
+  // Removed unused activeWheelTaskId to satisfy linter
   const [hiddenTaskIds] = useState<Set<string>>(new Set());
   const isInitializedRef = useRef(false);
 
@@ -173,6 +173,31 @@ export function Trials() {
   };
 
   const fmt = (v: string | number) => formatMoneyShort(v);
+
+  // Sticky offset equals actual top bar height
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const [stickyTop, setStickyTop] = useState<number>(64);
+
+  useEffect(() => {
+    const measure = () => {
+      const h = headerRef.current?.offsetHeight ?? 64;
+      if (h !== stickyTop) setStickyTop(h);
+    };
+
+    measure();
+
+    let ro: ResizeObserver | null = null;
+    if (headerRef.current && 'ResizeObserver' in window) {
+      ro = new ResizeObserver(() => measure());
+      ro.observe(headerRef.current);
+    }
+
+    window.addEventListener('resize', measure);
+    return () => {
+      window.removeEventListener('resize', measure);
+      if (ro && headerRef.current) ro.disconnect();
+    };
+  }, [stickyTop]);
 
   // Fix race conditions with debounced user updates
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -235,14 +260,12 @@ export function Trials() {
   // Рулетка
   const handleOpenWheel = (taskId: string) => { 
     console.log('🎰 Trials: Открываем рулетку для задания:', taskId);
-    setActiveWheelTaskId(taskId);
     setIsWheelOpen(true); 
   };
 
   const handleCloseWheel = useCallback(() => { 
     console.log('🎰 Trials: Closing wheel');
     setIsWheelOpen(false); 
-    setActiveWheelTaskId(null);
     // Use debounced update to prevent race conditions
     debouncedForceUpdateUser();
   }, [debouncedForceUpdateUser]);
@@ -344,7 +367,7 @@ export function Trials() {
     <div className="p-0">
       <div className="flex flex-col min-h-screen bg-white pb-[calc(16px+env(safe-area-inset-bottom))]">
         {/* Top Navigation */}
-        <div className="sticky top-0 z-10 bg-white flex items-center justify-between px-4 py-4">
+        <div ref={headerRef} className="sticky top-0 z-10 bg-white flex items-center justify-between px-4 py-4">
           <button
             onClick={handleBack}
             className="flex items-center gap-2"
@@ -367,7 +390,7 @@ export function Trials() {
         </div>
 
         {/* Прогресс уровня */}
-        <div className="sticky top-[76px] z-10 bg-white px-4 py-4 pb-8">
+        <div className="sticky z-10 bg-white px-4 pt-0 pb-8" style={{ top: `${stickyTop}px` }}>
           <LevelProgress 
             energyProgress={userData.energyProgress} 
             onRedBoxClick={handleRedBoxClick}

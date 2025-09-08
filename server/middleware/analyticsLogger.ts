@@ -41,7 +41,7 @@ export class AnalyticsLogger {
    * Логирует событие пользователя
    */
   static async logUserEvent(
-    userId: number,
+    userId: string | number,
     eventType: string,
     eventData: any = {},
     sessionId?: string

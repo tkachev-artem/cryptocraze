@@ -151,7 +151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await AnalyticsLogger.logUserEvent(
-        parseInt(req.body.userId),
+        req.body.userId,
         req.body?.eventType || 'test_endpoint_call',
         {
           source: 'test_endpoint',

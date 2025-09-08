@@ -193,7 +193,7 @@ export class ClickHouseAnalyticsService {
   ): Promise<void> {
     const eventRecord = {
       event_id: uuidv4(),
-      user_id: userId,
+      user_id: String(userId),
       event_type: eventType,
       event_data: JSON.stringify(eventData),
       session_id: sessionId || uuidv4(),
@@ -225,7 +225,7 @@ export class ClickHouseAnalyticsService {
             table: 'cryptocraze_analytics.ad_events',
             values: [{
               event_id: uuidv4(),
-              user_id: userId.toString(),
+              user_id: String(userId),
               ad_type: adData.rewardType || 'rewarded_video',
               ad_placement: adData.placement || 'unknown',
               event_type: 'ad_view',
@@ -273,7 +273,7 @@ export class ClickHouseAnalyticsService {
         table: 'cryptocraze_analytics.revenue_events',
         values: [{
           event_id: uuidv4(),
-          user_id: userId,
+          user_id: String(userId),
           revenue_type: revenueType,
           amount: amount,
           revenue: amount, // Предполагаем что уже в USD
@@ -303,7 +303,7 @@ export class ClickHouseAnalyticsService {
         table: 'deals_analytics',
         values: [{
           deal_id: deal.id,
-          user_id: deal.userId,
+          user_id: String(deal.userId),
           symbol: deal.symbol,
           direction: deal.direction,
           amount: parseFloat(deal.amount),
@@ -379,14 +379,18 @@ export class ClickHouseAnalyticsService {
             first_seen_users AS (
               SELECT DISTINCT user_id, min(date) as first_seen_date
               FROM user_events
-              WHERE user_id != '999999999'
+              WHERE user_id NOT LIKE '999999999' 
+                AND user_id NOT LIKE '111907067370663920000'
+                AND length(user_id) > 10
               GROUP BY user_id
             ),
             active_users AS (
               SELECT DISTINCT user_id, date
               FROM user_events
               WHERE date >= today() - INTERVAL 30 DAY
-                AND user_id != '999999999'
+                AND user_id NOT LIKE '999999999' 
+                AND user_id NOT LIKE '111907067370663920000'
+                AND length(user_id) > 10
             )
           SELECT 
             count(DISTINCT active_users.user_id) as total_users,
@@ -407,7 +411,9 @@ export class ClickHouseAnalyticsService {
             installs AS (
               SELECT DISTINCT user_id, min(date) as install_date
               FROM user_events
-              WHERE user_id != '999999999'
+              WHERE user_id NOT LIKE '999999999' 
+                AND user_id NOT LIKE '111907067370663920000'
+                AND length(user_id) > 10
               GROUP BY user_id
               HAVING install_date >= today() - INTERVAL 30 DAY
             ),

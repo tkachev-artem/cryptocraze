@@ -504,7 +504,7 @@ export class TaskService {
       try {
         console.log(`[TaskService] Logging ad_watch event for video task: ${taskType}`);
         await AnalyticsLogger.logUserEvent(
-          parseInt(userId),
+          userId,
           'ad_watch', 
           {
             placement: 'task_completion',

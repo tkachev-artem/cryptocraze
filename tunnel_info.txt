@@ -1,0 +1,4 @@
+TUNNEL_URL=https://submitting-sellers-anyway-flight.trycloudflare.com
+TUNNEL_PID=1350110
+STARTED_AT=Mon Sep  8 10:31:27 UTC 2025
+LOG_FILE=/home/cryptocraze/cryptocraze/tunnel.log

@@ -3,7 +3,7 @@ import { Calendar, Users, Globe, ChevronDown, X } from 'lucide-react';
 import DateRangeFilter from './DateRangeFilter';
 import CountryFilter from './CountryFilter';
 import CustomCheckbox from './CustomCheckbox';
-import { RETENTION_FILTER_CONFIG } from '../metrics/retention/config/retentionFilters';
+import { TUTORIAL_FILTER_CONFIG } from '../metrics/tutorial/config/filters';
 
 type DateRange = {
   startDate: Date;
@@ -36,6 +36,61 @@ type MetricFiltersProps = {
 
 // Конфигурация фильтров для разных метрик
 const FILTER_CONFIGS: Record<string, FilterDefinition[]> = {
+  // Tutorial метрики
+  tutorial_start: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
+    }
+  ],
+  tutorial_complete: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
+    }
+  ],
+  tutorial_skip_rate: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
+    }
+  ],
+  pro_tutorial_start: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
+    }
+  ],
+  pro_tutorial_complete: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
+    }
+  ],
+  pro_tutorial_skip_rate: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
+    }
+  ],
   // Retention метрики
   D1: [
     {
@@ -169,7 +224,7 @@ const MetricFilters: React.FC<MetricFiltersProps> = ({
   const [openFilter, setOpenFilter] = useState<string | null>(null);
 
   // Получаем конфигурацию фильтров для текущей метрики
-  const filterConfig = RETENTION_FILTER_CONFIG[metricId as keyof typeof RETENTION_FILTER_CONFIG] || FILTER_CONFIGS[metricId] || FILTER_CONFIGS.default;
+  const filterConfig = FILTER_CONFIGS[metricId] || FILTER_CONFIGS.default;
 
   const handleFilterToggle = (filterId: string, optionValue: string) => {
     const currentValues = selectedFilters[filterId] || [];

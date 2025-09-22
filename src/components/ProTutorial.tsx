@@ -12,6 +12,7 @@ import {
 } from '../lib/tutorialUtils';
 import { TUTORIAL_CONFIG } from '../types/tutorial';
 import type { BaseTutorialStep } from '../types/tutorial';
+import { analyticsService } from '../services/analyticsService';
 
 /**
  * ProTutorial - Enhanced component for Pro functionality tutorial
@@ -261,6 +262,8 @@ const ProTutorial: React.FC<ProTutorialProps> = ({
   const [stepState, setStepState] = useState<ProTutorialStepState>('pending');
   const [containerStyle, setContainerStyle] = useState<React.CSSProperties | undefined>(undefined);
   const [contentStyle, setContentStyle] = useState<React.CSSProperties | undefined>(undefined);
+  const hasStartedRef = useRef<boolean>(false);
+  const hasCompletedRef = useRef<boolean>(false);
 
   // Initialize cleanup manager
   useEffect(() => {
@@ -330,6 +333,11 @@ const ProTutorial: React.FC<ProTutorialProps> = ({
     if (isOpen) {
       setStepState('active');
       focusElement('pro-tutorial-title');
+      // Track start once
+      if (!hasStartedRef.current) {
+        analyticsService.trackTutorialProgress('pro_tutorial', 'start');
+        hasStartedRef.current = true;
+      }
     } else {
       setStepState('pending');
     }
@@ -419,6 +427,20 @@ const ProTutorial: React.FC<ProTutorialProps> = ({
     return () => window.removeEventListener('error', handleError);
   }, [currentStep]);
 
+  // Track completion when final step modal is shown once
+  useEffect(() => {
+    const cfg = PRO_STEP_CONFIGS[currentStep];
+    if (isOpen && cfg?.modalType === 'final' && !hasCompletedRef.current) {
+      analyticsService.trackTutorialProgress('pro_tutorial', 'complete');
+      hasCompletedRef.current = true;
+    }
+  }, [currentStep, isOpen]);
+
+  const handleSkipWithAnalytics = useCallback(() => {
+    analyticsService.trackTutorialProgress('pro_tutorial', 'skip');
+    onSkip();
+  }, [onSkip]);
+
   if (!isOpen || !stepConfig || !currentTutorialStep) {
     return null;
   }
@@ -426,9 +448,9 @@ const ProTutorial: React.FC<ProTutorialProps> = ({
   // Error state
   if (stepState === 'error') {
     return (
-      <Modal
+        <Modal
         isOpen={true}
-        onClose={onSkip}
+          onClose={handleSkipWithAnalytics}
         zIndexClass={`z-[${TUTORIAL_CONFIG.Z_INDEX.MODAL}]`}
         backdropClassName="bg-red-50/80"
         hideClose={false}
@@ -544,7 +566,7 @@ function renderModalForStepType(
           backdropClassName="bg-black/60"
           containerClassName="items-center justify-center"
         >
-          <StandardModalContent step={step} onProceed={onProceed} onSkip={onSkip} t={t} />
+          <StandardModalContent step={step} onProceed={onProceed} onSkip={handleSkipWithAnalytics} t={t} />
         </Modal>
       );
 
@@ -559,7 +581,7 @@ function renderModalForStepType(
           contentClassName={`z-[${TUTORIAL_CONFIG.Z_INDEX.CONTENT}] bg-[#0C54EA] rounded-2xl p-4 w-[calc(100vw-28px)] max-w-[calc(100vw-28px)] shadow-xl sm:max-w-sm`}
           contentStyle={contentStyle}
         >
-          <BlueModalContent step={step} onSkip={onSkip} t={t} />
+          <BlueModalContent step={step} onSkip={handleSkipWithAnalytics} t={t} />
         </Modal>
       );
 
@@ -572,7 +594,7 @@ function renderModalForStepType(
           contentClassName={`z-[${TUTORIAL_CONFIG.Z_INDEX.CONTENT}] bg-[#0C54EA] rounded-2xl p-4 w-[calc(100vw-28px)] max-w-[calc(100vw-28px)] shadow-xl sm:max-w-sm`}
           contentStyle={{ position: 'absolute', top: '12px', left: '14px' }}
         >
-          <ButtonOnlyModalContent step={step} onProceed={onProceed} onSkip={onSkip} t={t} />
+          <ButtonOnlyModalContent step={step} onProceed={onProceed} onSkip={handleSkipWithAnalytics} t={t} />
         </Modal>
       );
 
@@ -584,7 +606,7 @@ function renderModalForStepType(
           containerClassName="items-center justify-center p-0"
           contentClassName={`z-[${TUTORIAL_CONFIG.Z_INDEX.CONTENT}] bg-white w-full h-full flex flex-col items-center justify-center relative overflow-hidden`}
         >
-          <FinalModalContent onSkip={onSkip} t={t} />
+          <FinalModalContent onSkip={handleSkipWithAnalytics} t={t} />
         </Modal>
       );
 

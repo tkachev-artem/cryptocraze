@@ -113,14 +113,14 @@ class SimpleDataCache {
       if (userIds.length > 0) {
         try {
           // Получаем данные пользователей
-          const pgUsers = await db.select({
+          const pgUsers = await (db as any).select({
             id: users.id,
             email: users.email,
             isPremium: users.isPremium
           }).from(users).where(inArray(users.id, userIds));
 
           // Получаем страны из analytics или определяем по IP
-          const userCountries = await db.select({
+          const userCountries = await (db as any).select({
             userId: analytics.userId,
             country: analytics.country
           }).from(analytics).where(inArray(analytics.userId, userIds));
@@ -496,7 +496,129 @@ router.get('/metric/:metricId/trend', isAdminWithAuth, async (req, res) => {
       startDate: req.query.startDate as string,
       endDate: req.query.endDate as string
     };
+    // Обработка tutorial-метрик отдельной веткой (проценты + количество пользователей)
+    const tutorialMetricIds = new Set([
+      'tutorial_start', 'tutorial_complete', 'tutorial_skip_rate',
+      'pro_tutorial_start', 'pro_tutorial_complete', 'pro_tutorial_skip_rate'
+    ]);
+    
+    if (tutorialMetricIds.has(metricId)) {
+      const client = (clickhouseAnalyticsService as any).getClient();
+      const start = filters.startDate ? new Date(filters.startDate) : new Date(Date.now() - 6 * 86400000);
+      const end = filters.endDate ? new Date(filters.endDate) : new Date();
+      start.setHours(0, 0, 0, 0);
+      end.setHours(0, 0, 0, 0);
 
+      // Условия фильтрации по странам и типу пользователя пока опускаем (страна в ClickHouse не хранится напрямую)
+      const isPro = metricId.startsWith('pro_');
+      const action = metricId.includes('start') ? 'start' : metricId.includes('complete') ? 'complete' : 'skip';
+
+      // Получаем общие данные за весь период
+      const dateFrom = start.toISOString().slice(0, 10);
+      const dateTo = end.toISOString().slice(0, 10);
+
+      // Общий числитель: количество уникальных пользователей с событием за весь период
+      const totalUsersQuery = `
+        SELECT
+          countDistinct(user_id) AS user_count
+        FROM cryptocraze_analytics.user_events
+        WHERE date >= '${dateFrom}' AND date <= '${dateTo}'
+          AND user_id != '999999999'
+          AND length(user_id) > 5
+          AND (
+            (event_type = 'tutorial_progress' AND JSONExtractString(event_data, 'action') = '${action}' ${isPro ? "AND JSONExtractString(event_data, 'step') = 'pro_tutorial'" : "AND JSONExtractString(event_data, 'step') != 'pro_tutorial'"})
+          )
+      `;
+
+      // Общий знаменатель: общее количество уникальных пользователей за весь период
+      const totalUsersDenomQuery = `
+        SELECT
+          countDistinct(user_id) AS total_user_count
+        FROM cryptocraze_analytics.user_events
+        WHERE date >= '${dateFrom}' AND date <= '${dateTo}'
+          AND user_id != '999999999'
+          AND length(user_id) > 5
+      `;
+
+      const [numResp, denResp] = await Promise.all([
+        client.query({ query: totalUsersQuery, format: 'JSONEachRow' }),
+        client.query({ query: totalUsersDenomQuery, format: 'JSONEachRow' })
+      ]);
+      const numerators = await numResp.json();
+      const denominators = await denResp.json();
+
+      const totalUsers = numerators[0]?.user_count || 0;
+      const totalDenom = denominators[0]?.total_user_count || 0;
+      const percent = totalDenom > 0 ? Math.round((totalUsers / totalDenom) * 100) : 0;
+
+      // Получаем данные по дням для правильного графика
+      const dailyUsersQuery = `
+        SELECT
+          date,
+          countDistinct(user_id) AS user_count
+        FROM cryptocraze_analytics.user_events
+        WHERE date >= '${dateFrom}' AND date <= '${dateTo}'
+          AND user_id != '999999999'
+          AND length(user_id) > 5
+          AND (
+            (event_type = 'tutorial_progress' AND JSONExtractString(event_data, 'action') = '${action}' ${isPro ? "AND JSONExtractString(event_data, 'step') = 'pro_tutorial'" : "AND JSONExtractString(event_data, 'step') != 'pro_tutorial'"})
+          )
+        GROUP BY date
+        ORDER BY date
+      `;
+
+      const dailyUsersResponse = await client.query({ query: dailyUsersQuery, format: 'JSONEachRow' });
+      const dailyUsers = await dailyUsersResponse.json();
+
+      const byDateUsers = new Map<string, number>();
+      dailyUsers.forEach((r: any) => byDateUsers.set(r.date, Number(r.user_count) || 0));
+
+      // Получаем общее количество пользователей по дням
+      const dailyTotalUsersQuery = `
+        SELECT
+          date,
+          countDistinct(user_id) AS total_count
+        FROM cryptocraze_analytics.user_events
+        WHERE date >= '${dateFrom}' AND date <= '${dateTo}'
+          AND user_id != '999999999'
+          AND length(user_id) > 5
+        GROUP BY date
+        ORDER BY date
+      `;
+
+      const dailyTotalResponse = await client.query({ query: dailyTotalUsersQuery, format: 'JSONEachRow' });
+      const dailyTotal = await dailyTotalResponse.json();
+
+      const byDateTotal = new Map<string, number>();
+      dailyTotal.forEach((r: any) => byDateTotal.set(r.date, Number(r.total_count) || 0));
+
+      // Создаем данные по дням для графика
+      const result: Array<{
+        date: string;
+        percent: number;
+        userCount: number;
+        totalUsers: number;
+      }> = [];
+
+      for (let i = 0; i < 7; i++) {
+        const currentDate = new Date(start);
+        currentDate.setDate(currentDate.getDate() + i);
+        const dateStr = currentDate.toISOString().slice(0, 10);
+
+        const userCount = byDateUsers.get(dateStr) || 0;
+
+        result.push({
+          date: dateStr,
+          percent,
+          userCount,
+          totalUsers: totalDenom
+        });
+      }
+
+      return res.json(result);
+    }
+
+    // Остальные метрики — как раньше (кешированные)
     const trendData = dataCache.getTrend(metricId, filters);
     res.json(trendData);
   } catch (error) {
@@ -528,6 +650,121 @@ router.get('/table/retention', isAdminWithAuth, async (req, res) => {
   } catch (error) {
     console.error('Retention table error:', error);
     res.status(500).json({ error: 'Failed to get retention table' });
+  }
+});
+
+// Эндпоинт для таблицы туториалов (пользователи и события)
+router.get('/table/tutorial', isAdminWithAuth, async (req, res) => {
+  try {
+    if (!dataCache.isReady()) {
+      return res.status(503).json({ error: 'Data is loading, please wait...' });
+    }
+
+    const metricId = (req.query.metricId as string) || 'tutorial_start';
+    const page = parseInt((req.query.page as string) || '1');
+    const limit = parseInt((req.query.limit as string) || (req.query.size as string) || '20');
+    const offset = (page - 1) * limit;
+    const startDate = (req.query.startDate as string) || new Date(Date.now() - 6 * 86400000).toISOString();
+    const endDate = (req.query.endDate as string) || new Date().toISOString();
+    const filters = {
+      userType: req.query.userType as string,
+      country: req.query.country ? (req.query.country as string).split(',') : [],
+      search: req.query.search as string
+    };
+
+    const client = (clickhouseAnalyticsService as any).getClient();
+    const dateFrom = new Date(startDate).toISOString().slice(0, 10);
+    const dateTo = new Date(endDate).toISOString().slice(0, 10);
+
+    const isPro = metricId.startsWith('pro_');
+    const action = metricId.includes('start') ? 'start' : metricId.includes('complete') ? 'complete' : 'skip';
+
+    const whereEvent = `event_type = 'tutorial_progress' AND JSONExtractString(event_data, 'action') = '${action}' ` +
+      (isPro ? "AND JSONExtractString(event_data, 'step') = 'pro_tutorial'" : "AND (JSONExtractString(event_data, 'step') != 'pro_tutorial' OR JSONExtractString(event_data, 'step') IS NULL)");
+
+    // Основные данные по пользователям из ClickHouse
+    const baseQuery = `
+      SELECT 
+        user_id,
+        any(timestamp) AS event_date,
+        any(JSONExtractString(event_data, 'action')) AS action,
+        '${isPro ? 'pro' : 'regular'}' AS tutorial_type
+      FROM cryptocraze_analytics.user_events
+      WHERE date >= '${dateFrom}' AND date <= '${dateTo}'
+        AND user_id != '999999999'
+        AND length(user_id) > 5
+        AND (${whereEvent})
+      GROUP BY user_id
+      ORDER BY event_date DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `;
+
+    const countQuery = `
+      SELECT 
+        countDistinct(user_id) AS total
+      FROM cryptocraze_analytics.user_events
+      WHERE date >= '${dateFrom}' AND date <= '${dateTo}'
+        AND user_id != '999999999'
+        AND length(user_id) > 5
+        AND (${whereEvent})
+    `;
+
+    const [baseResp, countResp] = await Promise.all([
+      client.query({ query: baseQuery, format: 'JSONEachRow' }),
+      client.query({ query: countQuery, format: 'JSONEachRow' })
+    ]);
+    const baseRows = await baseResp.json();
+    const totalRows = (await countResp.json())[0]?.total || 0;
+
+    // Подтянем email и страну из PostgreSQL
+    const userIds = baseRows.map((r: any) => r.user_id);
+    let userDataMap = new Map<string, any>();
+    if (userIds.length > 0) {
+      const pgUsers = await (db as any).select({ id: users.id, email: users.email, isPremium: users.isPremium })
+        .from(users)
+        .where(inArray(users.id, userIds));
+      const userCountries = await (db as any).select({ userId: analytics.userId, country: analytics.country })
+        .from(analytics)
+        .where(inArray(analytics.userId, userIds));
+
+      pgUsers.forEach(u => {
+        const c = userCountries.find(uc => uc.userId === u.id);
+        userDataMap.set(u.id, { email: u.email, isPremium: u.isPremium, country: c?.country || 'Unknown' });
+      });
+    }
+
+    // Применим фильтры по userType/country/search на результирующем наборе
+    let rows = baseRows.map((r: any) => {
+      const ud = userDataMap.get(r.user_id) || {};
+      return {
+        userId: r.user_id,
+        email: ud.email || `${r.user_id}@unknown.com`,
+        country: ud.country || 'Unknown',
+        isPremium: !!ud.isPremium,
+        eventDate: r.event_date,
+        action: r.action,
+        tutorialType: r.tutorial_type
+      };
+    });
+
+    if (filters.userType === 'premium') rows = rows.filter(r => r.isPremium);
+    if (filters.userType === 'free') rows = rows.filter(r => !r.isPremium);
+    if (filters.country.length > 0) rows = rows.filter(r => filters.country.includes(r.country));
+    if (filters.search) {
+      const s = filters.search.toLowerCase();
+      rows = rows.filter(r => r.email?.toLowerCase().includes(s) || r.userId.toLowerCase().includes(s));
+    }
+
+    res.json({
+      data: rows,
+      total: totalRows,
+      page,
+      limit,
+      totalPages: Math.ceil(totalRows / limit)
+    });
+  } catch (error) {
+    console.error('Tutorial table error:', error);
+    res.status(500).json({ error: 'Failed to get tutorial table' });
   }
 });
 
@@ -618,7 +855,11 @@ router.get('/table/churn', isAdminWithAuth, async (req, res) => {
 // Остальные эндпоинты (оставляем как есть для совместимости)
 router.get('/overview', isAdminWithAuth, async (req, res) => {
   try {
-    const overview = await clickhouseAnalyticsService.getOverviewMetrics();
+    // Совместимость: отдадим подготовленный overview из кеша
+    if (!dataCache.isReady()) {
+      return res.status(503).json({ error: 'Data is loading, please wait...' });
+    }
+    const overview = dataCache.getOverview();
     res.json(overview);
   } catch (error) {
     console.error('Dashboard overview error:', error);
@@ -654,11 +895,10 @@ router.get('/table/:tableId', isAdminWithAuth, async (req, res) => {
 
 router.get('/metric/:metricId', isAdminWithAuth, async (req, res) => {
   try {
+    // Совместимость: для большинства случаев теперь используем кешированные данные/тренды
     const { metricId } = req.params;
-    const filters = req.query;
-    
-    const result = await clickhouseAnalyticsService.getMetricData(metricId, filters);
-    res.json(result);
+    const trendData = dataCache.getTrend(metricId, req.query);
+    res.json(trendData);
   } catch (error) {
     console.error('Dashboard metric error:', error);
     res.status(500).json({ error: 'Failed to fetch metric data' });

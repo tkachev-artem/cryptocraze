@@ -26,6 +26,39 @@ import { AreaChart, Card } from '@tremor/react';
 import { config } from '../../lib/config';
 import MetricTable from './components/MetricTable';
 import MetricFilters from './components/MetricFilters';
+// Конфиги графиков встроены, чтобы избежать проблем с импортом
+
+// Функция для получения конфига графика
+const getChartConfig = (metricId: string) => {
+  const baseConfig = {
+    categories: ['Users'],
+    colors: ['blue'],
+    showLegend: false,
+    showGradient: false,
+    showYAxis: true,
+    valueFormatter: (value: number) => `${Math.floor(value)}`, // Целое число пользователей
+    tooltipLabel: 'Users',
+    tooltipValue: (value: number) => `${Math.floor(value)}`
+  };
+
+  // Для churn_rate используем красный цвет
+  if (metricId === 'churn_rate') {
+    return {
+      ...baseConfig,
+      colors: ['red'],
+      tooltipLabel: 'Churned Users',
+      tooltipValue: (value: number) => `${Math.floor(value)}`
+    };
+  }
+
+  return baseConfig;
+};
+
+// Используем valueFormatter из конфига
+const getValueFormatter = (metricId: string) => {
+  const config = getChartConfig(metricId);
+  return config.valueFormatter;
+};
 
 type DateRange = {
   startDate: Date;
@@ -70,7 +103,7 @@ const MetricRow: React.FC<MetricRowProps> = ({ metric, isSelected, onClick }) =>
 const UserAnalytics: React.FC = () => {
   const [selectedMetric, setSelectedMetric] = useState<Metric | null>(null);
   const [metricsData, setMetricsData] = useState<Record<string, string | number>>({});
-  const [chartData, setChartData] = useState<Array<{ date: string; Users: number }>>([]);
+  const [chartData, setChartData] = useState<Array<{ date: string; Users: number; percent?: number; totalUsers?: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
@@ -90,10 +123,17 @@ const UserAnalytics: React.FC = () => {
   const valueFormatter = (number: number) =>
     `${Intl.NumberFormat('us').format(Math.floor(number)).toString()}`;
 
+  // Используем valueFormatter из конфига
+  const getValueFormatter = (metricId: string) => {
+    const config = getChartConfig(metricId);
+    return config.valueFormatter;
+  };
+
   // Y-axis tick formatter - только целые числа
   const yAxisTickFormatter = (value: number) => {
     return Math.floor(value).toString();
   };
+
 
 
   // Define all metrics with their properties
@@ -121,6 +161,11 @@ const UserAnalytics: React.FC = () => {
     { id: 'tutorial_start', title: 'Tutorial Start', value: '—', icon: <GraduationCap className="w-4 h-4 text-white" />, color: 'bg-blue-600', category: 'Tutorial', description: 'Users who started tutorial' },
     { id: 'tutorial_complete', title: 'Tutorial Complete', value: '—', icon: <CheckCircle className="w-4 h-4 text-white" />, color: 'bg-green-600', category: 'Tutorial', description: 'Users who completed tutorial' },
     { id: 'tutorial_skip_rate', title: 'Tutorial Skip Rate', value: '—', icon: <SkipForward className="w-4 h-4 text-white" />, color: 'bg-gray-500', category: 'Tutorial', description: 'Users who skipped tutorial' },
+
+    // Pro Tutorial
+    { id: 'pro_tutorial_start', title: 'Pro Tutorial Start', value: '—', icon: <GraduationCap className="w-4 h-4 text-white" />, color: 'bg-purple-600', category: 'Tutorial', description: 'Premium users who started pro tutorial' },
+    { id: 'pro_tutorial_complete', title: 'Pro Tutorial Complete', value: '—', icon: <CheckCircle className="w-4 h-4 text-white" />, color: 'bg-indigo-600', category: 'Tutorial', description: 'Premium users who completed pro tutorial' },
+    { id: 'pro_tutorial_skip_rate', title: 'Pro Tutorial Skip Rate', value: '—', icon: <SkipForward className="w-4 h-4 text-white" />, color: 'bg-slate-600', category: 'Tutorial', description: 'Premium users who skipped pro tutorial' },
     
     // Trading
     { id: 'price_stream_start', title: 'Price Stream Start', value: '—', icon: <Activity className="w-4 h-4 text-white" />, color: 'bg-pink-500', category: 'Trading', description: 'Users who viewed live prices' },
@@ -137,10 +182,10 @@ const UserAnalytics: React.FC = () => {
   const loadChartData = async (metricId: string) => {
     setChartLoading(true);
     setChartError(null);
-    
+
     try {
       console.log(`Loading chart data for metric: ${metricId}`);
-      
+
       // Build query parameters with date range and filters
       const params = new URLSearchParams({
         startDate: dateRange.startDate.toISOString(),
@@ -153,37 +198,71 @@ const UserAnalytics: React.FC = () => {
           })
         )
       });
-      
+
       const response = await fetch(`${config.api.baseUrl}/admin/dashboard/metric/${metricId}/trend?${params}`, {
         credentials: 'include'
       });
-      
+
       console.log(`Response status: ${response.status}`);
-      
+
       if (response.ok) {
         const data = await response.json();
         console.log('Chart data received:', data);
-        
-        // Преобразуем данные в формат для графика - только целые числа
-        const formattedData = data.map((item: any) => ({
-          date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          Users: Math.floor(item.value || 0)
-        }));
-        
+
+        // Проверяем, является ли метрика tutorial-метрикой
+        const isTutorialMetric = [
+          'tutorial_start', 'tutorial_complete', 'tutorial_skip_rate',
+          'pro_tutorial_start', 'pro_tutorial_complete', 'pro_tutorial_skip_rate'
+        ].includes(metricId);
+
+        let formattedData: Array<{ date: string; Users: number; percent?: number; totalUsers?: number }>;
+
+        if (isTutorialMetric) {
+          // Для tutorial-метрик сервер возвращает { date, percent, userCount, totalUsers }
+          // Мы показываем userCount как значение на графике
+          formattedData = data.map((item: any) => ({
+            date: item.date, // Сервер уже возвращает в правильном формате
+            Users: Math.floor(item.userCount || 0),
+            percent: item.percent,
+            totalUsers: Math.floor(item.totalUsers || 0)
+          }));
+        } else {
+          // Для остальных метрик - стандартная обработка
+          formattedData = data.map((item: any) => ({
+            date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            Users: Math.floor(item.value || 0)
+          }));
+        }
+
         // Создаем полный период данных на основе выбранного диапазона
-        const fullData: Array<{ date: string; Users: number }> = [];
+        const fullData: Array<{ date: string; Users: number; percent?: number; totalUsers?: number }> = [];
         const startDate = new Date(dateRange.startDate);
         const endDate = new Date(dateRange.endDate);
-        
+
         for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-          const dateString = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          
+          let dateString: string;
+          if (isTutorialMetric) {
+            // Для tutorial-метрик используем ISO формат даты
+            dateString = d.toISOString().slice(0, 10);
+          } else {
+            // Для остальных метрик используем локализованный формат
+            dateString = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          }
+
           // Ищем данные для этой даты
-          const existingData = formattedData.find(item => item.date === dateString);
-          
+          const existingData = formattedData.find(item => {
+            if (isTutorialMetric) {
+              return item.date === dateString;
+            } else {
+              return item.date === dateString;
+            }
+          });
+
           fullData.push({
             date: dateString,
-            Users: existingData ? Math.floor(existingData.Users) : 0
+            Users: existingData ? Math.floor(existingData.Users) : 0,
+            percent: existingData?.percent,
+            totalUsers: existingData?.totalUsers
           });
         }
 
@@ -193,20 +272,34 @@ const UserAnalytics: React.FC = () => {
         if (inclusiveDays <= 1) {
           const prev = new Date(startDate.getTime() - msPerDay);
           const next = new Date(endDate.getTime() + msPerDay);
+          const dateFormat = isTutorialMetric ?
+            (d: Date) => d.toISOString().slice(0, 10) :
+            (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
           const padded = [
-            { date: prev.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), Users: 0 },
-            fullData[0] || { date: startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), Users: 0 },
-            { date: next.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), Users: 0 }
+            { date: dateFormat(prev), Users: 0, percent: undefined, totalUsers: undefined },
+            fullData[0] ? { ...fullData[0], date: dateFormat(startDate) } : { date: dateFormat(startDate), Users: 0, percent: undefined, totalUsers: undefined },
+            { date: dateFormat(next), Users: 0, percent: undefined, totalUsers: undefined }
           ];
           console.log('Chart data padded for single-day range:', padded);
           setChartData(padded);
         } else if (inclusiveDays === 2) {
           const prev = new Date(startDate.getTime() - msPerDay);
           const next = new Date(endDate.getTime() + msPerDay);
+          const dateFormat = isTutorialMetric ?
+            (d: Date) => d.toISOString().slice(0, 10) :
+            (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
           const padded = [
-            { date: prev.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), Users: 0 },
-            ...fullData,
-            { date: next.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), Users: 0 }
+            { date: dateFormat(prev), Users: 0, percent: undefined, totalUsers: undefined },
+            ...fullData.map(item => {
+              if (isTutorialMetric) {
+                return { ...item, date: dateFormat(new Date(item.date)) };
+              } else {
+                return item;
+              }
+            }),
+            { date: dateFormat(next), Users: 0, percent: undefined, totalUsers: undefined }
           ];
           console.log('Chart data padded for two-day range:', padded);
           setChartData(padded);
@@ -399,7 +492,20 @@ const UserAnalytics: React.FC = () => {
                 {dateRange.label} trend for {selectedMetric.title}
               </h3>
               <p className="text-2xl font-bold text-gray-900 mb-4">
-                {selectedMetric.value}
+                {(() => {
+                  // Для tutorial-метрик рассчитываем общий процент за период
+                  const isTutorialMetric = [
+                    'tutorial_start', 'tutorial_complete', 'tutorial_skip_rate',
+                    'pro_tutorial_start', 'pro_tutorial_complete', 'pro_tutorial_skip_rate'
+                  ].includes(selectedMetric.id);
+
+                  if (isTutorialMetric && chartData.length > 0) {
+                    // Сервер теперь возвращает одинаковый percent для всех дней (общий за период)
+                    return `${chartData[0]?.percent || 0}%`;
+                  }
+
+                  return selectedMetric.value;
+                })()}
               </p>
               <div className="mt-6 hidden sm:block">
               <AreaChart
@@ -411,7 +517,7 @@ const UserAnalytics: React.FC = () => {
                 colors={['blue']}
                 showLegend={false}
                 showGradient={false}
-                  valueFormatter={valueFormatter}
+                  valueFormatter={getValueFormatter(selectedMetric.id)}
                   showYAxis={true}
                   yAxisWidth={60}
                   maxValue={Math.max(...chartData.map(d => d.Users), 1)}
@@ -421,7 +527,7 @@ const UserAnalytics: React.FC = () => {
                         <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
                           <p className="text-gray-700 font-medium text-sm mb-1">{label}</p>
                           <p className="text-blue-600 text-sm">
-                            Users: {valueFormatter(typeof payload[0].value === 'number' ? payload[0].value : 0)}
+                            Users: {getValueFormatter(selectedMetric.id)(typeof payload[0].value === 'number' ? payload[0].value : 0)}
                           </p>
                         </div>
                       );
@@ -441,7 +547,7 @@ const UserAnalytics: React.FC = () => {
                   colors={['blue']}
                   showLegend={false}
                   showGradient={false}
-                  valueFormatter={valueFormatter}
+                  valueFormatter={getValueFormatter(selectedMetric.id)}
                   startEndOnly={true}
                 showYAxis={true}
                   yAxisWidth={60}
@@ -452,7 +558,7 @@ const UserAnalytics: React.FC = () => {
                         <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
                           <p className="text-gray-700 font-medium text-sm mb-1">{label}</p>
                           <p className="text-blue-600 text-sm">
-                            Users: {valueFormatter(typeof payload[0].value === 'number' ? payload[0].value : 0)}
+                            Users: {getValueFormatter(selectedMetric.id)(typeof payload[0].value === 'number' ? payload[0].value : 0)}
                           </p>
                         </div>
                       );

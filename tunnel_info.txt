@@ -1,4 +1,4 @@
-TUNNEL_URL=https://flight-numerical-plaintiff-connecting.trycloudflare.com
-TUNNEL_PID=43980
-STARTED_AT=Sun Sep 21 12:33:27 MSK 2025
+TUNNEL_URL=https://coleman-adware-martin-reflects.trycloudflare.com
+TUNNEL_PID=17623
+STARTED_AT=Mon Sep 22 22:29:33 MSK 2025
 LOG_FILE=/Users/artemtkacev/Desktop/cc-games/cryptocraze/tunnel.log

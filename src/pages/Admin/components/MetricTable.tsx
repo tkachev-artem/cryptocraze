@@ -60,6 +60,16 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
         params.append('window', metricId);
       } else if (metricId === 'churn_rate') {
         endpoint = '/admin/dashboard/table/churn';
+      } else if (
+        metricId === 'tutorial_start' ||
+        metricId === 'tutorial_complete' ||
+        metricId === 'tutorial_skip_rate' ||
+        metricId === 'pro_tutorial_start' ||
+        metricId === 'pro_tutorial_complete' ||
+        metricId === 'pro_tutorial_skip_rate'
+      ) {
+        endpoint = '/admin/dashboard/table/tutorial';
+        params.append('metricId', metricId);
       } else {
         // Placeholder for other metrics
         setData([]);
@@ -78,18 +88,32 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
 
       const result = await response.json();
       
-      // Сортируем данные для retention метрик: сначала вернувшиеся
+      // Сортируем данные
       let sortedData = result.data || [];
+
       if (['D1', 'D3', 'D7', 'D30'].includes(metricId)) {
+        // Сортируем данные для retention метрик: сначала вернувшиеся
         sortedData = sortedData.sort((a: any, b: any) => {
           const aReturned = a[`${metricId.toLowerCase()}Returned`];
           const bReturned = b[`${metricId.toLowerCase()}Returned`];
-          
+
           if (aReturned && !bReturned) return -1;
           if (!aReturned && bReturned) return 1;
-          
+
           // Если статус одинаковый, сортируем по дате регистрации
           return new Date(b.installDate).getTime() - new Date(a.installDate).getTime();
+        });
+      } else if (
+        metricId === 'tutorial_start' ||
+        metricId === 'tutorial_complete' ||
+        metricId === 'tutorial_skip_rate' ||
+        metricId === 'pro_tutorial_start' ||
+        metricId === 'pro_tutorial_complete' ||
+        metricId === 'pro_tutorial_skip_rate'
+      ) {
+        // Сортируем данные для tutorial метрик: по дате события (новые сначала)
+        sortedData = sortedData.sort((a: any, b: any) => {
+          return new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime();
         });
       }
       
@@ -242,6 +266,64 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
                     No retention
                   </span>
                 </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+
+    // Таблица для туториалов
+    if (
+      metricId === 'tutorial_start' ||
+      metricId === 'tutorial_complete' ||
+      metricId === 'tutorial_skip_rate' ||
+      metricId === 'pro_tutorial_start' ||
+      metricId === 'pro_tutorial_complete' ||
+      metricId === 'pro_tutorial_skip_rate'
+    ) {
+      return (
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="text-left py-4 px-4 font-bold text-gray-900">User ID</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Email</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Region</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Type</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Tutorial</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Action</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Event Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row) => (
+              <tr key={row.userId + row.eventDate} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                <td className="py-4 px-4 text-sm text-gray-900 font-mono">{row.userId}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.email || '—'}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">
+                  <div className="flex items-center gap-2">
+                    {row.country && row.country !== 'Unknown' && (
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded font-medium">
+                        {row.country}
+                      </span>
+                    )}
+                    <span>{row.country || 'Unknown'}</span>
+                  </div>
+                </td>
+                <td className="py-4 px-4 text-sm">
+                  {row.isPremium ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-black bg-[#F5A600] rounded-full">
+                      PRO
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
+                      FREE
+                    </span>
+                  )}
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.tutorialType === 'pro' ? 'Pro' : 'Regular'}</td>
+                <td className="py-4 px-4 text-sm text-gray-700 capitalize">{row.action}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{new Date(row.eventDate).toLocaleString()}</td>
               </tr>
             ))}
           </tbody>

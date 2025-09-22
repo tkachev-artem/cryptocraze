@@ -1,17 +1,15 @@
 import { useEffect, useRef, useState, Suspense } from "react"
 import type React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom"
-import { Home, Tutorial, Profile, EditProfile, Landing, Welcome, Trade, ListCrypto, Settings, Language, Notifications, Share, Premium, DealList, Rating, Rewards, TradePro, Live, Trials, AdminDashboard, NotFound } from './pages';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom"
+import { Home, Tutorial, Profile, EditProfile, Landing, Welcome, Trade, ListCrypto, Settings, Language, Notifications, Share, Premium, DealList, Rating, Rewards, TradePro, Live, Trials, NotFound } from './pages';
+import AdminRouter from './pages/Admin/AdminRouter';
 import UserAnalytics from './pages/UserAnalytics';
 import GlobalLoading from './components/GlobalLoading';
 import { ScrollLock } from './components/ui/ScrollLock';
-import { AppContainer } from './components/ui/AppContainer';
 import DealInfo from './components/DealInfo';
 import CoinExchangeModal from './components/CoinExchangeModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
-import { DeviceGuard } from './components/DeviceGuard';
-import { OrientationGuard } from './components/OrientationGuard';
 import { useAppSelector, useAppDispatch } from './app/hooks';
 import { selectIsAuthenticated } from './app/userSlice';
 import { closeCoinExchange } from './app/coinExchangeSlice';
@@ -26,18 +24,12 @@ const RouteLoading: React.FC = () => (
 
 export const App: React.FC = () => {
   const appScrollRef = useRef<HTMLDivElement>(null)
-  const [isPhone, setIsPhone] = useState<boolean>(true)
   const dispatch = useAppDispatch()
   const isAuthenticated = useAppSelector(selectIsAuthenticated)
   const isCoinExchangeOpen = useAppSelector(state => state.coinExchange.isModalOpen)
   const touchStartXRef = useRef<number | null>(null)
   const touchStartYRef = useRef<number | null>(null)
   const { t } = useTranslation();
-
-  // Разрешаем доступ с любых устройств 
-  useEffect(() => {
-    setIsPhone(true); // Всегда разрешаем доступ
-  }, [])
 
   // Глобальный запрет back-свайпа (слева-направо) и pull-to-refresh (сверху-вниз)
   useEffect(() => {
@@ -88,46 +80,22 @@ export const App: React.FC = () => {
     }
   }, [])
 
-  // Ранний возврат с блокировкой, если не телефон
-  if (!isPhone) {
-    return (
-      <div className="min-h-dvh flex items-center justify-center bg-[#F1F7FF] p-6">
-        <div className="max-w-md w-full text-center bg-white rounded-2xl p-6 shadow-xl">
-          <img src="/phone.svg" alt="Phone only" className="mx-auto mb-4 h-14 w-14" />
-          <h1 className="text-xl font-bold text-gray-900">{t('app.phoneOnly.title')}</h1>
-          <p className="mt-2 text-gray-600">{t('app.phoneOnly.description')}</p>
-          <a
-            href="#"
-            onClick={(e) => { e.preventDefault() }}
-            role="button"
-            tabIndex={0}
-            aria-label={t('app.phoneOnly.cta')}
-            className="mt-4 inline-flex items-center justify-center rounded-xl border border-gray-300 text-gray-800 px-4 py-2 font-semibold focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
-          >
-            {t('app.phoneOnly.cta')}
-          </a>
-        </div>
-      </div>
-    )
-  }
 
-  return (
-    <DeviceGuard>
-      <OrientationGuard>
-        <ErrorBoundary>
-          <GlobalLoading initialLoadingTime={3000}>
-            <ScrollLock enabled={true} allowScrollWithinRef={appScrollRef as unknown as React.RefObject<HTMLElement>} />
-            <AppContainer>
-              <div
-                ref={appScrollRef}
-                data-app-scroll="true"
-                className="h-dvh overflow-y-auto overscroll-y-contain allow-pan-y"
-              >
-                <div className="w-full h-full">
-              <BrowserRouter>
-            <Suspense fallback={<RouteLoading />}>
-              <Routes>
-                  {/* Главная точка входа: авторизованных ведем сразу на /home, неавторизованным показываем Welcome */}
+
+  const AppContent = () => (
+    <ErrorBoundary>
+      <GlobalLoading initialLoadingTime={3000}>
+        <ScrollLock enabled={true} allowScrollWithinRef={appScrollRef as unknown as React.RefObject<HTMLElement>} />
+        <div className="h-dvh bg-white">
+          <div
+            ref={appScrollRef}
+            data-app-scroll="true"
+            className="h-dvh overflow-y-auto overscroll-y-contain allow-pan-y"
+          >
+            <div className="w-full h-full">
+              <Suspense fallback={<RouteLoading />}>
+                <Routes>
+                  {/* Главная точка входа: авторизованных ведем на /home, неавторизованным показываем Welcome */}
                   <Route path="/" element={
                     isAuthenticated ? <Navigate to="/home" replace /> : 
                     <RouteErrorBoundary routeName="Welcome"><Welcome /></RouteErrorBoundary>
@@ -154,17 +122,16 @@ export const App: React.FC = () => {
                     <Route path="/deals" element={<RouteErrorBoundary routeName="Deals"><DealList /></RouteErrorBoundary>} />
                     <Route path="/trials" element={<RouteErrorBoundary routeName="Trials"><Trials /></RouteErrorBoundary>} />
                     <Route path="/analytics" element={<RouteErrorBoundary routeName="User Analytics"><UserAnalytics /></RouteErrorBoundary>} />
-                    <Route path="/admin/dashboard" element={<RouteErrorBoundary routeName="Admin Dashboard"><AdminDashboard /></RouteErrorBoundary>} />
+                    <Route path="/admin/*" element={<RouteErrorBoundary routeName="Admin Dashboard"><AdminRouter /></RouteErrorBoundary>} />
                   </Route>
 
                   {/* 404 страница для неизвестных маршрутов */}
                   <Route path="*" element={<RouteErrorBoundary routeName="NotFound"><NotFound /></RouteErrorBoundary>} />
-              </Routes>
-            </Suspense>
-            </BrowserRouter>
+                </Routes>
+              </Suspense>
             </div>
           </div>
-        </AppContainer>
+        </div>
         
         {/* Global modals that need to overlay everything */}
         <ErrorBoundary>
@@ -176,10 +143,14 @@ export const App: React.FC = () => {
             onClose={() => dispatch(closeCoinExchange())} 
           />
         </ErrorBoundary>
-          </GlobalLoading>
-        </ErrorBoundary>
-      </OrientationGuard>
-    </DeviceGuard>
+      </GlobalLoading>
+    </ErrorBoundary>
+  );
+
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   )
 }
 

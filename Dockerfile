@@ -1,12 +1,10 @@
 # Multi-stage build for production
-FROM --platform=linux/amd64 node:18-alpine AS builder
+FROM node:18-alpine AS builder
 
 # Set working directory
 WORKDIR /app
 
-# Set platform environment variables
-ENV npm_config_target_platform=linux
-ENV npm_config_target_arch=x64
+# Set npm cache directory
 ENV npm_config_cache=/tmp/.npm
 
 # Copy package files
@@ -29,7 +27,7 @@ ENV VITE_API_BASE_URL=/api
 RUN npm run build
 
 # Production stage
-FROM --platform=linux/amd64 node:18-alpine AS production
+FROM node:18-alpine AS production
 
 # Install dumb-init for proper signal handling and wget for health checks
 RUN apk add --no-cache dumb-init wget

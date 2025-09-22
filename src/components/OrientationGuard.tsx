@@ -17,7 +17,10 @@ export const OrientationGuard: React.FC<OrientationGuardProps> = ({ children }) 
     }
   }, [isLandscape]);
 
-  if (isLandscape) {
+  // Для админки не блокируем ориентацию
+  const isAdminRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+  
+  if (isLandscape && !isAdminRoute) {
     return <LandscapeBlockedScreen />;
   }
 

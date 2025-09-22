@@ -5,7 +5,9 @@ import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from "../shared/schema";
 
-if (!process.env.DATABASE_URL) {
+const STATIC_ONLY = (process.env.STATIC_ONLY || '').toLowerCase() === 'true';
+
+if (!process.env.DATABASE_URL && !STATIC_ONLY) {
   throw new Error(
     "DATABASE_URL must be set. Did you forget to provision a database?",
   );
@@ -13,8 +15,17 @@ if (!process.env.DATABASE_URL) {
 
 const shouldDisableSslVerify = (process.env.DB_SSL_DISABLE_VERIFY || '').toLowerCase() === 'true';
 
-export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: shouldDisableSslVerify ? { rejectUnauthorized: false } : undefined,
-});
-export const db = drizzle(pool, { schema });
+let pool: Pool | undefined;
+let db: ReturnType<typeof drizzle> | undefined;
+
+if (process.env.DATABASE_URL && !STATIC_ONLY) {
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: shouldDisableSslVerify ? { rejectUnauthorized: false } : undefined,
+  });
+  db = drizzle(pool, { schema });
+} else {
+  console.warn('STATIC_ONLY enabled or DATABASE_URL missing: skipping DB initialization');
+}
+
+export { pool, db };

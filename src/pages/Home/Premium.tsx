@@ -14,13 +14,34 @@ const Premium: FC = () => {
     const navigate = useNavigate();
     const [selectedPlan, setSelectedPlan] = useState<'month' | 'year'>('month');
     const [isLoading, setIsLoading] = useState(false);
+    const [pricing, setPricing] = useState<{monthly: number; yearly: number; currency: string} | null>(null);
+    const [isPricingLoading, setIsPricingLoading] = useState(true);
     const { user, isLoading: userLoading } = useUser();
     const { isPremium } = usePremium();
     const dispatch = useAppDispatch();
     const { toast } = useToast();
     const { t } = useTranslation();
 
-
+    // Загрузка динамических цен
+    const fetchPricing = async () => {
+        try {
+            setIsPricingLoading(true);
+            const response = await fetch(`${API_BASE_URL}/pricing`);
+            if (response.ok) {
+                const pricingData = await response.json();
+                setPricing(pricingData);
+            } else {
+                // Fallback to hardcoded prices if API fails
+                setPricing({ monthly: 6.99, yearly: 64.99, currency: 'USD' });
+            }
+        } catch (error) {
+            console.error('Error fetching pricing:', error);
+            // Fallback to hardcoded prices
+            setPricing({ monthly: 6.99, yearly: 64.99, currency: 'USD' });
+        } finally {
+            setIsPricingLoading(false);
+        }
+    };
 
     // Создание подписки в БД
     const createPremiumSubscription = async (planType: 'month' | 'year') => {
@@ -29,8 +50,13 @@ const Premium: FC = () => {
             return;
         }
 
+        if (!pricing) {
+            console.error('Pricing not loaded');
+            return;
+        }
+
         const telegramId = localStorage.getItem('telegramId') ?? '';
-        const amount = planType === 'month' ? 6.99 : 64.99;
+        const amount = planType === 'month' ? pricing.monthly : pricing.yearly;
 
         setIsLoading(true);
         try {
@@ -83,6 +109,11 @@ const Premium: FC = () => {
             setIsLoading(false);
         }
     };
+
+    useEffect(() => {
+        // Загрузка цен при инициализации компонента
+        fetchPricing();
+    }, []);
 
     useEffect(() => {
         // статус Premium проверяется автоматически в usePremium
@@ -181,7 +212,7 @@ const Premium: FC = () => {
                             </div>
                             <div className={`font-bold text-2xl ${selectedPlan === 'month' ? 'text-white' : 'text-black'
                                 }`}>
-$6.99
+                                {isPricingLoading ? '...' : `$${pricing?.monthly || 6.99}`}
                             </div>
                         </div>
 
@@ -216,7 +247,7 @@ $6.99
                             </div>
                             <div className={`font-bold text-2xl ${selectedPlan === 'year' ? 'text-white' : 'text-black'
                                 }`}>
-$64.99
+                                {isPricingLoading ? '...' : `$${pricing?.yearly || 64.99}`}
                             </div>
                         </div>
 
@@ -236,8 +267,8 @@ $64.99
             <div className="px-4">
                 <p className="text-black max-w-[255px] mx-auto font-medium text-xs text-center leading-relaxed">
                     {selectedPlan === 'month'
-                        ? t('premium.chargeMonthly') || '$6.99 will be charged automatically every month until you cancel your subscription'
-                        : t('premium.chargeYearly') || '$64.99 will be charged automatically every year until you cancel your subscription'
+                        ? t('premium.chargeMonthly') || `$${pricing?.monthly || 6.99} will be charged automatically every month until you cancel your subscription`
+                        : t('premium.chargeYearly') || `$${pricing?.yearly || 64.99} will be charged automatically every year until you cancel your subscription`
                     }
                 </p>
             </div>

@@ -113,7 +113,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host: "0.0.0.0",
       // https: httpsConfig, // временно отключено
-      port: 1111,
+      port: 5173,
       allowedHosts: ['localhost', '.trycloudflare.com'],
       hmr: {
         port: 24678

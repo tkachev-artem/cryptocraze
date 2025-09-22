@@ -9,6 +9,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { db } from './db';
 import { initializeWorkerSystem, shutdownWorkerSystem } from './services/workers/index.js';
 import NgrokService from './services/ngrokService.js';
+import { initializeWebSocket } from './services/websocketService';
 
 // Load environment variables with environment-specific file support
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -109,11 +110,16 @@ async function bootstrap() {
     // Start the HTTP server FIRST to bind to port, then initialize other services
     const server = await registerRoutes(app);
     
+    // Initialize WebSocket service
+    initializeWebSocket(server);
+    console.log('🔌 WebSocket service initialized');
+    
     // Start listening immediately for health checks
     server.listen(Number(PORT), '0.0.0.0', () => {
       console.log(`🚀 Server listening on port ${PORT}`);
       console.log(`🌍 Environment: ${NODE_ENV}`);
       console.log(`🔒 CORS origins: ${allowedOrigins.join(', ')}`);
+      console.log(`🔌 WebSocket available at ws://localhost:${PORT}/ws`);
       if (process.env.TUNNEL_URL) {
         console.log(`🌐 Tunnel URL: ${process.env.TUNNEL_URL}`);
       }
@@ -137,14 +143,17 @@ async function bootstrap() {
     
     // Optionally skip DB migrations to allow static serving without DB
     const shouldSkipMigrations = (process.env.SKIP_MIGRATIONS || '').toLowerCase() === 'true';
-    if (!shouldSkipMigrations) {
+    const staticOnly = (process.env.STATIC_ONLY || '').toLowerCase() === 'true';
+    const canMigrate = typeof db !== 'undefined' && db !== null;
+    if (!shouldSkipMigrations && !staticOnly && canMigrate) {
       console.log('🔄 Running database migrations...');
       await migrate(db, { migrationsFolder: 'drizzle' });
       console.log('✅ Database migrations completed');
+    } else {
+      console.log('⏭️  Skipping database migrations (skip flag/static-only/no DB)');
     }
 
     // Optionally disable background workers for static-only mode or when worker system is disabled
-    const staticOnly = (process.env.STATIC_ONLY || '').toLowerCase() === 'true';
     const disableWorkers = (process.env.DISABLE_WORKERS || '').toLowerCase() === 'true';
     if (!staticOnly && !disableWorkers) {
       console.log('🔄 Starting background services...');

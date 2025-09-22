@@ -107,11 +107,13 @@ export const analytics = pgTable("analytics", {
   sessionId: varchar("session_id"),
   userAgent: text("user_agent"),
   ipAddress: varchar("ip_address", { length: 45 }),
+  country: varchar("country", { length: 2 }), // ISO 3166-1 alpha-2 country code
 }, (table) => [
   index("idx_analytics_user_id").on(table.userId),
   index("idx_analytics_event_type").on(table.eventType),
   index("idx_analytics_timestamp").on(table.timestamp),
   index("idx_analytics_session_id").on(table.sessionId),
+  index("idx_analytics_country").on(table.country),
 ]);
 
 // Enhanced analytics tables for BI metrics

@@ -218,6 +218,7 @@ export class AnalyticsQueueService {
       sessionId: event.sessionId,
       userAgent: event.userAgent,
       ipAddress: event.ipAddress,
+      country: event.country,
       timestamp: new Date(event.timestamp)
     }));
 

@@ -28,8 +28,11 @@ import { deals, users, premiumSubscriptions, rewardTiers, analytics, userDailySt
 import { applyAutoRewards } from './services/autoRewards';
 import { biAnalyticsService } from './services/biAnalyticsService';
 import { clickhouseAnalyticsService } from './services/clickhouseAnalyticsService.js';
+import { GeoLocationService } from './services/geoLocationService.js';
 import AnalyticsLogger from './middleware/analyticsLogger.js';
 import { registerAdRoutes } from './adRoutes';
+import dashboardRouter from './routes/dashboardRoute.js';
+console.log('[Routes] Dashboard router imported:', typeof dashboardRouter);
 import { adminRoutes as workerAdminRoutes, getWorkerSystemHealth } from './services/workers/index.js';
 import { and, eq, gte, lte, inArray, sql, desc, asc, count, sum, lt, isNull, isNotNull, gt } from 'drizzle-orm';
 
@@ -211,6 +214,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register worker admin routes
   app.use('/api/admin/workers', workerAdminRoutes);
+
+  // Mount admin dashboard router (with optimizations)
+  app.use('/api/admin/analytics', dashboardRouter);
+  app.use('/api/admin/dashboard', dashboardRouter);
 
   // Account: delete user and related data
   app.delete('/api/account/delete', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {
@@ -5119,6 +5126,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sessionUserId: req.session?.userId
       });
 
+      // Определяем страну по IP адресу
+      const country = ipAddress ? GeoLocationService.getCountryFromIP(ipAddress) : 'Unknown';
+      
       // Batch insert all events to PostgreSQL
       const analyticsData = events.map((event: any) => ({
         userId,
@@ -5127,6 +5137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sessionId: event.sessionId,
         userAgent,
         ipAddress,
+        country,
         timestamp: event.timestamp ? new Date(event.timestamp) : new Date()
       }));
 
@@ -5250,26 +5261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    *       200:
    *         description: Обзор аналитики
    */
-  app.get('/api/admin/analytics/overview', async (req: Request, res: Response) => {
-    try {
-      console.log('[AdminAnalytics] Overview endpoint called - ClickHouse only');
-      
-      // Initialize ClickHouse schema if not done yet
-      await clickhouseAnalyticsService.initializeSchema();
-      
-      // Get data from ClickHouse only
-      const overview = await clickhouseAnalyticsService.getDashboardOverview();
-      console.log('[AdminAnalytics] ClickHouse overview data retrieved successfully');
-      res.json(overview);
-      
-    } catch (error: any) {
-      console.error("[ClickHouse] Error getting analytics from ClickHouse:", error);
-      res.status(500).json({ 
-        error: 'ClickHouse недоступен',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  });
+  // Moved: /api/admin/analytics/overview handled by dashboardRouter
 
   /**
    * @swagger
@@ -5290,28 +5282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    *       200:
    *         description: Метрики вовлеченности
    */
-  app.get('/api/admin/analytics/engagement', isAdminWithAuth, async (req: AuthenticatedRequest, res: Response) => {
-    try {
-      const daysParam = req.query.days as string;
-      const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365); // Limit 1-365 days
-      const endDate = new Date();
-      const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
-
-      const engagementData = await db
-        .select()
-        .from(engagementMetrics)
-        .where(and(
-          gte(engagementMetrics.date, startDate),
-          lte(engagementMetrics.date, endDate)
-        ))
-        .orderBy(asc(engagementMetrics.date));
-
-      res.json({ data: engagementData });
-    } catch (error: any) {
-      console.error("Error getting engagement metrics:", error);
-      res.status(500).json({ error: 'Ошибка получения метрик вовлеченности' });
-    }
-  });
+  // Moved: /api/admin/analytics/engagement handled by dashboardRouter
 
   /**
    * @swagger
@@ -5332,33 +5303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    *       200:
    *         description: Данные когорт анализа
    */
-  app.get('/api/admin/analytics/retention', isAdminWithAuth, async (req: AuthenticatedRequest, res: Response) => {
-    try {
-      const weeksParam = req.query.weeks as string;
-      const weeks = Math.min(Math.max(parseInt(weeksParam) || 12, 1), 52); // Limit 1-52 weeks
-      
-      const cohortData = await db
-        .select()
-        .from(cohortAnalysis)
-        .where(lte(cohortAnalysis.periodNumber, weeks))
-        .orderBy(asc(cohortAnalysis.cohortWeek), asc(cohortAnalysis.periodNumber));
-
-      // Group data by cohort for easier frontend consumption
-      const groupedData = cohortData.reduce((acc: any, row) => {
-        const weekKey = row.cohortWeek.toISOString().split('T')[0];
-        if (!acc[weekKey]) {
-          acc[weekKey] = [];
-        }
-        acc[weekKey].push(row);
-        return acc;
-      }, {});
-
-      res.json({ cohorts: groupedData });
-    } catch (error: any) {
-      console.error("Error getting retention data:", error);
-      res.status(500).json({ error: 'Ошибка получения данных удержания' });
-    }
-  });
+  // Moved: /api/admin/analytics/retention handled by dashboardRouter
 
   /**
    * @swagger
@@ -5379,29 +5324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    *       200:
    *         description: Метрики доходов
    */
-  app.get('/api/admin/analytics/revenue', async (req: AuthenticatedRequest, res: Response) => {
-    try {
-      const daysParam = req.query.days as string;
-      const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365); // Limit 1-365 days
-      const endDate = new Date();
-      const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
-
-      // Use raw SQL to bypass Drizzle schema issues
-      const revenueDataResult = await db.execute(sql`
-        SELECT * FROM revenue_metrics 
-        WHERE date >= ${startDate} AND date <= ${endDate}
-        ORDER BY date ASC
-      `);
-
-      // Extract rows from the result object
-      const revenueData = revenueDataResult.rows || [];
-
-      res.json({ data: revenueData });
-    } catch (error: any) {
-      console.error("Error getting revenue metrics:", error);
-      res.status(500).json({ error: 'Ошибка получения метрик доходов' });
-    }
-  });
+  // Moved: /api/admin/analytics/revenue handled by dashboardRouter
 
   /**
    * @swagger
@@ -5422,28 +5345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    *       200:
    *         description: Метрики привлечения
    */
-  app.get('/api/admin/analytics/acquisition', isAdminWithAuth, async (req: AuthenticatedRequest, res: Response) => {
-    try {
-      const daysParam = req.query.days as string;
-      const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365); // Limit 1-365 days
-      const endDate = new Date();
-      const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
-
-      const acquisitionData = await db
-        .select()
-        .from(userAcquisitionMetrics)
-        .where(and(
-          gte(userAcquisitionMetrics.date, startDate),
-          lte(userAcquisitionMetrics.date, endDate)
-        ))
-        .orderBy(asc(userAcquisitionMetrics.date));
-
-      res.json({ data: acquisitionData });
-    } catch (error: any) {
-      console.error("Error getting acquisition metrics:", error);
-      res.status(500).json({ error: 'Ошибка получения метрик привлечения' });
-    }
-  });
+  // Moved: /api/admin/analytics/acquisition handled by dashboardRouter
 
   /**
    * @swagger
@@ -5468,21 +5370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    *       200:
    *         description: Метрики обработаны успешно
    */
-  app.post('/api/admin/analytics/process-daily', isAdminWithAuth, async (req: AuthenticatedRequest, res: Response) => {
-    try {
-      const dateParam = req.body.date;
-      const date = dateParam ? new Date(dateParam) : new Date();
-      
-      await biAnalyticsService.processDailyMetrics(date);
-      res.json({ 
-        success: true, 
-        message: `Метрики обработаны для ${date.toDateString()}` 
-      });
-    } catch (error: any) {
-      console.error("Error processing daily metrics:", error);
-      res.status(500).json({ error: 'Ошибка обработки метрик' });
-    }
-  });
+  // Moved: /api/admin/analytics/process-daily will be reintroduced in dashboardRouter when needed
 
   /**
    * /api/admin/analytics/ads:
@@ -5502,82 +5390,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    *       200:
    *         description: Ad Performance метрики
    */
-  app.get('/api/admin/analytics/ads', async (req: AuthenticatedRequest, res: Response) => {
-    try {
-      console.log('[DEBUG] Starting ads endpoint...');
-      const daysParam = req.query.days as string;
-      const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365); // Limit 1-365 days
-      const endDate = new Date();
-      const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
-      
-      console.log('[DEBUG] Date range:', startDate, 'to', endDate);
-      
-      // Use raw SQL to bypass Drizzle schema issues
-      console.log('[DEBUG] Executing SQL query...');
-      const adDataResult = await db.execute(sql`
-        SELECT * FROM ad_performance_metrics 
-        WHERE date >= ${startDate} AND date <= ${endDate}
-        ORDER BY date DESC
-      `);
-
-      console.log('[DEBUG] Query result type:', typeof adDataResult);
-      console.log('[DEBUG] Query result has rows:', 'rows' in adDataResult);
-
-      // Extract rows from the result object
-      const adData = adDataResult.rows || [];
-      console.log('[DEBUG] Extracted rows count:', adData.length);
-
-      // Calculate totals and averages
-      console.log('[DEBUG] Starting reduce operation...');
-      const totals = adData.reduce((acc: any, day: any) => ({
-        totalAdSpend: acc.totalAdSpend + Number(day.total_ad_spend || 0),
-        totalInstalls: acc.totalInstalls + Number(day.total_installs || 0),
-        totalConversions: acc.totalConversions + Number(day.total_conversions || 0),
-        totalRevenue: acc.totalRevenue + Number(day.total_revenue || 0),
-        totalImpressions: acc.totalImpressions + Number(day.ad_impressions || 0),
-        totalClicks: acc.totalClicks + Number(day.ad_clicks || 0),
-      }), {
-        totalAdSpend: 0,
-        totalInstalls: 0,
-        totalConversions: 0,
-        totalRevenue: 0,
-        totalImpressions: 0,
-        totalClicks: 0,
-      });
-
-      console.log('[DEBUG] Totals calculated:', totals);
-
-      const avgCPI = totals.totalInstalls > 0 ? totals.totalAdSpend / totals.totalInstalls : 0;
-      const avgCPA = totals.totalConversions > 0 ? totals.totalAdSpend / totals.totalConversions : 0;
-      const avgROAS = totals.totalAdSpend > 0 ? totals.totalRevenue / totals.totalAdSpend : 0;
-      const avgCTR = totals.totalImpressions > 0 ? totals.totalClicks / totals.totalImpressions : 0;
-      const avgConversionRate = totals.totalClicks > 0 ? totals.totalConversions / totals.totalClicks : 0;
-
-      const responseData = {
-        data: adData,
-        summary: {
-          totalAdSpend: totals.totalAdSpend.toFixed(2),
-          totalInstalls: totals.totalInstalls,
-          totalConversions: totals.totalConversions,
-          totalRevenue: totals.totalRevenue.toFixed(2),
-          avgCPI: avgCPI.toFixed(2),
-          avgCPA: avgCPA.toFixed(2),
-          avgROAS: avgROAS.toFixed(4),
-          avgCTR: (avgCTR * 100).toFixed(4),
-          avgConversionRate: (avgConversionRate * 100).toFixed(4),
-          totalImpressions: totals.totalImpressions,
-          totalClicks: totals.totalClicks,
-        }
-      };
-
-      console.log('[DEBUG] Response data prepared, sending...');
-      res.json(responseData);
-    } catch (error: any) {
-      console.error("[ERROR] Ad performance metrics error:", error);
-      console.error("[ERROR] Error stack:", error.stack);
-      res.status(500).json({ error: 'Ошибка получения метрик рекламы', details: error.message });
-    }
-  });
+  // Moved: /api/admin/analytics/ads will be handled in dedicated routes or dashboardRouter
 
   // Test endpoints for analytics (no auth required for debugging)
   app.get('/api/test/analytics/ads-full', async (req: Request, res: Response) => {
@@ -5782,31 +5595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    *       200:
    *         description: Обзор аналитики с fallback данными
    */
-  app.get('/api/admin/analytics/overview-v2', async (req: Request, res: Response) => {
-    try {
-      console.log('[AdminAnalytics] Overview-v2 endpoint called - ClickHouse only');
-      
-      // Initialize ClickHouse schema if not done yet
-      await clickhouseAnalyticsService.initializeSchema();
-      
-      // Get data from ClickHouse only
-      const overview = await clickhouseAnalyticsService.getDashboardOverview();
-      console.log('[AdminAnalytics] ClickHouse overview-v2 data retrieved successfully');
-      
-      res.json({
-        ...overview,
-        dataSource: 'clickhouse',
-        version: 'v2'
-      });
-      
-    } catch (error: any) {
-      console.error("[AdminAnalytics] Error getting admin analytics overview-v2:", error);
-      res.status(500).json({ 
-        error: 'ClickHouse недоступен',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  });
+  // Moved: /api/admin/analytics/overview-v2 handled by dashboardRouter if required
 
   /**
    * @swagger
@@ -5825,26 +5614,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    *       200:
    *         description: Метрики доходов в правильном формате
    */
-  app.get('/api/admin/analytics/revenue-v2', async (req: Request, res: Response) => {
-    try {
-      console.log('[AdminAnalytics] Revenue-v2 endpoint called');
-      const daysParam = req.query.days as string;
-      const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365); // Limit 1-365 days
-      
-      console.log(`[AdminAnalytics] Getting revenue data for ${days} days`);
-      // ClickHouse only - no fallback
-      throw new Error('Revenue data available only via ClickHouse overview endpoint');
-      console.log(`[AdminAnalytics] Revenue data retrieved: ${result.data.length} records`);
-      
-      res.json(result);
-    } catch (error: any) {
-      console.error("[AdminAnalytics] Error getting revenue metrics:", error);
-      res.status(500).json({ 
-        error: 'Ошибка получения метрик доходов',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  });
+  // Moved: /api/admin/analytics/revenue-v2 handled by dashboardRouter if required
 
   /**
    * @swagger
@@ -5863,26 +5633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    *       200:
    *         description: Ad Performance метрики с summary данными
    */
-  app.get('/api/admin/analytics/ads-v2', async (req: Request, res: Response) => {
-    try {
-      console.log('[AdminAnalytics] Ads-v2 endpoint called');
-      const daysParam = req.query.days as string;
-      const days = Math.min(Math.max(parseInt(daysParam) || 30, 1), 365); // Limit 1-365 days
-      
-      console.log(`[AdminAnalytics] Getting ads data for ${days} days`);
-      // ClickHouse only - no fallback
-      throw new Error('Ads data available only via ClickHouse overview endpoint');
-      console.log(`[AdminAnalytics] Ads data retrieved: ${result.data.length} records`);
-      
-      res.json(result);
-    } catch (error: any) {
-      console.error("[AdminAnalytics] Error getting ads metrics:", error);
-      res.status(500).json({ 
-        error: 'Ошибка получения метрик рекламы',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  });
+  // Moved: /api/admin/analytics/ads-v2 handled by dashboardRouter if required
 
   // Debug endpoint для проверки структуры таблиц (только в development)
   if (process.env.NODE_ENV === 'development') {

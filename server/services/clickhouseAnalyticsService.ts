@@ -380,59 +380,59 @@ export class ClickHouseAnalyticsService {
         format: 'JSONEachRow'
       });
 
-      // Расчет retention метрик
+      // Расчет retention метрик - используем более простую логику как в trend
       const retentionResult = await client.query({
         query: `
           WITH 
             installs AS (
               SELECT DISTINCT user_id, min(date) as install_date
               FROM user_events
-              WHERE user_id NOT LIKE '999999999' 
-                AND user_id NOT LIKE '111907067370663920000'
+              WHERE user_id != '999999999' 
                 AND length(user_id) > 10
               GROUP BY user_id
-              HAVING install_date >= today() - INTERVAL 30 DAY
             ),
             day1_retention AS (
               SELECT DISTINCT i.user_id, 1 as is_retained
               FROM installs i
               JOIN user_events e ON i.user_id = e.user_id
-              WHERE e.date >= i.install_date + INTERVAL 1 DAY 
-                AND e.date < i.install_date + INTERVAL 2 DAY
+              WHERE e.date >= addDays(i.install_date, 1)
+                AND e.date < addDays(i.install_date, 2)
+              GROUP BY i.user_id
+              HAVING count(DISTINCT e.date) >= 1
             ),
             day3_retention AS (
               SELECT DISTINCT i.user_id, 1 as is_retained
               FROM installs i
               JOIN user_events e ON i.user_id = e.user_id
-              WHERE e.date >= i.install_date + INTERVAL 1 DAY 
-                AND e.date < i.install_date + INTERVAL 4 DAY
+              WHERE e.date >= addDays(i.install_date, 1)
+                AND e.date < addDays(i.install_date, 4)
               GROUP BY i.user_id
-              HAVING count(DISTINCT e.date) = 3
+              HAVING count(DISTINCT e.date) >= 3
             ),
             day7_retention AS (
               SELECT DISTINCT i.user_id, 1 as is_retained
               FROM installs i
               JOIN user_events e ON i.user_id = e.user_id
-              WHERE e.date >= i.install_date + INTERVAL 1 DAY 
-                AND e.date < i.install_date + INTERVAL 8 DAY
+              WHERE e.date >= addDays(i.install_date, 1)
+                AND e.date < addDays(i.install_date, 8)
               GROUP BY i.user_id
-              HAVING count(DISTINCT e.date) = 7
+              HAVING count(DISTINCT e.date) >= 7
             ),
             day30_retention AS (
               SELECT DISTINCT i.user_id, 1 as is_retained
               FROM installs i
               JOIN user_events e ON i.user_id = e.user_id
-              WHERE e.date >= i.install_date + INTERVAL 1 DAY 
-                AND e.date < i.install_date + INTERVAL 31 DAY
+              WHERE e.date >= addDays(i.install_date, 1)
+                AND e.date < addDays(i.install_date, 31)
               GROUP BY i.user_id
-              HAVING count(DISTINCT e.date) = 30
+              HAVING count(DISTINCT e.date) >= 30
             )
           SELECT 
             count(DISTINCT installs.user_id) as total_new_users,
-            sumIf(day1_retention.is_retained, installs.install_date <= today() - INTERVAL 1 DAY) as day1_retained,
-            sumIf(day3_retention.is_retained, installs.install_date <= today() - INTERVAL 3 DAY) as day3_retained,
-            sumIf(day7_retention.is_retained, installs.install_date <= today() - INTERVAL 7 DAY) as day7_retained,
-            sumIf(day30_retention.is_retained, installs.install_date <= today() - INTERVAL 30 DAY) as day30_retained
+            sum(day1_retention.is_retained) as day1_retained,
+            sum(day3_retention.is_retained) as day3_retained,
+            sum(day7_retention.is_retained) as day7_retained,
+            sum(day30_retention.is_retained) as day30_retained
           FROM installs
           LEFT JOIN day1_retention ON installs.user_id = day1_retention.user_id
           LEFT JOIN day3_retention ON installs.user_id = day3_retention.user_id

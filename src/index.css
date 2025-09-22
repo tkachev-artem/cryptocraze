@@ -265,26 +265,6 @@ input, textarea, [contenteditable="true"] {
   user-select: none;
 }
 
-/* Адаптивность для компьютерных экранов - мобильная ширина с синим фоном */
-@media (min-width: 426px) {
-  body {
-    background: #0C54EA !important;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    min-height: 100vh;
-    padding: 0;
-  }
-  
-  #root {
-    max-width: 425px;
-    width: 100%;
-    background-color: white;
-    min-height: 100vh;
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
-    position: relative;
-  }
-}
 
 /* На мобильных устройствах оставляем как есть */
 @media (max-width: 425px) {
@@ -319,4 +299,132 @@ img {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Стили для Tremor Chart Tooltip - более специфичные селекторы */
+.recharts-tooltip-wrapper {
+  z-index: 1000 !important;
+}
+
+.recharts-tooltip-wrapper .recharts-default-tooltip,
+.recharts-default-tooltip {
+  background-color: white !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  padding: 8px 12px !important;
+}
+
+.recharts-tooltip-wrapper .recharts-default-tooltip .recharts-tooltip-label,
+.recharts-default-tooltip .recharts-tooltip-label {
+  color: #374151 !important;
+  font-weight: 600 !important;
+  margin-bottom: 4px !important;
+}
+
+.recharts-tooltip-wrapper .recharts-default-tooltip .recharts-tooltip-item,
+.recharts-default-tooltip .recharts-tooltip-item {
+  color: #6b7280 !important;
+  padding: 0 !important;
+}
+
+.recharts-tooltip-wrapper .recharts-default-tooltip .recharts-tooltip-item-list,
+.recharts-default-tooltip .recharts-tooltip-item-list {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Дополнительные стили для Tremor */
+[data-tremor-theme] .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: white !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Красивая прокрутка в стиле Stripe Dashboard */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 3px;
+  transition: background-color 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+
+.custom-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Для таблиц добавляем более тонкую прокрутку */
+.table-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #e2e8f0 transparent;
+}
+
+.table-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.table-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 2px;
+}
+
+.table-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #e2e8f0;
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+}
+
+.table-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #cbd5e1;
+}
+
+/* Полноэкранный компонент без отступов */
+.fullscreen-no-padding {
+  margin: -1.5rem -1rem;
+  width: calc(100% + 2rem);
+  height: calc(100vh + 3rem);
+}
+
+@media (min-width: 640px) {
+  .fullscreen-no-padding {
+    margin: -1.5rem -1.5rem;
+    width: calc(100% + 3rem);
+  }
+}
+
+@media (min-width: 1024px) {
+  .fullscreen-no-padding {
+    margin: -1.5rem -2rem;
+    width: calc(100% + 4rem);
+  }
+}
+
+/* Стили для графика - только целые числа на оси Y */
+.chart-y-axis-whole-numbers .recharts-yAxis .recharts-cartesian-axis-tick:nth-child(even) {
+  display: none !important;
+}
+
+.chart-y-axis-whole-numbers .recharts-yAxis .recharts-cartesian-axis-tick-value {
+  font-size: 12px !important;
+  fill: #6b7280 !important;
 }

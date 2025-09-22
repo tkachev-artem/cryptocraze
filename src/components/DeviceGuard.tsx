@@ -12,13 +12,25 @@ export const DeviceGuard: React.FC<DeviceGuardProps> = ({ children }) => {
   useEffect(() => {
     const checkDevice = () => {
       const isPhone = isPhoneDevice();
-      setIsAllowedDevice(isPhone);
+      const isAdminRoute = window.location.pathname.startsWith('/admin');
+      
+      let isAllowed = false;
+      
+      if (isAdminRoute) {
+        // Админка доступна ТОЛЬКО с компьютера (НЕ телефон)
+        isAllowed = !isPhone;
+      } else {
+        // Остальные страницы ТОЛЬКО для телефонов
+        isAllowed = isPhone;
+      }
+      
+      setIsAllowedDevice(isAllowed);
       
       // Логируем для аналитики
-      console.log(`Device check: isPhone=${isPhone}, userAgent=${navigator.userAgent}`);
+      console.log(`Device check: isPhone=${isPhone}, isAdminRoute=${isAdminRoute}, isAllowed=${isAllowed}, userAgent=${navigator.userAgent}`);
       
       // Отправляем аналитику
-      if (isPhone) {
+      if (isAllowed) {
         analyticsService.trackDeviceAccepted();
       } else {
         const deviceType = /iPad/.test(navigator.userAgent) ? 'tablet' : 'desktop';
@@ -54,12 +66,22 @@ export const DeviceGuard: React.FC<DeviceGuardProps> = ({ children }) => {
 };
 
 const DesktopBlockedScreen: React.FC = () => {
+  const isAdminRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+  
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#0C54EA] px-4">
       <img src="/alert.svg" alt="" className="mb-6 w-16 h-16" />
       <h1 className="text-xl font-bold text-white text-center max-w-xs">
-        Только для мобильных устройств
+        {isAdminRoute 
+          ? "Админка доступна только с компьютера" 
+          : "Только для мобильных устройств"
+        }
       </h1>
+      {isAdminRoute && (
+        <p className="mt-4 text-white text-center max-w-sm opacity-75">
+          Попробуйте открыть эту ссылку на компьютере или ноутбуке
+        </p>
+      )}
     </div>
   );
 };

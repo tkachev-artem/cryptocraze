@@ -27,6 +27,7 @@ import {
 } from '../../shared/schema';
 import { eq, and, gte, lt, sql, desc, asc, count, sum, avg, max, min } from 'drizzle-orm';
 import { redisService } from './redisService.js';
+import { GeoLocationService } from './geoLocationService.js';
 
 /**
  * Comprehensive Analytics Service for CryptoCraze BI System
@@ -70,6 +71,9 @@ export class AnalyticsService {
     userAgent?: string,
     ipAddress?: string
   ): Promise<void> {
+    // Определяем страну по IP адресу
+    const country = ipAddress ? GeoLocationService.getCountryFromIP(ipAddress) : 'Unknown';
+    
     const event = {
       userId,
       eventType,
@@ -77,6 +81,7 @@ export class AnalyticsService {
       sessionId,
       userAgent,
       ipAddress,
+      country,
       timestamp: new Date(),
     };
 

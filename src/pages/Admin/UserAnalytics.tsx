@@ -115,7 +115,18 @@ const UserAnalytics: React.FC = () => {
         tooltipLabel: 'Trades',
         tooltipValue: (value: number) => value.toString()
       };
-    } else if (['sessions', 'screens_opened', 'avg_virtual_balance', 'daily_reward_claimed'].includes(metricId)) {
+    } else if (metricId === 'daily_reward_claimed') {
+      return {
+        categories: ['Rewards'],
+        colors: ['blue'],
+        showLegend: false,
+        showGradient: false,
+        showYAxis: true,
+        valueFormatter: (value: number) => value.toString(),
+        tooltipLabel: 'Rewards',
+        tooltipValue: (value: number) => value.toString()
+      };
+    } else if (['sessions', 'screens_opened', 'avg_virtual_balance'].includes(metricId)) {
       return {
         ...engagementChartConfig,
         tooltipLabel: (engagementChartConfig.tooltipLabel as Function)(metricId)
@@ -160,8 +171,7 @@ const UserAnalytics: React.FC = () => {
   // Define all metrics with their properties
   const allMetrics: Metric[] = [
     // User Acquisition
-    { id: 'installs', title: 'Installs', value: '—', icon: <Download className="w-4 h-4 text-white" />, color: 'bg-blue-500', category: 'Acquisition', description: 'Total app downloads' },
-    { id: 'first_open', title: 'First Open', value: '—', icon: <Eye className="w-4 h-4 text-white" />, color: 'bg-indigo-500', category: 'Acquisition', description: 'Users who opened app after install' },
+    { id: 'first_open', title: 'First Open', value: '—', icon: <Eye className="w-4 h-4 text-white" />, color: 'bg-indigo-500', category: 'Acquisition', description: 'Users who opened app' },
     { id: 'signup_rate', title: 'Signup Rate', value: '—', icon: <UserCheck className="w-4 h-4 text-white" />, color: 'bg-green-500', category: 'Acquisition', description: 'Conversion from visitor to user' },
 
     // Engagement (теперь импортируются)
@@ -436,11 +446,12 @@ const UserAnalytics: React.FC = () => {
             avg_virtual_balance: '—',
             sessions_total: data.totalEvents || '—', // Переименовано для ясности
             ads_watched: '—',
+            daily_reward_claimed: '—',
           };
 
           // Отдельные запросы для Engagement метрик, так как они возвращают { trend, totalValue }
           const engagementMetricRequests: Promise<any>[] = [];
-          const engagementMetricIds = ['sessions', 'screens_opened', 'trades_per_user', 'avg_virtual_balance', 'churn_rate', 'order_open', 'order_close'];
+          const engagementMetricIds = ['sessions', 'screens_opened', 'trades_per_user', 'avg_virtual_balance', 'churn_rate', 'order_open', 'order_close', 'daily_reward_claimed'];
 
           engagementMetricIds.forEach(id => {
             let url = `${config.api.baseUrl}/admin/dashboard/metric/${id}/trend?${params}`;
@@ -476,6 +487,8 @@ const UserAnalytics: React.FC = () => {
                 processedMetrics.order_open = result.reduce((sum: number, item: any) => sum + (item.value || 0), 0).toString();
               } else if (metricId === 'order_close') {
                 processedMetrics.order_close = result.reduce((sum: number, item: any) => sum + (item.value || 0), 0).toString();
+              } else if (metricId === 'daily_reward_claimed') {
+                processedMetrics.daily_reward_claimed = result.totalRewardsClaimed ? result.totalRewardsClaimed.toString() : '0';
               }
             }
           });

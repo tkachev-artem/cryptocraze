@@ -177,6 +177,14 @@ class SimpleDataCache {
         });
       }
 
+      // Получаем общее количество открытых сделок из PostgreSQL
+      const totalOpenOrdersResult = await db.execute(sql`SELECT COUNT(*) as count FROM deals WHERE status = 'open'`);
+      const totalOrdersOpen = Number((totalOpenOrdersResult.rows?.[0] as any)?.count || 0);
+
+      // Получаем общее количество закрытых сделок из PostgreSQL
+      const totalClosedOrdersResult = await db.execute(sql`SELECT COUNT(*) as count FROM deals WHERE status = 'closed'`);
+      const totalOrdersClosed = Number((totalClosedOrdersResult.rows?.[0] as any)?.count || 0);
+
       // Сохраняем данные
       this.data = {
         overview: {
@@ -188,7 +196,10 @@ class SimpleDataCache {
           d1Retention: this.calculateRetentionPercentage(retentionTable, 'd1Returned'),
           d3Retention: this.calculateRetentionPercentage(retentionTable, 'd3Returned'),
           d7Retention: this.calculateRetentionPercentage(retentionTable, 'd7Returned'),
-          d30Retention: this.calculateRetentionPercentage(retentionTable, 'd30Returned')
+          d30Retention: this.calculateRetentionPercentage(retentionTable, 'd30Returned'),
+          // Новые метрики по сделкам
+          orderOpenTotal: totalOrdersOpen,
+          orderCloseTotal: totalOrdersClosed,
         },
         daily: dailyData,
         trends: {
@@ -202,7 +213,7 @@ class SimpleDataCache {
       };
 
       this.lastUpdate = new Date();
-      console.log(`[SimpleCache] Data loaded successfully. Total users: ${this.data.overview.totalUsers}`);
+      console.log(`[SimpleCache] Data loaded successfully. Total users: ${this.data.overview.totalUsers}, Total Open Orders: ${this.data.overview.orderOpenTotal}, Total Closed Orders: ${this.data.overview.orderCloseTotal}`);
 
     } catch (error) {
       console.error('[SimpleCache] Error loading data:', error);
@@ -214,7 +225,9 @@ class SimpleDataCache {
           d1Retention: 0,
           d3Retention: 0,
           d7Retention: 0,
-          d30Retention: 0
+          d30Retention: 0,
+          orderOpenTotal: 0,
+          orderCloseTotal: 0,
         },
         daily: [],
         trends: { D1: [], D3: [], D7: [], D30: [], churn_rate: [] },
@@ -976,6 +989,49 @@ router.get('/metric/:metricId/trend', isAdminWithAuth, async (req, res) => {
 
       return res.json({ trend: out, totalTradingUsers: totalTradingUsers });
     }
+    else if (metricId === 'order_open' || metricId === 'order_close') {
+      const client = clickhouseAnalyticsService.getClient();
+      const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
+      const filteredUserIds = Array.from(userAttributesMap.keys());
+
+      if (filteredUserIds.length === 0) {
+        return res.json([]);
+      }
+
+      const isOpen = metricId === 'order_open';
+      const dateCol = isOpen ? deals.openedAt : deals.closedAt;
+      const statusCond = isOpen ? sql`${deals.status} = 'open'` : sql`${deals.status} = 'closed'`;
+
+      const whereConditions: any[] = [
+        inArray(deals.userId, filteredUserIds as string[]),
+        statusCond,
+        isOpen ? and(sql`${deals.openedAt} >= ${tsFrom}`, sql`${deals.openedAt} < ${tsTo}`) : and(sql`${deals.closedAt} >= ${tsFrom}`, sql`${deals.closedAt} < ${tsTo}`),
+      ];
+
+      const rows = await (db as any).select({
+        at: dateCol,
+      }).from(deals).where(and(...whereConditions));
+
+      const trendMap = new Map<string, number>();
+      for (const r of rows) {
+        if (r.at) {
+          const d = new Date(r.at);
+          const key = d.toISOString().slice(0, 10);
+          trendMap.set(key, (trendMap.get(key) || 0) + 1);
+        }
+      }
+
+      const out: any[] = [];
+      const seriesStart = new Date(`${startUTC}T00:00:00.000Z`);
+      seriesStart.setHours(0, 0, 0, 0);
+      const seriesEnd = new Date(`${endUTC}T00:00:00.000Z`);
+      seriesEnd.setHours(0, 0, 0, 0);
+      for (let d = new Date(seriesStart); d <= seriesEnd; d.setDate(d.getDate() + 1)) {
+        const key = d.toISOString().slice(0, 10);
+        out.push({ date: key, value: Math.floor(Number(trendMap.get(key) || 0)) });
+      }
+      return res.json(out);
+    }
     else if (metricId === 'avg_virtual_balance') {
       const client = clickhouseAnalyticsService.getClient();
 
@@ -1037,6 +1093,97 @@ router.get('/metric/:metricId/trend', isAdminWithAuth, async (req, res) => {
       const overallAvgBalance = overallAvgBalanceResult.length > 0 ? overallAvgBalanceResult[0].avg_balance : 0;
 
       return res.json({ trend: trendData, avgBalance: overallAvgBalance });
+    }
+    else if (metricId === 'churn_rate') {
+      const client = clickhouseAnalyticsService.getClient();
+      if (!client) {
+        return res.json({ trend: [], churnRate: 0 });
+      }
+ 
+      // Формируем когорту в PostgreSQL по фильтрам (как в D-метриках)
+      let pgWhere: any[] = [];
+      if (filters.userType) {
+        if (filters.userType === 'premium') pgWhere.push(sql`${users.isPremium} = true`);
+        else if (filters.userType === 'free') pgWhere.push(sql`${users.isPremium} = false`);
+      }
+      if (filters.search) {
+        pgWhere.push(sql`${users.email} ILIKE ${`%${filters.search}%`}`);
+      }
+ 
+      let pgCohortQuery: any;
+      if (filters.country && Array.isArray(filters.country) && filters.country.length > 0) {
+        // Через join на analytics для фильтра по стране
+        pgCohortQuery = (db as any)
+          .select({ id: users.id })
+          .from(users)
+          .leftJoin(analytics, sql`${users.id} = ${analytics.userId}`)
+          .where(and(
+            ...(pgWhere.length ? [and(...pgWhere)] : []),
+            sql`${analytics.country} IN (${sql.join(filters.country.map((c: string) => `'${c}'`), sql`,`)})`
+          ));
+      } else {
+        pgCohortQuery = (db as any)
+          .select({ id: users.id })
+          .from(users)
+          .where(pgWhere.length ? and(...pgWhere) : undefined);
+      }
+ 
+      const pgCohortRows = await pgCohortQuery;
+      const filteredUserIds = (pgCohortRows as any[]).map(r => r.id);
+      if (filteredUserIds.length === 0) {
+        return res.json({ trend: [], churnRate: 0 });
+      }
+ 
+       const userIdsList = filteredUserIds.map(id => `'${id}'`).join(',');
+ 
+       console.log('[Churn Trend] Debugging parameters:');
+       console.log('  startUTC:', startUTC);
+       console.log('  endUTC:', endUTC);
+       console.log('  userIdsList:', userIdsList);
+ 
+       // Тренд без коррелированных подзапросов, через предвычисленную таблицу возвратов
+       const churnTrendQuery = `
+         WITH all_users_first_event AS (
+             SELECT
+                 user_id,
+                 toDate(min(timestamp)) AS actual_install_date
+             FROM cryptocraze_analytics.user_events
+             WHERE user_id IN (${userIdsList})
+               AND user_id != '999999999' AND length(user_id) > 5
+             GROUP BY user_id
+         ),
+         cohort_installs AS (
+             SELECT
+                 user_id,
+                 actual_install_date AS install_date
+             FROM all_users_first_event
+             WHERE actual_install_date >= '${startUTC}' AND actual_install_date <= '${endUTC}'
+         ),
+         returned_users_for_cohort AS (
+             SELECT DISTINCT
+                 ue.user_id,
+                 ci.install_date AS cohort_install_date
+             FROM cryptocraze_analytics.user_events ue
+             INNER JOIN cohort_installs ci ON ue.user_id = ci.user_id
+             WHERE toDate(ue.timestamp) > ci.install_date -- Строго после дня установки
+               AND toDate(ue.timestamp) < addDays(ci.install_date, 30)
+         )
+         SELECT
+             ci.install_date AS date,
+             countDistinct(ci.user_id) AS total_installs_day,
+             countDistinct(ru.user_id) AS returned_day,
+             (total_installs_day - returned_day) AS not_returned_day
+         FROM cohort_installs ci
+         LEFT JOIN returned_users_for_cohort ru ON ci.user_id = ru.user_id AND ci.install_date = ru.cohort_install_date
+         GROUP BY date
+         ORDER BY date ASC
+       `;
+ 
+       console.log('[Churn Trend] ClickHouse Query:', churnTrendQuery);
+       const trendResp = await (client as any).query({ query: churnTrendQuery, format: 'JSONEachRow' });
+       const trendRows = (await trendResp.json()) as any[] || [];
+       const trend = trendRows.map(r => ({ date: r.date, value: Math.floor(Number(r.not_returned_day)) || 0 })) as any[];
+       return res.json(trend);
     }
 
     // Остальные метрики — как раньше (кешированные)
@@ -1793,6 +1940,240 @@ router.get('/table/trades_per_user', isAdminWithAuth, async (req, res) => {
   }
 });
 
+// Эндпоинт для таблицы Orders Open
+router.get('/table/orders_open', isAdminWithAuth, async (req, res) => {
+  try {
+    const page = parseInt((req.query.page as string) || '1');
+    const limit = parseInt((req.query.limit as string) || (req.query.size as string) || '20');
+    const offset = (page - 1) * limit;
+    const startParam = (req.query.startDate as string) || new Date(Date.now() - 6 * 86400000).toISOString();
+    const endParam = (req.query.endDate as string) || new Date().toISOString();
+    const startDateObj = new Date(startParam);
+    const endDateObj = new Date(endParam);
+
+    const formatUTCDate = (d: Date) => d.toISOString().slice(0, 10);
+    const startUTC = formatUTCDate(startDateObj);
+    const endUTC = formatUTCDate(endDateObj);
+    const nextDayAfterEndUTC = new Date(`${endUTC}T00:00:00.000Z`);
+    nextDayAfterEndUTC.setUTCDate(nextDayAfterEndUTC.getUTCDate() + 1);
+    const endNextUTC = nextDayAfterEndUTC.toISOString().slice(0, 10);
+
+    const tsFrom = `${startUTC} 00:00:00`;
+    const tsTo = `${endNextUTC} 00:00:00`;
+
+    const filters = {
+      userType: req.query.userType as string,
+      country: req.query.country ? (req.query.country as string).split(',') : [],
+      search: req.query.search as string,
+    };
+
+    const client = clickhouseAnalyticsService.getClient();
+    const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
+    const filteredUserIds = Array.from(userAttributesMap.keys());
+
+    if (filteredUserIds.length === 0) {
+      return res.json({ data: [], total: 0, page, limit, totalPages: 0 });
+    }
+
+    const whereConditions: any[] = [
+      inArray(deals.userId, filteredUserIds as string[]),
+      sql`${deals.status} = 'open'`,
+      and(sql`${deals.openedAt} >= ${tsFrom}`, sql`${deals.openedAt} < ${tsTo}`),
+    ];
+
+    const dealsQuery = (db as any).select({
+      id: deals.id,
+      userId: deals.userId,
+      symbol: deals.symbol,
+      direction: deals.direction,
+      amount: deals.amount,
+      multiplier: deals.multiplier,
+      openPrice: deals.openPrice,
+      takeProfit: deals.takeProfit,
+      stopLoss: deals.stopLoss,
+      openedAt: sql`(${deals.openedAt} AT TIME ZONE 'UTC')` as any,
+      status: deals.status,
+    })
+    .from(deals)
+    .where(and(...whereConditions))
+    .orderBy(desc(deals.openedAt))
+    .limit(limit)
+    .offset(offset);
+
+    const countDealsQuery = (db as any).select({ count: sql<number>`count(*)` })
+      .from(deals)
+      .where(and(...whereConditions));
+
+    const [dealsData, totalDealsResult] = await Promise.all([
+      dealsQuery,
+      countDealsQuery
+    ]);
+
+    // Получаем текущие цены для всех задействованных символов
+    const uniqueSymbols = Array.from(new Set((dealsData as any[]).map(d => (d.symbol || '').toString().toUpperCase()).filter(Boolean)));
+    let symbolToPrice: Record<string, number> = {};
+    try {
+      // Используем локальный эндпоинт /api/prices, чтобы переиспользовать UnifiedPriceService и fallback-логику
+      const params = new URLSearchParams({ symbols: uniqueSymbols.join(',') });
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const resp = await fetch(`${baseUrl}/api/prices?${params.toString()}` as any);
+      if (resp.ok) {
+        const body = await resp.json() as any;
+        if (body && body.data && typeof body.data === 'object') {
+          for (const [sym, val] of Object.entries(body.data) as [string, any][]) {
+            const priceNum = Number((val as any)?.price);
+            if (Number.isFinite(priceNum)) symbolToPrice[sym.toUpperCase()] = priceNum;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Orders Open: failed to fetch current prices, proceeding without live price');
+    }
+
+    const total = (totalDealsResult as any[])[0]?.count || 0;
+
+    const rows = (dealsData as any[]).map((d: any) => {
+      const ud = userAttributesMap.get(d.userId) || {};
+      const symbol = (d.symbol || '').toString().toUpperCase();
+      const currentPrice = symbolToPrice[symbol];
+      const openPriceNum = Number(d.openPrice);
+      const amountNum = Number(d.amount);
+      const multiplierNum = Number(d.multiplier);
+
+      let potentialProfit: number | null = null;
+      if (Number.isFinite(currentPrice) && Number.isFinite(openPriceNum) && Number.isFinite(amountNum) && Number.isFinite(multiplierNum)) {
+        const isUp = d.direction === 'up';
+        const ratio = isUp
+          ? (currentPrice - openPriceNum) / openPriceNum
+          : (openPriceNum - currentPrice) / openPriceNum;
+        const pnl = ratio * amountNum * multiplierNum;
+        const commission = amountNum * multiplierNum * 0.0005; // 0.05%
+        potentialProfit = pnl - commission;
+      }
+      return {
+        userId: d.userId,
+        email: ud.email || null,
+        country: ud.country || 'Unknown',
+        isPremium: !!ud.isPremium,
+        tradeType: d.direction,
+        tradeSize: parseFloat(d.amount),
+        openPrice: parseFloat(d.openPrice),
+        multiplier: d.multiplier,
+        symbol,
+        currentPrice: Number.isFinite(currentPrice) ? currentPrice : null,
+        potentialProfit,
+        eventDate: d.openedAt,
+      };
+    });
+
+    res.json({ data: rows, total, page, limit, totalPages: Math.ceil(total / limit) });
+  } catch (error) {
+    console.error('Orders Open table error:', error);
+    res.status(500).json({ error: 'Failed to get orders open table' });
+  }
+});
+
+// Эндпоинт для таблицы Orders Closed
+router.get('/table/orders_closed', isAdminWithAuth, async (req, res) => {
+  try {
+    const page = parseInt((req.query.page as string) || '1');
+    const limit = parseInt((req.query.limit as string) || (req.query.size as string) || '20');
+    const offset = (page - 1) * limit;
+    const startParam = (req.query.startDate as string) || new Date(Date.now() - 6 * 86400000).toISOString();
+    const endParam = (req.query.endDate as string) || new Date().toISOString();
+    const startDateObj = new Date(startParam);
+    const endDateObj = new Date(endParam);
+
+    const formatUTCDate = (d: Date) => d.toISOString().slice(0, 10);
+    const startUTC = formatUTCDate(startDateObj);
+    const endUTC = formatUTCDate(endDateObj);
+    const nextDayAfterEndUTC = new Date(`${endUTC}T00:00:00.000Z`);
+    nextDayAfterEndUTC.setUTCDate(nextDayAfterEndUTC.getUTCDate() + 1);
+    const endNextUTC = nextDayAfterEndUTC.toISOString().slice(0, 10);
+
+    const tsFrom = `${startUTC} 00:00:00`;
+    const tsTo = `${endNextUTC} 00:00:00`;
+
+    const filters = {
+      userType: req.query.userType as string,
+      country: req.query.country ? (req.query.country as string).split(',') : [],
+      search: req.query.search as string,
+      tradeActivity: req.query.tradeActivity as string,
+    };
+
+    const client = clickhouseAnalyticsService.getClient();
+    const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
+    const filteredUserIds = Array.from(userAttributesMap.keys());
+
+    if (filteredUserIds.length === 0) {
+      return res.json({ data: [], total: 0, page, limit, totalPages: 0 });
+    }
+
+    const whereConditions: any[] = [
+      inArray(deals.userId, filteredUserIds as string[]),
+      sql`${deals.status} = 'closed'`,
+      and(sql`${deals.closedAt} >= ${tsFrom}`, sql`${deals.closedAt} < ${tsTo}`),
+    ];
+    if (filters.tradeActivity === 'profit') whereConditions.push(sql`${deals.profit} > 0`);
+    else if (filters.tradeActivity === 'loss') whereConditions.push(sql`${deals.profit} < 0`);
+
+    const dealsQuery = (db as any).select({
+      id: deals.id,
+      userId: deals.userId,
+      symbol: deals.symbol,
+      direction: deals.direction,
+      amount: deals.amount,
+      multiplier: deals.multiplier,
+      openPrice: deals.openPrice,
+      takeProfit: deals.takeProfit,
+      stopLoss: deals.stopLoss,
+      openedAt: sql`(${deals.openedAt} AT TIME ZONE 'UTC')` as any,
+      status: deals.status,
+      closedAt: sql`(${deals.closedAt} AT TIME ZONE 'UTC')` as any,
+      closePrice: deals.closePrice,
+      profit: deals.profit,
+    })
+    .from(deals)
+    .where(and(...whereConditions))
+    .orderBy(desc(deals.closedAt))
+    .limit(limit)
+    .offset(offset);
+
+    const countDealsQuery = (db as any).select({ count: sql<number>`count(*)` })
+      .from(deals)
+      .where(and(...whereConditions));
+
+    const [dealsData, totalDealsResult] = await Promise.all([
+      dealsQuery,
+      countDealsQuery
+    ]);
+
+    const total = (totalDealsResult as any[])[0]?.count || 0;
+
+    const rows = dealsData.map((d: any) => {
+      const ud = userAttributesMap.get(d.userId) || {};
+      return {
+        userId: d.userId,
+        email: ud.email || null,
+        country: ud.country || 'Unknown',
+        isPremium: !!ud.isPremium,
+        tradeType: d.direction,
+        tradeSize: parseFloat(d.amount),
+        openPrice: parseFloat(d.openPrice),
+        closePrice: d.closePrice ? parseFloat(d.closePrice) : null,
+        profit: d.profit ? parseFloat(d.profit) : null,
+        multiplier: d.multiplier,
+        eventDate: d.closedAt || d.openedAt,
+      };
+    });
+
+    res.json({ data: rows, total, page, limit, totalPages: Math.ceil(total / limit) });
+  } catch (error) {
+    console.error('Orders Closed table error:', error);
+    res.status(500).json({ error: 'Failed to get orders closed table' });
+  }
+});
+
 // Остальные эндпоинты (оставляем как есть для совместимости)
 router.get('/overview', isAdminWithAuth, async (req, res) => {
   try {
@@ -1894,6 +2275,74 @@ router.get('/chart/trades_by_date', isAdminWithAuth, async (req, res) => {
   } catch (error) {
     console.error('Trades by date chart error:', error);
     res.status(500).json({ error: 'Failed to get trades by date chart data' });
+  }
+});
+
+// Новый эндпоинт: открытые сделки по датам
+router.get('/chart/orders_open_by_date', isAdminWithAuth, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query as { startDate: string; endDate: string };
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'startDate and endDate are required' });
+    }
+    const formatUTCDate = (d: Date) => new Date(d).toISOString().slice(0, 10);
+    const startUTC = formatUTCDate(new Date(startDate));
+    const endUTC = formatUTCDate(new Date(endDate));
+    const nextDayAfterEndUTC = new Date(`${endUTC}T00:00:00.000Z`);
+    nextDayAfterEndUTC.setUTCDate(nextDayAfterEndUTC.getUTCDate() + 1);
+    const endNextUTC = nextDayAfterEndUTC.toISOString().slice(0, 10);
+
+    const tsFrom = `${startUTC} 00:00:00`;
+    const tsTo = `${endNextUTC} 00:00:00`;
+    const filters = {
+      userType: req.query.userType as string,
+      country: req.query.country ? (req.query.country as string).split(',') : [],
+      search: req.query.search as string,
+    };
+    const client = clickhouseAnalyticsService.getClient();
+    const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
+    const filteredUserIds = Array.from(userAttributesMap.keys());
+    if (filteredUserIds.length === 0) return res.json([]);
+
+    const result = await adminAnalyticsService.getOrdersCountByDate(startDate, endDate, filteredUserIds, 'open');
+    res.json(result.data);
+  } catch (error) {
+    console.error('Orders open by date chart error:', error);
+    res.status(500).json({ error: 'Failed to get orders open chart data' });
+  }
+});
+
+// Новый эндпоинт: закрытые сделки по датам
+router.get('/chart/orders_closed_by_date', isAdminWithAuth, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query as { startDate: string; endDate: string };
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'startDate and endDate are required' });
+    }
+    const formatUTCDate = (d: Date) => new Date(d).toISOString().slice(0, 10);
+    const startUTC = formatUTCDate(new Date(startDate));
+    const endUTC = formatUTCDate(new Date(endDate));
+    const nextDayAfterEndUTC = new Date(`${endUTC}T00:00:00.000Z`);
+    nextDayAfterEndUTC.setUTCDate(nextDayAfterEndUTC.getUTCDate() + 1);
+    const endNextUTC = nextDayAfterEndUTC.toISOString().slice(0, 10);
+
+    const tsFrom = `${startUTC} 00:00:00`;
+    const tsTo = `${endNextUTC} 00:00:00`;
+    const filters = {
+      userType: req.query.userType as string,
+      country: req.query.country ? (req.query.country as string).split(',') : [],
+      search: req.query.search as string,
+    };
+    const client = clickhouseAnalyticsService.getClient();
+    const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
+    const filteredUserIds = Array.from(userAttributesMap.keys());
+    if (filteredUserIds.length === 0) return res.json([]);
+
+    const result = await adminAnalyticsService.getOrdersCountByDate(startDate, endDate, filteredUserIds, 'closed');
+    res.json(result.data);
+  } catch (error) {
+    console.error('Orders closed by date chart error:', error);
+    res.status(500).json({ error: 'Failed to get orders closed chart data' });
   }
 });
 

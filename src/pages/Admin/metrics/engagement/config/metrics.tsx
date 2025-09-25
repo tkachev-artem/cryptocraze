@@ -20,15 +20,6 @@ export const engagementMetrics = [
         description: 'Avg screens per session'
     },
     {
-        id: 'trades_per_user',
-        title: 'Trades',
-        value: '—',
-        icon: <MousePointer className="w-4 h-4 text-white" />,
-        color: 'bg-cyan-500',
-        category: 'Engagement',
-        description: 'All users trades'
-    },
-    {
         id: 'avg_virtual_balance',
         title: 'Virtual Balance',
         value: '—',

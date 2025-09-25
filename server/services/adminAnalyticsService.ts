@@ -80,7 +80,10 @@ export class AdminAnalyticsService {
         db.execute(sql`SELECT COUNT(*) as count FROM users`),
         
         // Активные сделки
-        db.execute(sql`SELECT COUNT(*) as count FROM deals WHERE status = 'open'`)
+        db.execute(sql`SELECT COUNT(*) as count FROM deals WHERE status = 'open'`),
+        
+        // Закрытые сделки
+        db.execute(sql`SELECT COUNT(*) as count FROM deals WHERE status = 'closed'`)
       ]);
 
       // Безопасное извлечение данных с проверкой наличия
@@ -378,6 +381,50 @@ export class AdminAnalyticsService {
       return {
         data: [],
         error: 'Failed to retrieve trades count data'
+      };
+    }
+  }
+
+  /**
+   * Получить количество сделок по статусу (открытые/закрытые) по датам за период
+   */
+  async getOrdersCountByDate(startDate: string, endDate: string, filteredUserIds: string[], status: 'open' | 'closed') {
+    try {
+      console.log(`[AdminAnalytics] Getting ${status} orders count by date for range: ${startDate} to ${endDate}. Users: ${filteredUserIds.length}`);
+
+      let whereConditions = [
+        `deals.status = '${status}'`,
+        `deals.user_id IN (${filteredUserIds.map(id => `'${id}'`).join(',')})` // Применяем фильтр по user_id
+      ];
+
+      const dateColumn = status === 'open' ? 'opened_at' : 'closed_at';
+      whereConditions.push(`deals.${dateColumn} >= ('${startDate}'::timestamp AT TIME ZONE 'UTC')::timestamp without time zone`);
+      whereConditions.push(`deals.${dateColumn} <= ('${endDate}'::timestamp AT TIME ZONE 'UTC')::timestamp without time zone`);
+
+      const result = await db.execute(sql`
+        SELECT 
+          DATE(deals.${sql.raw(dateColumn)} AT TIME ZONE 'UTC') as date,
+          COUNT(*) as count
+        FROM deals
+        WHERE ${sql.raw(whereConditions.join(' AND '))}
+        GROUP BY DATE(deals.${sql.raw(dateColumn)} AT TIME ZONE 'UTC')
+        ORDER BY DATE(deals.${sql.raw(dateColumn)} AT TIME ZONE 'UTC') ASC
+      `);
+
+      const data = result.rows?.map((row: any) => ({
+        date: this.formatDate(row.date),
+        count: this.safeNumber(row.count),
+      })) || [];
+
+      console.log(`[AdminAnalytics] Retrieved ${data.length} ${status} order count records`);
+
+      return { data };
+
+    } catch (error) {
+      console.error(`[AdminAnalytics] Error in getOrdersCountByDate for status ${status}:`, error);
+      return {
+        data: [],
+        error: 'Failed to retrieve order count data'
       };
     }
   }

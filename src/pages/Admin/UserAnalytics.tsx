@@ -163,8 +163,7 @@ const UserAnalytics: React.FC = () => {
     { id: 'installs', title: 'Installs', value: '—', icon: <Download className="w-4 h-4 text-white" />, color: 'bg-blue-500', category: 'Acquisition', description: 'Total app downloads' },
     { id: 'first_open', title: 'First Open', value: '—', icon: <Eye className="w-4 h-4 text-white" />, color: 'bg-indigo-500', category: 'Acquisition', description: 'Users who opened app after install' },
     { id: 'signup_rate', title: 'Signup Rate', value: '—', icon: <UserCheck className="w-4 h-4 text-white" />, color: 'bg-green-500', category: 'Acquisition', description: 'Conversion from visitor to user' },
-    { id: 'trade_open_rate', title: 'Trade Open Rate', value: '—', icon: <TrendingUp className="w-4 h-4 text-white" />, color: 'bg-emerald-500', category: 'Acquisition', description: 'Users who started first trade' },
-    
+
     // Engagement (теперь импортируются)
     ...engagementMetrics,
     
@@ -175,22 +174,18 @@ const UserAnalytics: React.FC = () => {
     { id: 'D30', title: 'D30 Retention', value: '0%', icon: <RotateCcw className="w-4 h-4 text-white" />, color: 'bg-lime-500', category: 'Retention', description: 'Active for 30+ days' },
     { id: 'churn_rate', title: 'Churn Rate', value: '—', icon: <UserMinus className="w-4 h-4 text-white" />, color: 'bg-red-500', category: 'Retention', description: 'Who stopped using app' },
     
-    // Tutorialи
+    // Tutorial
     { id: 'tutorial_start', title: 'Tutorial Start', value: '—', icon: <GraduationCap className="w-4 h-4 text-white" />, color: 'bg-blue-600', category: 'Tutorial', description: 'Users who started tutorial' },
     { id: 'tutorial_complete', title: 'Tutorial Complete', value: '—', icon: <CheckCircle className="w-4 h-4 text-white" />, color: 'bg-green-600', category: 'Tutorial', description: 'Users who completed tutorial' },
-    { id: 'tutorial_skip_rate', title: 'Tutorial Skip Rate', value: '—', icon: <SkipForward className="w-4 h-4 text-white" />, color: 'bg-gray-500', category: 'Tutorial', description: 'Users who skipped tutorial' },
 
     // Pro Tutorial
     { id: 'pro_tutorial_start', title: 'Pro Tutorial Start', value: '—', icon: <GraduationCap className="w-4 h-4 text-white" />, color: 'bg-purple-600', category: 'Tutorial', description: 'Premium users who started pro tutorial' },
     { id: 'pro_tutorial_complete', title: 'Pro Tutorial Complete', value: '—', icon: <CheckCircle className="w-4 h-4 text-white" />, color: 'bg-indigo-600', category: 'Tutorial', description: 'Premium users who completed pro tutorial' },
-    { id: 'pro_tutorial_skip_rate', title: 'Pro Tutorial Skip Rate', value: '—', icon: <SkipForward className="w-4 h-4 text-white" />, color: 'bg-slate-600', category: 'Tutorial', description: 'Premium users who skipped pro tutorial' },
     
     // Trading
     { id: 'trades_per_user', title: 'Trades/User', value: '0', icon: <DollarSign className="w-4 h-4 text-white" />, color: 'bg-fuchsia-600', category: 'Trading', description: 'Number of trades per user' },
-    { id: 'price_stream_start', title: 'Price Stream Start', value: '—', icon: <Activity className="w-4 h-4 text-white" />, color: 'bg-pink-500', category: 'Trading', description: 'Users who viewed live prices' },
     { id: 'order_open', title: 'Order Open', value: '—', icon: <ArrowUpRight className="w-4 h-4 text-white" />, color: 'bg-green-600', category: 'Trading', description: 'Total orders placed' },
-    { id: 'order_close_auto', title: 'Order Close Auto', value: '—', icon: <ArrowDownRight className="w-4 h-4 text-white" />, color: 'bg-orange-600', category: 'Trading', description: 'Orders closed automatically' },
-    { id: 'order_close_manual', title: 'Order Close Manual', value: '—', icon: <Hand className="w-4 h-4 text-white" />, color: 'bg-blue-600', category: 'Trading', description: 'Orders closed manually by users' },
+    { id: 'order_close', title: 'Order Close', value: '—', icon: <Hand className="w-4 h-4 text-white" />, color: 'bg-blue-600', category: 'Trading', description: 'Orders closed manually by users' },
     
     // Gamification & Ads
     { id: 'daily_reward_claimed', title: 'Daily Reward', value: '—', icon: <Gift className="w-4 h-4 text-white" />, color: 'bg-yellow-600', category: 'Gamification', description: 'Users who claimed daily rewards' },
@@ -220,6 +215,10 @@ const UserAnalytics: React.FC = () => {
 
       if (metricId === 'trades_per_user') {
         apiUrl = `${config.api.baseUrl}/admin/dashboard/chart/trades_by_date?${params}`;
+      } else if (metricId === 'order_open') {
+        apiUrl = `${config.api.baseUrl}/admin/dashboard/metric/order_open/trend?${params}`;
+      } else if (metricId === 'order_close') {
+        apiUrl = `${config.api.baseUrl}/admin/dashboard/metric/order_close/trend?${params}`;
       }
 
       const response = await fetch(apiUrl, {
@@ -272,6 +271,13 @@ const UserAnalytics: React.FC = () => {
           const currentMultiplier = maxDataValue < 3 ? 3 : (maxDataValue <= 5 ? 2 : (maxDataValue > 10 ? 1 : Y_AXIS_MULTIPLIER));
           const calculatedMaxValue = Math.ceil(maxDataValue * currentMultiplier);
           setDynamicYAxisMaxValue(calculatedMaxValue > 0 ? calculatedMaxValue : 1); // Убедимся, что это не 0
+        } else if (metricId === 'order_open' || metricId === 'order_close') {
+          // generic trend array [{date, value}]
+          trendData = data;
+          const maxDataValue = trendData.reduce((max: number, item: any) => Math.max(max, item.value || 0), 0);
+          const currentMultiplier = maxDataValue < 3 ? 3 : (maxDataValue <= 5 ? 2 : (maxDataValue > 10 ? 1 : Y_AXIS_MULTIPLIER));
+          const calculatedMaxValue = Math.ceil(maxDataValue * currentMultiplier);
+          setDynamicYAxisMaxValue(calculatedMaxValue > 0 ? calculatedMaxValue : 1);
         } else {
           trendData = data; // Для tutorial и retention, где data - это уже массив тренда
           // Если метрика не попадает в перечисленные выше, используем максимальное значение из данных
@@ -431,7 +437,7 @@ const UserAnalytics: React.FC = () => {
 
           // Отдельные запросы для Engagement метрик, так как они возвращают { trend, totalValue }
           const engagementMetricRequests: Promise<any>[] = [];
-          const engagementMetricIds = ['sessions', 'screens_opened', 'trades_per_user', 'avg_virtual_balance', 'churn_rate'];
+          const engagementMetricIds = ['sessions', 'screens_opened', 'trades_per_user', 'avg_virtual_balance', 'churn_rate', 'order_open', 'order_close'];
 
           engagementMetricIds.forEach(id => {
             let url = `${config.api.baseUrl}/admin/dashboard/metric/${id}/trend?${params}`;
@@ -463,6 +469,10 @@ const UserAnalytics: React.FC = () => {
               } else if (metricId === 'churn_rate') {
                 // Для churn_rate мы ожидаем тренд с процентами, берем последнее значение
                 processedMetrics.churn_rate = result.length > 0 ? `${result[result.length - 1].value}%` : '0%';
+              } else if (metricId === 'order_open') {
+                processedMetrics.order_open = result.reduce((sum: number, item: any) => sum + (item.value || 0), 0).toString();
+              } else if (metricId === 'order_close') {
+                processedMetrics.order_close = result.reduce((sum: number, item: any) => sum + (item.value || 0), 0).toString();
               }
             }
           });

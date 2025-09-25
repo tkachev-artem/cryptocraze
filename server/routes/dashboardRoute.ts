@@ -1151,8 +1151,15 @@ router.get('/table/virtual_balance', isAdminWithAuth, async (req, res) => {
       total = totalResult[0]?.count || 0;
     }
 
+    // Используем карту атрибутов, рассчитанную выше
+    const attrsMap: Map<string, any> = new Map<string, any>();
+    if (client) {
+      const tmpMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
+      tmpMap.forEach((v: any, k: string) => attrsMap.set(k, v));
+    }
+
     const rows = userData.map((row: any) => {
-      const userAttrs = dataCache.getData().userAttributesMap?.get(row.userId) || {};
+      const userAttrs = attrsMap.get(row.userId) || {};
       return {
         userId: row.userId,
         email: row.email || '—',

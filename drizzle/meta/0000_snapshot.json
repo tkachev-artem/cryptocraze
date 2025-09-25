@@ -1,5 +1,5 @@
 {
-  "id": "23376bd4-f23b-455c-9f4a-e2fe51fe1fb9",
+  "id": "df1c6a60-64b7-471c-90d6-e4e30014fde7",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -904,6 +904,12 @@
           "type": "varchar(45)",
           "primaryKey": false,
           "notNull": false
+        },
+        "country": {
+          "name": "country",
+          "type": "varchar(2)",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -957,6 +963,21 @@
           "columns": [
             {
               "expression": "session_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_analytics_country": {
+          "name": "idx_analytics_country",
+          "columns": [
+            {
+              "expression": "country",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -3327,6 +3348,19 @@
         },
         "rewards_count": {
           "name": "rewards_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "last_claim": {
+          "name": "last_claim",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "streak": {
+          "name": "streak",
           "type": "integer",
           "primaryKey": false,
           "notNull": false,

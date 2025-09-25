@@ -315,22 +315,37 @@ export function Trials() {
     userId: user?.id,
   }), [user?.balance, user?.coins, user?.energyTasksBonus, user?.id]);
 
-  // Мемоизируем список заданий с фильтрацией премиум заданий
-  const tasksList = useMemo(() => 
-    tasks.filter(task => {
+  // Мемоизируем список заданий с заменой премиум заданий
+  const tasksList = useMemo(() => {
+    const filteredTasks = tasks.filter(task => {
       // Исключаем завершенные и скрытые задания
       if (task.status === 'completed' || hiddenTaskIds.has(task.id)) {
         return false;
       }
       
-      // Исключаем премиум задания для пользователей без премиума
+      return true;
+    });
+
+    // Заменяем премиум задания на обычные для пользователей без премиума
+    return filteredTasks.map(task => {
       const isPremiumTask = (task as any).taskType?.startsWith('premium_');
       if (isPremiumTask && !isPremium) {
-        return false;
+        // Заменяем премиум задание на обычное
+        return {
+          ...task,
+          taskType: 'daily_bonus', // Заменяем на daily_bonus
+          title: 'tasks.dailyBonus.title',
+          description: 'tasks.dailyBonus.description',
+          reward: {
+            type: 'money',
+            amount: '750'
+          },
+          icon: '/trials/energy.svg'
+        };
       }
-      
-      return true;
-    }), 
+      return task;
+    });
+  }, 
     [tasks, hiddenTaskIds, isPremium]
   );
 

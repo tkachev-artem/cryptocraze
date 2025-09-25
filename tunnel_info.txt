@@ -1,4 +1,4 @@
-TUNNEL_URL=https://index-fort-paintball-cedar.trycloudflare.com
-TUNNEL_PID=75971
-STARTED_AT=Thu Sep 25 20:47:20 MSK 2025
+TUNNEL_URL=https://mentor-ultimate-rider-pike.trycloudflare.com
+TUNNEL_PID=67680
+STARTED_AT=Thu Sep 25 22:48:25 MSK 2025
 LOG_FILE=/Users/artemtkacev/Desktop/cc-games/cryptocraze/tunnel.log

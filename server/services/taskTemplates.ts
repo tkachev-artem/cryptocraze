@@ -125,9 +125,9 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
     category: 'daily',
     rarity: 'common',
     expiresInHours: 24,
-    cooldownMinutes: 180, // 3 часа
-    maxPerDay: 3,
-    weight: 25
+    cooldownMinutes: 1440, // 24 часа
+    maxPerDay: 1,
+    weight: 50
   },
 
   // 7. Активный трейдер дня

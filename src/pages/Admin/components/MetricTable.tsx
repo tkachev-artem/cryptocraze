@@ -87,6 +87,8 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
         endpoint = '/admin/dashboard/table/orders_closed';
       } else if (metricId === 'avg_virtual_balance') {
         endpoint = '/admin/dashboard/table/virtual_balance';
+      } else if (metricId === 'daily_reward_claimed') {
+        endpoint = '/admin/dashboard/table/daily_reward_claimed';
       } else {
         // Placeholder for other metrics
         setData([]);
@@ -736,6 +738,53 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
                     <span className="text-gray-500">—</span>
                   )}
                 </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+
+    // Таблица для Daily Reward Claimed
+    if (metricId === 'daily_reward_claimed') {
+      return (
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="text-left py-4 px-4 font-bold text-gray-900">User ID</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Region</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Type</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Amount</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Claimed At</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row) => (
+              <tr key={row.userId + (row.eventDate || '')} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                <td className="py-4 px-4 text-sm text-gray-900 font-mono">{row.userId}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">
+                  <div className="flex items-center gap-2">
+                    {row.country && row.country !== 'Unknown' && (
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded font-medium">
+                        {row.country}
+                      </span>
+                    )}
+                    <span>{row.country || 'Unknown'}</span>
+                  </div>
+                </td>
+                <td className="py-4 px-4 text-sm">
+                  {row.isPremium ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-black bg-[#F5A600] rounded-full">
+                      PRO
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
+                      FREE
+                    </span>
+                  )}
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.amount != null ? `$${Number(row.amount).toFixed(2)}` : '—'}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.eventDate ? new Date(row.eventDate).toUTCString() : '—'}</td>
               </tr>
             ))}
           </tbody>

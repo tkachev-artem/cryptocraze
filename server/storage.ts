@@ -82,6 +82,28 @@ export class DatabaseStorage implements IStorage {
       userAgent,
       ipAddress,
     });
+
+    // Also forward to ClickHouse for important events
+    if (eventType === 'daily_reward_claimed' || 
+        eventType === 'tutorial_progress' || 
+        eventType === 'trade_open' || 
+        eventType === 'ad_watch' || 
+        eventType === 'page_view' ||
+        eventType === 'login' ||
+        eventType === 'engagement') {
+      try {
+        const { clickhouseAnalyticsService } = await import('./services/clickhouseAnalyticsService.js');
+        await clickhouseAnalyticsService.logUserEvent(
+          userId || "999999999",
+          eventType,
+          eventData || {},
+          sessionId
+        );
+        console.log(`[Storage] Forwarded ${eventType} event to ClickHouse for user ${userId}`);
+      } catch (error) {
+        console.warn(`[Storage] Failed to forward ${eventType} event to ClickHouse:`, error);
+      }
+    }
   }
 
   // User balance operations

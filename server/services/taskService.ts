@@ -385,12 +385,53 @@ export class TaskService {
 
       console.log(`[TaskService] Gave reward: ${task.rewardType} ${task.rewardAmount}`);
 
+      // Record daily_reward_claimed event for daily_bonus tasks
+      if (task.taskType === 'daily_bonus') {
+        try {
+          const { storage } = await import('../storage.js');
+          await storage.recordAnalyticsEvent(userId, 'daily_reward_claimed', {
+            amount: task.rewardAmount,
+            taskType: 'daily_bonus',
+            source: 'task_completion'
+          });
+          console.log(`[TaskService] Recorded daily_reward_claimed event for daily_bonus task`);
+        } catch (error) {
+          console.error(`[TaskService] Failed to record daily_reward_claimed event:`, error);
+        }
+      }
+
       // Create new task if needed
       let newTask: TaskData | undefined;
       const activeCount = await this.getActiveTasksCount(userId);
       if (activeCount < this.MAX_ACTIVE_TASKS) {
-        newTask = await this.createRandomTask(userId);
-        console.log(`[TaskService] Created new task: ${newTask?.title || 'none'}`);
+        // Special logic: if user can receive daily_bonus, prioritize it
+        const canReceiveDailyBonus = await this.canUserReceiveTask(userId, 'daily_bonus', 1440, 1);
+        if (canReceiveDailyBonus) {
+          console.log(`[TaskService] User can receive daily_bonus, creating it instead of random task`);
+          const dailyBonusTemplate = StaticTaskTemplateService.getTemplateById('daily_bonus');
+          if (dailyBonusTemplate) {
+            const options: CreateTaskOptions = {
+              taskType: dailyBonusTemplate.taskType,
+              title: dailyBonusTemplate.title,
+              description: dailyBonusTemplate.description,
+              rewardType: dailyBonusTemplate.rewardType as 'money' | 'coins' | 'energy' | 'mixed' | 'wheel',
+              rewardAmount: dailyBonusTemplate.rewardAmount,
+              progressTotal: dailyBonusTemplate.progressTotal,
+              icon: dailyBonusTemplate.icon || '/trials/energy.svg',
+              expiresInHours: dailyBonusTemplate.expiresInHours,
+              cooldownMinutes: dailyBonusTemplate.cooldownMinutes,
+              maxPerDay: dailyBonusTemplate.maxPerDay
+            };
+            newTask = await this.createTask(userId, options);
+            console.log(`[TaskService] Created daily_bonus task: ${newTask?.title || 'none'}`);
+          }
+        }
+        
+        // If daily_bonus wasn't created, create random task
+        if (!newTask) {
+          newTask = await this.createRandomTask(userId);
+          console.log(`[TaskService] Created new random task: ${newTask?.title || 'none'}`);
+        }
       }
 
       return {

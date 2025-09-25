@@ -97,7 +97,8 @@ CREATE TABLE "analytics" (
 	"timestamp" timestamp DEFAULT now(),
 	"session_id" varchar,
 	"user_agent" text,
-	"ip_address" varchar(45)
+	"ip_address" varchar(45),
+	"country" varchar(2)
 );
 --> statement-breakpoint
 CREATE TABLE "box_openings" (
@@ -412,6 +413,8 @@ CREATE TABLE "users" (
 	"max_loss" numeric(15, 2) DEFAULT '0.00',
 	"average_trade_amount" numeric(15, 2) DEFAULT '0.00',
 	"rewards_count" integer DEFAULT 0,
+	"last_claim" timestamp,
+	"streak" integer DEFAULT 0,
 	"energy_tasks_bonus" integer DEFAULT 0,
 	"is_premium" boolean DEFAULT false,
 	"premium_expires_at" timestamp,
@@ -457,6 +460,7 @@ CREATE INDEX "idx_analytics_user_id" ON "analytics" USING btree ("user_id");--> 
 CREATE INDEX "idx_analytics_event_type" ON "analytics" USING btree ("event_type");--> statement-breakpoint
 CREATE INDEX "idx_analytics_timestamp" ON "analytics" USING btree ("timestamp");--> statement-breakpoint
 CREATE INDEX "idx_analytics_session_id" ON "analytics" USING btree ("session_id");--> statement-breakpoint
+CREATE INDEX "idx_analytics_country" ON "analytics" USING btree ("country");--> statement-breakpoint
 CREATE INDEX "idx_cohort_week_period" ON "cohort_analysis" USING btree ("cohort_week","period_number");--> statement-breakpoint
 CREATE INDEX "idx_daily_metrics_date" ON "daily_metrics" USING btree ("date");--> statement-breakpoint
 CREATE INDEX "idx_engagement_date" ON "engagement_metrics" USING btree ("date");--> statement-breakpoint

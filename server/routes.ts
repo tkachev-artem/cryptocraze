@@ -5153,7 +5153,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 event.eventType === 'ad_watch' || 
                 event.eventType === 'page_view' ||
                 event.eventType === 'login' ||
-                event.eventType === 'engagement') {
+                event.eventType === 'engagement' ||
+                event.eventType === 'daily_reward_claimed') {
               
               // Map event types for ClickHouse compatibility
               let eventType = event.eventType;

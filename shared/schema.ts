@@ -59,6 +59,8 @@ export const users = pgTable("users", {
   
   // Награды
   rewardsCount: integer("rewards_count").default(0), // Количество наград
+  lastClaim: timestamp("last_claim"), // Дата последнего получения ежедневной награды
+  streak: integer("streak").default(0), // Стрик ежедневных наград
   
   // Энергетические задания
   energyTasksBonus: integer("energy_tasks_bonus").default(0), // Прогресс энергетических заданий (0-100), при 100 обнуляется и считается выполненным

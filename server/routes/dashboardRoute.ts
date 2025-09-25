@@ -134,10 +134,7 @@ class SimpleDataCache {
             const userCountry = userCountries.find(uc => uc.userId === user.id);
             let country = userCountry?.country;
             
-            // Если нет страны в analytics, пробуем определить по IP (если есть)
             if (!country) {
-              // Здесь можно добавить логику получения IP пользователя
-              // Пока используем 'Unknown'
               country = 'Unknown';
             }
             
@@ -177,13 +174,33 @@ class SimpleDataCache {
         });
       }
 
-      // Получаем общее количество открытых сделок из PostgreSQL
+      // Получаем общее количество открытых/закрытых сделок из PostgreSQL
       const totalOpenOrdersResult = await db.execute(sql`SELECT COUNT(*) as count FROM deals WHERE status = 'open'`);
       const totalOrdersOpen = Number((totalOpenOrdersResult.rows?.[0] as any)?.count || 0);
 
-      // Получаем общее количество закрытых сделок из PostgreSQL
       const totalClosedOrdersResult = await db.execute(sql`SELECT COUNT(*) as count FROM deals WHERE status = 'closed'`);
       const totalOrdersClosed = Number((totalClosedOrdersResult.rows?.[0] as any)?.count || 0);
+
+      // Total daily rewards claimed (последние 30 дней)
+      let dailyRewardClaimedTotal = 0;
+      try {
+        const endUTC = new Date().toISOString().slice(0, 10);
+        const startDate = new Date();
+        startDate.setUTCDate(startDate.getUTCDate() - 30);
+        const startUTC = startDate.toISOString().slice(0, 10);
+        const tsFromRewards = `${startUTC} 00:00:00`;
+        const tsToRewards = `${endUTC} 23:59:59`;
+        const totalRewardsQuery = `
+          SELECT count(*) AS total_rewards
+          FROM cryptocraze_analytics.user_events
+          WHERE timestamp >= '${tsFromRewards}' AND timestamp <= '${tsToRewards}'
+            AND event_type = 'daily_reward_claimed'
+            AND user_id != '999999999'
+            AND length(user_id) > 5
+        `;
+        const resp = await (client as any).query({ query: totalRewardsQuery, format: 'JSONEachRow' });
+        dailyRewardClaimedTotal = Number(((await resp.json()) as any[])[0]?.total_rewards || 0);
+      } catch {}
 
       // Сохраняем данные
       this.data = {
@@ -192,14 +209,13 @@ class SimpleDataCache {
           totalEvents: stats[0]?.total_events || 0,
           firstDate: stats[0]?.first_date,
           lastDate: stats[0]?.last_date,
-          // Рассчитываем реальные retention проценты
           d1Retention: this.calculateRetentionPercentage(retentionTable, 'd1Returned'),
           d3Retention: this.calculateRetentionPercentage(retentionTable, 'd3Returned'),
           d7Retention: this.calculateRetentionPercentage(retentionTable, 'd7Returned'),
           d30Retention: this.calculateRetentionPercentage(retentionTable, 'd30Returned'),
-          // Новые метрики по сделкам
           orderOpenTotal: totalOrdersOpen,
           orderCloseTotal: totalOrdersClosed,
+          dailyRewardClaimedTotal,
         },
         daily: dailyData,
         trends: {
@@ -213,11 +229,10 @@ class SimpleDataCache {
       };
 
       this.lastUpdate = new Date();
-      console.log(`[SimpleCache] Data loaded successfully. Total users: ${this.data.overview.totalUsers}, Total Open Orders: ${this.data.overview.orderOpenTotal}, Total Closed Orders: ${this.data.overview.orderCloseTotal}`);
+      console.log(`[SimpleCache] Data loaded successfully. Total users: ${this.data.overview.totalUsers}, Daily rewards (30d): ${this.data.overview.dailyRewardClaimedTotal}`);
 
     } catch (error) {
       console.error('[SimpleCache] Error loading data:', error);
-      // Устанавливаем базовые данные при ошибке
       this.data = {
         overview: {
           totalUsers: 0,
@@ -228,6 +243,7 @@ class SimpleDataCache {
           d30Retention: 0,
           orderOpenTotal: 0,
           orderCloseTotal: 0,
+          dailyRewardClaimedTotal: 0,
         },
         daily: [],
         trends: { D1: [], D3: [], D7: [], D30: [], churn_rate: [] },
@@ -1184,9 +1200,64 @@ router.get('/metric/:metricId/trend', isAdminWithAuth, async (req, res) => {
        const trendRows = (await trendResp.json()) as any[] || [];
        const trend = trendRows.map(r => ({ date: r.date, value: Math.floor(Number(r.not_returned_day)) || 0 })) as any[];
        return res.json(trend);
-    }
+   }
 
-    // Остальные метрики — как раньше (кешированные)
+   else if (metricId === 'daily_reward_claimed') {
+     const client = clickhouseAnalyticsService.getClient();
+     if (!client) {
+       return res.json({ trend: [], totalRewardsClaimed: 0 });
+     }
+
+     const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
+     const filteredUserIds = Array.from(userAttributesMap.keys());
+
+     if (filteredUserIds.length === 0) {
+       return res.json({ trend: [], totalRewardsClaimed: 0 });
+     }
+
+     const userIdsCondition = `AND user_id IN (${filteredUserIds.map(id => `'${id}'`).join(',')})`;
+
+    const trendQuery = `
+      SELECT
+        toDate(timestamp) AS date,
+        count(DISTINCT user_id) AS total_rewards_daily
+      FROM cryptocraze_analytics.user_events
+      WHERE timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
+        AND event_type = 'daily_reward_claimed'
+        AND user_id != '999999999'
+        AND length(user_id) > 5
+        ${userIdsCondition}
+      GROUP BY date
+      ORDER BY date
+    `;
+
+    const totalQuery = `
+      SELECT count(DISTINCT user_id) AS total_rewards
+      FROM cryptocraze_analytics.user_events
+      WHERE timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
+        AND event_type = 'daily_reward_claimed'
+        AND user_id != '999999999'
+        AND length(user_id) > 5
+        ${userIdsCondition}
+    `;
+
+     const [trendResp, totalResp] = await Promise.all([
+       (client as any).query({ query: trendQuery, format: 'JSONEachRow' }),
+       (client as any).query({ query: totalQuery, format: 'JSONEachRow' })
+     ]);
+
+     const rawTrendData = await trendResp.json() as any[];
+     const totalRawData = ((await totalResp.json()) as any[])[0] || { total_rewards: 0 };
+
+     const trendData = rawTrendData.map((row: any) => ({
+       date: row.date,
+       value: Number(row.total_rewards_daily) || 0,
+     }));
+
+     return res.json({ trend: trendData, totalRewardsClaimed: Number(totalRawData.total_rewards) || 0 });
+   }
+
+   // Остальные метрики — как раньше (кешированные)
     const trendData = dataCache.getTrend(metricId, filters);
     res.json(trendData);
   } catch (error) {
@@ -1827,6 +1898,101 @@ router.get('/table/screens_opened', isAdminWithAuth, async (req, res) => {
   } catch (error) {
     console.error('Screens Opened table error:', error);
     res.status(500).json({ error: 'Failed to get screens opened table' });
+  }
+});
+
+// Эндпоинт для таблицы Daily Reward Claimed
+router.get('/table/daily_reward_claimed', isAdminWithAuth, async (req, res) => {
+  try {
+    if (!dataCache.isReady()) {
+      return res.status(503).json({ error: 'Data is loading, please wait...' });
+    }
+
+    const page = parseInt((req.query.page as string) || '1');
+    const limit = parseInt((req.query.limit as string) || (req.query.size as string) || '20');
+    const offset = (page - 1) * limit;
+    const startParam = (req.query.startDate as string) || new Date(Date.now() - 6 * 86400000).toISOString();
+    const endParam = (req.query.endDate as string) || new Date().toISOString();
+    const startDateObj = new Date(startParam);
+    const endDateObj = new Date(endParam);
+
+    const formatUTCDate = (d: Date) => d.toISOString().slice(0, 10);
+    const startUTC = formatUTCDate(startDateObj);
+    const endUTC = formatUTCDate(endDateObj);
+    const nextDayAfterEndUTC = new Date(`${endUTC}T00:00:00.000Z`);
+    nextDayAfterEndUTC.setUTCDate(nextDayAfterEndUTC.getUTCDate() + 1);
+    const endNextUTC = nextDayAfterEndUTC.toISOString().slice(0, 10);
+
+    const tsFrom = `${startUTC} 00:00:00`;
+    const tsTo = `${endNextUTC} 00:00:00`;
+
+    const client = clickhouseAnalyticsService.getClient();
+    if (!client) return res.json({ data: [], total: 0, page, limit, totalPages: 0 });
+
+    const filters = {
+      userType: req.query.userType as string,
+      country: req.query.country ? (req.query.country as string).split(',') : [],
+      search: req.query.search as string,
+    };
+
+    const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
+    const filteredUserIds = Array.from(userAttributesMap.keys());
+    if (filteredUserIds.length === 0) {
+      return res.json({ data: [], total: 0, page, limit, totalPages: 0 });
+    }
+
+    const userIdsCondition = `AND user_id IN (${filteredUserIds.map(id => `'${id}'`).join(',')})`;
+
+    const tableQuery = `
+      SELECT
+        user_id,
+        max(timestamp) AS claimed_at,
+        any(JSONExtractFloat(event_data, 'amount')) AS amount
+      FROM cryptocraze_analytics.user_events
+      WHERE timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
+        AND event_type = 'daily_reward_claimed'
+        AND user_id != '999999999'
+        AND length(user_id) > 5
+        ${userIdsCondition}
+      GROUP BY user_id
+      ORDER BY claimed_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `;
+
+    const totalQuery = `
+      SELECT count(DISTINCT user_id) AS total
+      FROM cryptocraze_analytics.user_events
+      WHERE timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
+        AND event_type = 'daily_reward_claimed'
+        AND user_id != '999999999'
+        AND length(user_id) > 5
+        ${userIdsCondition}
+    `;
+
+    const [tableResp, totalResp] = await Promise.all([
+      (client as any).query({ query: tableQuery, format: 'JSONEachRow' }),
+      (client as any).query({ query: totalQuery, format: 'JSONEachRow' })
+    ]);
+
+    const rowsRaw = await tableResp.json() as any[];
+    const total = Number(((await totalResp.json()) as any[])[0]?.total || 0);
+
+    const rows = rowsRaw.map((r: any) => {
+      const ud = userAttributesMap.get(r.user_id) || {};
+      return {
+        userId: r.user_id,
+        email: ud.email || null,
+        country: ud.country || 'Unknown',
+        isPremium: !!ud.isPremium,
+        amount: r.amount != null ? Number(r.amount) : null,
+        eventDate: r.claimed_at,
+      };
+    });
+
+    res.json({ data: rows, total, page, limit, totalPages: Math.ceil(total / limit) });
+  } catch (error) {
+    console.error('Daily Reward table error:', error);
+    res.status(500).json({ error: 'Failed to get daily reward table' });
   }
 });
 

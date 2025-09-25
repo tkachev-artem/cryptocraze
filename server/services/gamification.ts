@@ -31,14 +31,17 @@ export class GamificationService {
   private async completeAchievement(): Promise<void> { return; }
 
   async claimDailyReward(userId: string): Promise<RewardResult> {
+    console.log(`🎁 [Gamification] claimDailyReward called for user: ${userId}`);
     try {
       const user = await storage.getUser(userId);
       if (!user) {
+        console.log(`❌ [Gamification] User not found: ${userId}`);
         return { success: false, error: 'User not found' };
       }
+      console.log(`✅ [Gamification] User found: ${user.id}, lastClaim: ${user.lastClaim}, streak: ${user.streak}`);
 
       const now = new Date();
-      const lastClaim = undefined as Date | undefined; // поле отсутствует в текущей схеме users
+      const lastClaim = user.lastClaim;
       
       // Check if user can claim (24 hours since last claim)
       if (lastClaim) {
@@ -49,7 +52,7 @@ export class GamificationService {
       }
 
       // Calculate streak
-      let streak = 0; // streak отсутствует в текущей схеме users
+      let streak = user.streak || 0;
       if (lastClaim) {
         const daysSinceLastClaim = (now.getTime() - lastClaim.getTime()) / (1000 * 60 * 60 * 24);
         if (daysSinceLastClaim > 2) {
@@ -59,9 +62,26 @@ export class GamificationService {
 
       const newStreak = Math.min(streak + 1, 24);
       
+      // Update user's last claim and streak
+      await storage.upsertUser({
+        ...user,
+        lastClaim: now,
+        streak: newStreak,
+        updatedAt: new Date()
+      });
+
       // Get reward for current day
-      await storage.recordAnalyticsEvent(userId, 'daily_reward_attempt', {});
-      return { success: false, error: 'Daily rewards are disabled' };
+      console.log(`📊 [Gamification] Recording analytics event: daily_reward_claimed`);
+      await storage.recordAnalyticsEvent(userId, 'daily_reward_claimed', {
+        amount: 100,
+        streak: newStreak,
+        source: 'daily_reward'
+      });
+      console.log(`✅ [Gamification] Analytics event recorded successfully`);
+      
+      // TODO: Implement actual daily reward logic here (e.g., increase user coins/balance)
+      console.log(`🎉 [Gamification] Daily reward claimed successfully for user ${userId}`);
+      return { success: true, reward: { type: 'currency', amount: 100 } }; // Placeholder reward
     } catch (error) {
       console.error('Error claiming daily reward:', error);
       return { success: false, error: 'Internal server error' };

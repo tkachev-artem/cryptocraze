@@ -115,7 +115,7 @@ const UserAnalytics: React.FC = () => {
         tooltipLabel: 'Trades',
         tooltipValue: (value: number) => value.toString()
       };
-    } else if (['sessions', 'screens_opened', 'avg_virtual_balance'].includes(metricId)) {
+    } else if (['sessions', 'screens_opened', 'avg_virtual_balance', 'daily_reward_claimed'].includes(metricId)) {
       return {
         ...engagementChartConfig,
         tooltipLabel: (engagementChartConfig.tooltipLabel as Function)(metricId)
@@ -255,6 +255,9 @@ const UserAnalytics: React.FC = () => {
           const currentMultiplier = maxDataValue < 3 ? 3 : (maxDataValue <= 5 ? 2 : (maxDataValue > 10 ? 1 : Y_AXIS_MULTIPLIER));
           const calculatedMaxValue = Math.ceil(maxDataValue * currentMultiplier);
           setDynamicYAxisMaxValue(calculatedMaxValue > 0 ? calculatedMaxValue : 1); // Убедимся, что это не 0
+        } else if (metricId === 'daily_reward_claimed') {
+          const { trend } = data;
+          trendData = trend;
         } else if (metricId === 'trades_per_user') {
           trendData = data.map((item: any) => ({ date: item.date, value: item.count }));
           // Для метрики 'trades_per_user' также обновляем dynamicYAxisMaxValue на основе максимального значения в тренде

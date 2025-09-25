@@ -36,7 +36,7 @@ class SimpleDataCache {
     `;
     
     try {
-      const response = await (client as any).query({ query, format: 'JSONEachRow' });
+      const response = await client.query({ query, format: 'JSONEachRow' });
       const result = await response.json();
       return result.length > 0;
     } catch (error) {
@@ -53,6 +53,75 @@ class SimpleDataCache {
     setInterval(async () => {
       await this.loadData();
     }, this.CACHE_TTL);
+  }
+
+  private async saveDailyBalanceSnapshot(): Promise<void> {
+    try {
+      const client = clickhouseAnalyticsService.getClient();
+      if (!client) {
+        console.log('[SimpleCache] ClickHouse client is not available. Skipping daily balance snapshot.');
+        return;
+      }
+
+      const today = new Date().toISOString().slice(0, 10);
+
+      // Проверяем, был ли уже сделан снимок за сегодня
+      const checkQuery = `
+        SELECT 1
+        FROM cryptocraze_analytics.balance_history
+        WHERE date = '${today}'
+        LIMIT 1
+      `;
+      const checkResponse = await client.query({ query: checkQuery, format: 'JSONEachRow' });
+      const checkResult = await checkResponse.json();
+
+      if (checkResult.length > 0) {
+        console.log(`[SimpleCache] Daily balance snapshot for ${today} already exists. Skipping.`);
+        return;
+      }
+
+      console.log(`[SimpleCache] Creating daily balance snapshot for ${today}...`);
+
+      // Получаем актуальные балансы всех пользователей из PostgreSQL
+      let allUsersBalances: any[] = [];
+      if (db) {
+        allUsersBalances = await (db as any).select({
+          id: users.id,
+          balance: users.balance,
+          freeBalance: users.freeBalance,
+        }).from(users);
+      } else {
+        console.log('[SimpleCache] PostgreSQL DB is not available. Skipping balance snapshot.');
+        return;
+      }
+
+      if (allUsersBalances.length === 0) {
+        console.log('[SimpleCache] No users found in PostgreSQL for balance snapshot.');
+        return;
+      }
+
+      const values = allUsersBalances.map((user: any) => {
+        const totalBalance = Math.floor(Number(user.balance || 0) + Number(user.freeBalance || 0));
+        return {
+          date: today,
+          user_id: user.id,
+          balance: Number(user.balance || 0),
+          free_balance: Number(user.freeBalance || 0),
+          total_balance: totalBalance,
+          ver: 1, // Добавляем версию для ReplacingMergeTree
+        };
+      });
+
+      await client.insert({
+        table: 'cryptocraze_analytics.balance_history',
+        values: values,
+        format: 'JSONEachRow'
+      });
+
+      console.log(`[SimpleCache] Daily balance snapshot for ${today} created successfully with ${values.length} records.`);
+    } catch (error) {
+      console.error('[SimpleCache] Error creating daily balance snapshot:', error);
+    }
   }
 
   private async loadData(): Promise<void> {
@@ -75,8 +144,8 @@ class SimpleDataCache {
         WHERE user_id != '999999999' AND length(user_id) > 5
       `;
 
-      const statsResponse = await (client as any).query({ query: statsQuery, format: 'JSONEachRow' });
-      const stats = await statsResponse.json() as any[];
+      const statsResponse = await client.query({ query: statsQuery, format: 'JSONEachRow' });
+      const stats = await statsResponse.json();
 
       // Получаем данные по дням за последние 30 дней
       const dailyQuery = `
@@ -92,8 +161,8 @@ class SimpleDataCache {
         ORDER BY date DESC
       `;
 
-      const dailyResponse = await (client as any).query({ query: dailyQuery, format: 'JSONEachRow' });
-      const dailyData = await dailyResponse.json() as any[];
+      const dailyResponse = await client.query({ query: dailyQuery, format: 'JSONEachRow' });
+      const dailyData = await dailyResponse.json();
 
       // Получаем реальные данные пользователей для retention таблицы
       const usersQuery = `
@@ -108,8 +177,8 @@ class SimpleDataCache {
         ORDER BY install_date DESC
       `;
 
-      const usersResponse = await (client as any).query({ query: usersQuery, format: 'JSONEachRow' });
-      const usersData = await usersResponse.json() as any[];
+      const usersResponse = await client.query({ query: usersQuery, format: 'JSONEachRow' });
+      const usersData = await usersResponse.json();
 
       // Получаем данные пользователей из PostgreSQL
       const userIds = usersData.map((user: any) => user.user_id);
@@ -255,8 +324,8 @@ class SimpleDataCache {
       `;
       
       try {
-        const installResponse = await (client as any).query({ query: installQuery, format: 'JSONEachRow' });
-        const installUsers = await installResponse.json() as any[];
+        const installResponse = await client.query({ query: installQuery, format: 'JSONEachRow' });
+        const installUsers = await installResponse.json();
         
         if (installUsers.length === 0) {
           trendData.push({
@@ -277,8 +346,8 @@ class SimpleDataCache {
             AND user_id IN (${installUsers.map((u: any) => `'${u.user_id}'`).join(',')})
         `;
         
-        const retentionResponse = await (client as any).query({ query: retentionQuery, format: 'JSONEachRow' });
-        const retentionUsers = await retentionResponse.json() as any[];
+        const retentionResponse = await client.query({ query: retentionQuery, format: 'JSONEachRow' });
+        const retentionUsers = await retentionResponse.json();
         
         // Показываем дату возврата и количество пользователей, которые вернулись
         const returnDate = new Date(targetDate.getTime() + days * 86400000);
@@ -331,8 +400,8 @@ class SimpleDataCache {
                 AND length(user_id) > 5
             )
         `;
-        const installResponse = await (client as any).query({ query: installQuery, format: 'JSONEachRow' });
-        const installUsers = await installResponse.json() as any[];
+        const installResponse = await client.query({ query: installQuery, format: 'JSONEachRow' });
+        const installUsers = await installResponse.json();
         const totalInstallUsers = installUsers.length;
 
         if (totalInstallUsers === 0) {
@@ -350,8 +419,8 @@ class SimpleDataCache {
           WHERE user_id IN (${installUsers.map((u: any) => `'${u.user_id}'`).join(',')})
             AND date > '${targetDateStr}' AND date < '${thirtyDaysLaterStr}'
         `;
-        const returnedResponse = await (client as any).query({ query: returnedQuery, format: 'JSONEachRow' });
-        const returnedUsers = await returnedResponse.json() as any[];
+        const returnedResponse = await client.query({ query: returnedQuery, format: 'JSONEachRow' });
+        const returnedUsers = await returnedResponse.json();
         const totalReturnedUsers = returnedUsers.length;
 
         // Отток = (Общее количество установивших - Вернувшихся) / Общее количество установивших * 100
@@ -594,75 +663,6 @@ class SimpleDataCache {
   getData() {
     return this.data;
   }
-
-  private async saveDailyBalanceSnapshot(): Promise<void> {
-    try {
-      const client = clickhouseAnalyticsService.getClient();
-      if (!client) {
-        console.log('[SimpleCache] ClickHouse client is not available. Skipping daily balance snapshot.');
-        return;
-      }
-
-      const today = new Date().toISOString().slice(0, 10);
-
-      // Проверяем, был ли уже сделан снимок за сегодня
-      const checkQuery = `
-        SELECT 1
-        FROM cryptocraze_analytics.balance_history
-        WHERE date = '${today}'
-        LIMIT 1
-      `;
-      const checkResponse = await (client as any).query({ query: checkQuery, format: 'JSONEachRow' });
-      const checkResult = await checkResponse.json();
-
-      if (checkResult.length > 0) {
-        console.log(`[SimpleCache] Daily balance snapshot for ${today} already exists. Skipping.`);
-        return;
-      }
-
-      console.log(`[SimpleCache] Creating daily balance snapshot for ${today}...`);
-
-      // Получаем актуальные балансы всех пользователей из PostgreSQL
-      let allUsersBalances: any[] = [];
-      if (db) {
-        allUsersBalances = await (db as any).select({
-          id: users.id,
-          balance: users.balance,
-          freeBalance: users.freeBalance,
-        }).from(users);
-      } else {
-        console.log('[SimpleCache] PostgreSQL DB is not available. Skipping balance snapshot.');
-        return;
-      }
-
-      if (allUsersBalances.length === 0) {
-        console.log('[SimpleCache] No users found in PostgreSQL for balance snapshot.');
-        return;
-      }
-
-      const values = allUsersBalances.map((user: any) => {
-        const totalBalance = Math.floor(Number(user.balance || 0) + Number(user.freeBalance || 0));
-        return {
-          date: today,
-          user_id: user.id,
-          balance: Number(user.balance || 0),
-          free_balance: Number(user.freeBalance || 0),
-          total_balance: totalBalance,
-          ver: 1, // Добавляем версию для ReplacingMergeTree
-        };
-      });
-
-      await (client as any).insert({
-        table: 'cryptocraze_analytics.balance_history',
-        values: values,
-        format: 'JSONEachRow'
-      });
-
-      console.log(`[SimpleCache] Daily balance snapshot for ${today} created successfully with ${values.length} records.`);
-    } catch (error) {
-      console.error('[SimpleCache] Error creating daily balance snapshot:', error);
-    }
-  }
 }
 
 // Создаем глобальный кеш
@@ -732,10 +732,7 @@ router.get('/metric/:metricId/trend', isAdminWithAuth, async (req, res) => {
     ]);
     
     if (tutorialMetricIds.has(metricId)) {
-      const client = clickhouseAnalyticsService.getClient();
-      if (!client) {
-        return res.json([]);
-      }
+      const client = (clickhouseAnalyticsService as any).getClient();
 
       const isPro = metricId.startsWith('pro_');
       const action = metricId.endsWith('start')
@@ -772,8 +769,8 @@ router.get('/metric/:metricId/trend', isAdminWithAuth, async (req, res) => {
         GROUP BY user_id
       `;
 
-      const baseResp = await (client as any).query({ query: baseQuery, format: 'JSONEachRow' });
-      const baseRows = await baseResp.json() as any[];
+      const baseResp = await client.query({ query: baseQuery, format: 'JSONEachRow' });
+      const baseRows = await baseResp.json();
 
       // Агрегируем по датам БЕЗ дополнительных фильтров (только период)
       const countsByDate = new Map<string, number>();
@@ -795,10 +792,7 @@ router.get('/metric/:metricId/trend', isAdminWithAuth, async (req, res) => {
       return res.json(out);
     }
     else if (metricId === 'sessions') {
-      const client = clickhouseAnalyticsService.getClient();
-      if (!client) {
-        return res.json({ trend: [], totalSessions: 0, totalUsers: 0 });
-      }
+      const client = (clickhouseAnalyticsService as any).getClient();
 
       const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
       const filteredUserIds = Array.from(userAttributesMap.keys());
@@ -834,21 +828,18 @@ router.get('/metric/:metricId/trend', isAdminWithAuth, async (req, res) => {
       `;
 
       const [trendResp, totalResp] = await Promise.all([
-        (client as any).query({ query: trendQuery, format: 'JSONEachRow' }),
-        (client as any).query({ query: totalSessionsUsersQuery, format: 'JSONEachRow' })
+        client.query({ query: trendQuery, format: 'JSONEachRow' }),
+        client.query({ query: totalSessionsUsersQuery, format: 'JSONEachRow' })
       ]);
 
-      const trendData = await trendResp.json() as any[];
-      const totalData = ((await totalResp.json()) as any[])[0] || { total_sessions: 0, total_users: 0 };
+      const trendData = await trendResp.json();
+      const totalData = (await totalResp.json())[0] || { total_sessions: 0, total_users: 0 };
 
       // Добавляем информацию о общем количестве сессий и пользователей в ответ
       return res.json({ trend: trendData, totalSessions: totalData.total_sessions, totalUsers: totalData.total_users });
     }
     else if (metricId === 'screens_opened') {
-      const client = clickhouseAnalyticsService.getClient();
-      if (!client) {
-        return res.json({ trend: [], totalScreensOpened: 0 });
-      }
+      const client = (clickhouseAnalyticsService as any).getClient();
 
       const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
       const filteredUserIds = Array.from(userAttributesMap.keys());
@@ -862,8 +853,7 @@ router.get('/metric/:metricId/trend', isAdminWithAuth, async (req, res) => {
       const trendQuery = `
         SELECT
           toDate(timestamp) AS date,
-          count(*) AS total_screens_opened_daily,
-          count(DISTINCT user_id) AS total_users_daily
+          count(*) AS value
         FROM cryptocraze_analytics.user_events
         WHERE timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
           AND event_type = 'screen_view'
@@ -873,10 +863,10 @@ router.get('/metric/:metricId/trend', isAdminWithAuth, async (req, res) => {
         GROUP BY date
         ORDER BY date
       `;
+
       const totalScreensQuery = `
         SELECT
-          count(*) AS total_screens_opened_overall,
-          count(DISTINCT user_id) AS total_users_overall
+          count(*) AS total_screens_opened
         FROM cryptocraze_analytics.user_events
         WHERE timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
           AND event_type = 'screen_view'
@@ -886,27 +876,18 @@ router.get('/metric/:metricId/trend', isAdminWithAuth, async (req, res) => {
       `;
 
       const [trendResp, totalResp] = await Promise.all([
-        (client as any).query({ query: trendQuery, format: 'JSONEachRow' }),
-        (client as any).query({ query: totalScreensQuery, format: 'JSONEachRow' })
+        client.query({ query: trendQuery, format: 'JSONEachRow' }),
+        client.query({ query: totalScreensQuery, format: 'JSONEachRow' })
       ]);
 
-      const rawTrendData = await trendResp.json() as any[];
-      const totalRawData = ((await totalResp.json()) as any[])[0] || { total_screens_opened_overall: 0, total_users_overall: 0 };
+      const trendData = await trendResp.json();
+      const totalData = (await totalResp.json())[0] || { total_screens_opened: 0 };
 
-      const trendData = rawTrendData.map((row: any) => ({
-        date: row.date,
-        value: row.total_users_daily > 0 ? Math.floor(row.total_screens_opened_daily / row.total_users_daily) : 0,
-      }));
-
-      const totalScreensOpened = totalRawData.total_users_overall > 0
-        ? Math.floor(totalRawData.total_screens_opened_overall / totalRawData.total_users_overall)
-        : 0;
-
-      return res.json({ trend: trendData, totalScreensOpened: totalScreensOpened });
+      return res.json({ trend: trendData, totalScreensOpened: totalData.total_screens_opened });
     }
     else if (metricId === 'trades_per_user') {
       // Удалены локальные определения дат, используем глобальные
-      const client = clickhouseAnalyticsService.getClient();
+      const client = (clickhouseAnalyticsService as any).getClient();
 
       // Удалены отладочные console.log
       const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
@@ -1028,12 +1009,12 @@ router.get('/metric/:metricId/trend', isAdminWithAuth, async (req, res) => {
       `;
 
       const [trendResp, overallAvgResp] = await Promise.all([
-        (client as any).query({ query: trendQuery, format: 'JSONEachRow' }),
-        (client as any).query({ query: overallAvgBalanceQuery, format: 'JSONEachRow' })
+        client.query({ query: trendQuery, format: 'JSONEachRow' }),
+        client.query({ query: overallAvgBalanceQuery, format: 'JSONEachRow' })
       ]);
 
-      const trendData = await trendResp.json() as any[];
-      const overallAvgBalanceResult: any[] = await overallAvgResp.json() as any[];
+      const trendData = await trendResp.json();
+      const overallAvgBalanceResult: any[] = await overallAvgResp.json();
       const overallAvgBalance = overallAvgBalanceResult.length > 0 ? overallAvgBalanceResult[0].avg_balance : 0;
 
       return res.json({ trend: trendData, avgBalance: overallAvgBalance });
@@ -1074,101 +1055,6 @@ router.get('/table/retention', isAdminWithAuth, async (req, res) => {
   }
 });
 
-// Эндпоинт для таблицы Virtual Balance
-router.get('/table/virtual_balance', isAdminWithAuth, async (req, res) => {
-  try {
-    const page = parseInt((req.query.page as string) || '1');
-    const limit = parseInt((req.query.limit as string) || (req.query.size as string) || '30');
-    const offset = (page - 1) * limit;
-    const startParam = (req.query.startDate as string) || new Date(Date.now() - 6 * 86400000).toISOString();
-    const endParam = (req.query.endDate as string) || new Date().toISOString();
-    const startDateObj = new Date(startParam);
-    const endDateObj = new Date(endParam);
-
-    const formatUTCDate = (d: Date) => d.toISOString().slice(0, 10);
-    const startUTC = formatUTCDate(startDateObj);
-    const endUTC = formatUTCDate(endDateObj);
-    const nextDayAfterEndUTC = new Date(`${endUTC}T00:00:00.000Z`);
-    nextDayAfterEndUTC.setUTCDate(nextDayAfterEndUTC.getUTCDate() + 1);
-    const endNextUTC = nextDayAfterEndUTC.toISOString().slice(0, 10);
-
-    const tsFrom = `${startUTC} 00:00:00`;
-    const tsTo = `${endNextUTC} 00:00:00`;
-
-    const filters = {
-      userType: req.query.userType as string,
-      country: req.query.country ? (req.query.country as string).split(',') : [],
-      search: req.query.search as string,
-    };
-
-    const client = clickhouseAnalyticsService.getClient();
-
-    let userData: any[] = [];
-    let total = 0;
-
-    if (client) {
-      const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
-      const filteredUserIds = Array.from(userAttributesMap.keys());
-
-      if (filteredUserIds.length === 0) {
-        return res.json({ data: [], total: 0, page, limit, totalPages: 0 });
-      }
-
-      let whereConditions: any[] = [
-        inArray(users.id, filteredUserIds as string[]),
-      ];
-
-      if (filters.search) {
-        whereConditions.push(sql`${users.email} ILIKE ${`%${filters.search}%`}`);
-      }
-
-      // Запрос для получения данных пользователей
-      let query = (db as any).select({
-        userId: users.id,
-        email: users.email,
-        isPremium: users.isPremium,
-        balance: users.balance,
-        freeBalance: users.freeBalance,
-      })
-      .from(users)
-      .where(and(...whereConditions))
-      .orderBy(desc(users.createdAt))
-      .limit(limit)
-      .offset(offset);
-
-      const countQuery = (db as any).select({
-        count: sql<number>`count(DISTINCT ${users.id})`
-      })
-      .from(users)
-      .where(and(...whereConditions));
-
-      const [rows, totalResult] = await Promise.all([
-        query,
-        countQuery
-      ]);
-      
-      userData = rows;
-      total = totalResult[0]?.count || 0;
-    }
-
-    const rows = userData.map((row: any) => {
-      const userAttrs = dataCache.getData().userAttributesMap?.get(row.userId) || {};
-      return {
-        userId: row.userId,
-        email: row.email || '—',
-        country: userAttrs.country || 'Unknown',
-        isPremium: !!row.isPremium,
-        balance: Math.floor(Number(row.balance || 0) + Number(row.freeBalance || 0)),
-      };
-    });
-
-    res.json({ data: rows, total, page, limit, totalPages: Math.ceil(total / limit) });
-  } catch (error) {
-    console.error('Virtual Balance table error:', error);
-    res.status(500).json({ error: 'Failed to get virtual balance table' });
-  }
-});
-
 // Эндпоинт для таблицы туториалов (пользователи и события)
 router.get('/table/tutorial', isAdminWithAuth, async (req, res) => {
   try {
@@ -1188,7 +1074,7 @@ router.get('/table/tutorial', isAdminWithAuth, async (req, res) => {
     endDateObj.setHours(23, 59, 59, 999);
     // Для tutorial-таблицы учитываем ТОЛЬКО период времени
 
-    const client = clickhouseAnalyticsService.getClient();
+    const client = (clickhouseAnalyticsService as any).getClient();
     // Локальные дневные границы [start 00:00; nextDay 00:00)
     const formatLocalDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const startDateStr = formatLocalDate(startDateObj);
@@ -1245,11 +1131,11 @@ router.get('/table/tutorial', isAdminWithAuth, async (req, res) => {
     `;
 
     const [baseResp, countResp] = await Promise.all([
-      (client as any).query({ query: baseQuery, format: 'JSONEachRow' }),
-      (client as any).query({ query: countQuery, format: 'JSONEachRow' })
+      client.query({ query: baseQuery, format: 'JSONEachRow' }),
+      client.query({ query: countQuery, format: 'JSONEachRow' })
     ]);
-    const baseRows = await baseResp.json() as any[];
-    const totalRows = ((await countResp.json()) as any[])[0]?.total || 0;
+    const baseRows = await baseResp.json();
+    const totalRows = (await countResp.json())[0]?.total || 0;
 
     // Поскольку userAttributesMap уже содержит отфильтрованных пользователей, нет необходимости в повторной фильтрации
     // Просто используем userDataMap для обогащения данных
@@ -1268,7 +1154,7 @@ router.get('/table/tutorial', isAdminWithAuth, async (req, res) => {
         GROUP BY user_id
       `;
       console.log('[Tutorial Table] activeDateQuery:', activeDateQuery);
-      const activeDateResp = await (client as any).query({ query: activeDateQuery, format: 'JSONEachRow' });
+      const activeDateResp = await client.query({ query: activeDateQuery, format: 'JSONEachRow' });
       const activeDateRows = await activeDateResp.json();
       activeDateRows.forEach((r: any) => userActiveDateMap.set(r.user_id, r.active_date));
     }
@@ -1339,7 +1225,7 @@ router.get('/total-users-in-period', isAdminWithAuth, async (req, res) => {
       country: req.query.country ? (req.query.country as string).split(',') : [],
     };
 
-    const client = clickhouseAnalyticsService.getClient();
+    const client = (clickhouseAnalyticsService as any).getClient();
     const startUTC = new Date(startDate as string).toISOString().slice(0, 10);
     const endUTC = new Date(endDate as string).toISOString().slice(0, 10);
     const nextDayAfterEndUTC = new Date(`${endUTC}T00:00:00.000Z`);
@@ -1368,8 +1254,8 @@ router.get('/total-users-in-period', isAdminWithAuth, async (req, res) => {
         ${userIdsCondition}
     `;
 
-    const response = await (client as any).query({ query: totalUsersQuery, format: 'JSONEachRow' });
-    const result = await response.json() as any[];
+    const response = await client.query({ query: totalUsersQuery, format: 'JSONEachRow' });
+    const result = await response.json();
 
     res.json({ totalUsers: result[0]?.total_users || 0 });
   } catch (error) {
@@ -1464,7 +1350,7 @@ router.get('/table/sessions', isAdminWithAuth, async (req, res) => {
     const tsFrom = `${startUTC} 00:00:00`;
     const tsTo = `${endNextUTC} 00:00:00`;
 
-    const client = clickhouseAnalyticsService.getClient();
+    const client = (clickhouseAnalyticsService as any).getClient();
 
     const filters = {
       userType: req.query.userType as string,
@@ -1507,12 +1393,12 @@ router.get('/table/sessions', isAdminWithAuth, async (req, res) => {
       `;
 
       const [sessionsResp, countResp] = await Promise.all([
-        (client as any).query({ query: sessionsPerUserQuery, format: 'JSONEachRow' }),
-        (client as any).query({ query: countSessionsUsersQuery, format: 'JSONEachRow' })
+        client.query({ query: sessionsPerUserQuery, format: 'JSONEachRow' }),
+        client.query({ query: countSessionsUsersQuery, format: 'JSONEachRow' })
       ]);
 
-      sessionData = await sessionsResp.json() as any[];
-      totalSessionsUsers = ((await countResp.json()) as any[])[0]?.total || 0;
+      sessionData = await sessionsResp.json();
+      totalSessionsUsers = (await countResp.json())[0]?.total || 0;
     } else {
       return res.json({ data: [], total: 0, page, limit, totalPages: 0 });
     }
@@ -1577,7 +1463,7 @@ router.get('/table/screens_opened', isAdminWithAuth, async (req, res) => {
     const tsFrom = `${startUTC} 00:00:00`;
     const tsTo = `${endNextUTC} 00:00:00`;
 
-    const client = clickhouseAnalyticsService.getClient();
+    const client = (clickhouseAnalyticsService as any).getClient();
 
     // Получаем количество открытых экранов и последнюю активность для каждого пользователя
     const screensOpenedPerUserQuery = `
@@ -1603,12 +1489,12 @@ router.get('/table/screens_opened', isAdminWithAuth, async (req, res) => {
     `;
 
     const [screensResp, countResp] = await Promise.all([
-      (client as any).query({ query: screensOpenedPerUserQuery, format: 'JSONEachRow' }),
-      (client as any).query({ query: totalUsersWithScreensQuery, format: 'JSONEachRow' })
+      client.query({ query: screensOpenedPerUserQuery, format: 'JSONEachRow' }),
+      client.query({ query: totalUsersWithScreensQuery, format: 'JSONEachRow' })
     ]);
 
-    let screensData = await screensResp.json() as any[];
-    const totalScreensUsers = ((await countResp.json()) as any[])[0]?.total || 0;
+    let screensData = await screensResp.json();
+    const totalScreensUsers = (await countResp.json())[0]?.total || 0;
 
     // Применяем фильтры
     const filters = {
@@ -1706,7 +1592,7 @@ router.get('/table/trades_per_user', isAdminWithAuth, async (req, res) => {
       tradeActivity: req.query.tradeActivity as string,
     };
 
-    const client = clickhouseAnalyticsService.getClient();
+    const client = (clickhouseAnalyticsService as any).getClient();
     const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
     const filteredUserIds = Array.from(userAttributesMap.keys());
 
@@ -1760,7 +1646,7 @@ router.get('/table/trades_per_user', isAdminWithAuth, async (req, res) => {
       countDealsQuery
     ]);
 
-    const totalTrades = (totalDealsResult as any[])[0]?.count || 0;
+    const totalTrades = totalDealsResult[0]?.count || 0;
 
     const rows = dealsData.map((d: any) => {
       const ud = userAttributesMap.get(d.userId) || {};
@@ -1868,7 +1754,7 @@ router.get('/chart/trades_by_date', isAdminWithAuth, async (req, res) => {
       search: req.query.search as string, // Добавляем поиск, если потребуется
     };
 
-    const client = clickhouseAnalyticsService.getClient();
+    const client = (clickhouseAnalyticsService as any).getClient();
     const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
     const filteredUserIds = Array.from(userAttributesMap.keys());
 

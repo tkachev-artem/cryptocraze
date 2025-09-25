@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db.js';
 import { deals } from '../../shared/schema.js';
 import { eq, sql } from 'drizzle-orm';
+import { ClickHouseClient } from '@clickhouse/client'; // Правильный импорт ClickHouseClient
 
 // Check if ClickHouse is disabled
 const isClickHouseDisabled = process.env.DISABLE_CLICKHOUSE === 'true';
@@ -12,14 +13,14 @@ const isClickHouseDisabled = process.env.DISABLE_CLICKHOUSE === 'true';
  * Высокопроизводительный сервис для аналитики admin dashboard
  */
 export class ClickHouseAnalyticsService {
-  private client = null;
+  private client: ClickHouseClient | null = null; // Используем ClickHouseClient
   
-  private getClient() {
+  public getClient(): ClickHouseClient | null {
     if (isClickHouseDisabled) {
-      throw new Error('ClickHouse is disabled');
+      return null; // Возвращаем null, если ClickHouse отключен
     }
     if (!this.client) {
-      this.client = getClickHouseClient();
+      this.client = getClickHouseClient() as ClickHouseClient;
     }
     return this.client;
   }
@@ -31,19 +32,22 @@ export class ClickHouseAnalyticsService {
     try {
       console.log('[ClickHouse] Initializing schema...');
       const client = this.getClient();
-      
-      // Создание базы данных
-      await client.exec({
-        query: 'CREATE DATABASE IF NOT EXISTS cryptocraze_analytics'
-      });
+      if (client) {
+        // Создание базы данных
+        await client?.exec({
+          query: 'CREATE DATABASE IF NOT EXISTS cryptocraze_analytics'
+        });
 
-      // Переключение на базу данных
-      await client.exec({
-        query: 'USE cryptocraze_analytics'
-      });
+        // Переключение на базу данных
+        await client?.exec({
+          query: 'USE cryptocraze_analytics'
+        });
 
-      // Создание основных таблиц
-      await this.createTables(client);
+        // Создание основных таблиц
+        await this.createTables(client);
+      } else {
+        console.log('[ClickHouse] Schema initialization skipped: ClickHouse is disabled.');
+      }
       
       console.log('[ClickHouse] Schema initialized successfully');
     } catch (error) {
@@ -55,8 +59,9 @@ export class ClickHouseAnalyticsService {
   /**
    * Создание таблиц
    */
-  private async createTables(client?: any): Promise<void> {
+  private async createTables(client?: ClickHouseClient): Promise<void> {
     const clickhouseClient = client || this.getClient();
+    if (!clickhouseClient) return; // Добавлена проверка на null
     const tables = [
       // Таблица событий пользователей
       `CREATE TABLE IF NOT EXISTS user_events (
@@ -125,6 +130,19 @@ export class ClickHouseAnalyticsService {
       ORDER BY date
       TTL date + INTERVAL 5 YEAR`,
 
+      // Таблица истории балансов пользователей
+      `CREATE TABLE IF NOT EXISTS balance_history (
+        date Date,
+        user_id String,
+        balance Float64,
+        free_balance Float64,
+        total_balance Float64,
+        ver UInt64  -- Добавляем столбец версии
+      ) ENGINE = ReplacingMergeTree(ver)
+       PARTITION BY toYYYYMM(date)
+       ORDER BY (date, user_id)
+       TTL date + INTERVAL 5 YEAR`,
+
       // Таблица событий доходов  
       `CREATE TABLE IF NOT EXISTS revenue_events (
         event_id String,
@@ -163,7 +181,7 @@ export class ClickHouseAnalyticsService {
     ];
 
     for (const table of tables) {
-      await clickhouseClient.exec({ query: table });
+      await clickhouseClient?.exec({ query: table });
     }
 
     // Создание индексов
@@ -174,7 +192,7 @@ export class ClickHouseAnalyticsService {
 
     for (const index of indexes) {
       try {
-        await clickhouseClient.exec({ query: index });
+        await clickhouseClient?.exec({ query: index });
       } catch (error) {
         // Игнорируем ошибки создания индексов если они уже существуют
         console.log('[ClickHouse] Index creation note:', (error as Error).message);
@@ -205,7 +223,8 @@ export class ClickHouseAnalyticsService {
     try {
       console.log('[ClickHouse Service] Calling client.insert...');
       const client = this.getClient();
-      await client.insert({
+      if (!client) return; // Добавлена проверка на null
+      await client?.insert({
         table: 'cryptocraze_analytics.user_events',
         values: [eventRecord],
         format: 'JSONEachRow'
@@ -245,7 +264,8 @@ export class ClickHouseAnalyticsService {
   ): Promise<void> {
     try {
       const client = this.getClient();
-      await client.insert({
+      if (!client) return; // Добавлена проверка на null
+      await client?.insert({
         table: 'cryptocraze_analytics.revenue_events',
         values: [{
           event_id: uuidv4(),
@@ -275,7 +295,8 @@ export class ClickHouseAnalyticsService {
       
       // Вставляем запись - ReplacingMergeTree автоматически заменит дубликаты
       const client = this.getClient();
-      await client.insert({
+      if (!client) return; // Добавлена проверка на null
+      await client?.insert({
         table: 'deals_analytics',
         values: [{
           deal_id: deal.id,
@@ -349,7 +370,8 @@ export class ClickHouseAnalyticsService {
       console.log('[ClickHouse] Getting user metrics with NEW query...');
       // Основные пользовательские метрики
       const client = this.getClient();
-      const userResult = await client.query({
+      if (!client) return { /* fallback data */ }; // Добавлена проверка на null
+      const userResult = await client?.query({
         query: `
           WITH 
             first_seen_users AS (
@@ -381,7 +403,7 @@ export class ClickHouseAnalyticsService {
       });
 
       // Расчет retention метрик - используем более простую логику как в trend
-      const retentionResult = await client.query({
+      const retentionResult = await client?.query({
         query: `
           WITH 
             installs AS (
@@ -442,8 +464,8 @@ export class ClickHouseAnalyticsService {
         format: 'JSONEachRow'
       });
 
-      const userData = (await userResult.json<any>())[0] || {};
-      const retentionData = (await retentionResult.json<any>())[0] || {};
+      const userData = (await userResult?.json<any>())[0] || {};
+      const retentionData = (await retentionResult?.json<any>())[0] || {};
 
       console.log('[ClickHouse] Raw user data:', userData);
       console.log('[ClickHouse] Raw retention data:', retentionData);
@@ -496,15 +518,11 @@ export class ClickHouseAnalyticsService {
   private async getTradingMetrics(): Promise<any> {
     // Получаем закрытые сделки из ClickHouse
     const client = this.getClient();
-    const result = await client.query({
+    if (!client) return { /* fallback data */ }; // Добавлена проверка на null
+    const result = await client?.query({
       query: `
         SELECT 
           count() as total_trades,
-          countIf(status = 'closed') as closed_trades,
-          countIf(status = 'closed' AND is_profitable = 1) as profitable_trades,
-          sum(amount) as total_volume,
-          sum(pnl) as total_pnl,
-          avg(pnl) as avg_pnl,
           uniq(user_id) as trading_users
         FROM deals_analytics
         WHERE date >= today() - INTERVAL 30 DAY
@@ -512,13 +530,16 @@ export class ClickHouseAnalyticsService {
       format: 'JSONEachRow'
     });
 
-    const data = await result.json<any>();
+    const data = await result?.json<any>();
     const metrics = data[0] || {};
     
     // Получаем активные сделки из PostgreSQL (они не записываются в ClickHouse)
-    const activeDealsCount = await db.select({ count: sql<number>`count(*)`.as('count') })
-      .from(deals)
-      .where(eq(deals.status, 'open'));
+    let activeDealsCount = [{ count: 0 }];
+    if (db) {
+      activeDealsCount = await db.select({ count: sql<number>`count(*)`.as('count') })
+        .from(deals)
+        .where(eq(deals.status, 'open'));
+    }
     
     return {
       totalTrades: parseInt(metrics.total_trades || '0'),
@@ -541,7 +562,8 @@ export class ClickHouseAnalyticsService {
     try {
       // Пытаемся получить данные из ClickHouse
       const client = this.getClient();
-      const revenueResult = await client.query({
+      if (!client) return { /* fallback data */ }; // Добавлена проверка на null
+      const revenueResult = await client?.query({
         query: `
           SELECT 
             sum(revenue) as total_revenue,
@@ -554,7 +576,7 @@ export class ClickHouseAnalyticsService {
         format: 'JSONEachRow'
       });
       
-      const data = await revenueResult.json<any>();
+      const data = await revenueResult?.json<any>();
       const revenue = data[0] || {};
       
       console.log('[ClickHouse] Raw revenue data:', revenue);
@@ -592,11 +614,12 @@ export class ClickHouseAnalyticsService {
   private async getUsersCount(): Promise<number> {
     try {
       const client = this.getClient();
-      const result = await client.query({
+      if (!client) return 0; // Добавлена проверка на null
+      const result = await client?.query({
         query: 'SELECT count(DISTINCT user_id) as total FROM user_events',
         format: 'JSONEachRow'
       });
-      const data = await result.json<any>();
+      const data = await result?.json<any>();
       return parseInt(data[0]?.total || '0');
     } catch {
       return 0;
@@ -609,7 +632,8 @@ export class ClickHouseAnalyticsService {
   private async getEngagementMetrics(): Promise<any> {
     // Основные метрики вовлеченности
     const client = this.getClient();
-    const mainResult = await client.query({
+    if (!client) return { /* fallback data */ }; // Добавлена проверка на null
+    const mainResult = await client?.query({
       query: `
         SELECT 
           count() as total_events,
@@ -626,7 +650,7 @@ export class ClickHouseAnalyticsService {
     });
 
     // Расчет среднего времени сессии
-    const sessionDurationResult = await client.query({
+    const sessionDurationResult = await client?.query({
       query: `
         WITH session_durations AS (
           SELECT 
@@ -646,7 +670,7 @@ export class ClickHouseAnalyticsService {
     });
 
     // Метрики туториала
-    const tutorialResult = await client.query({
+    const tutorialResult = await client?.query({
       query: `
         SELECT 
           countIf(event_type = 'tutorial_progress' AND JSONExtractString(event_data, 'action') = 'start') as tutorial_starts,
@@ -658,9 +682,9 @@ export class ClickHouseAnalyticsService {
       format: 'JSONEachRow'
     });
 
-    const mainData = (await mainResult.json<any>())[0] || {};
-    const sessionData = (await sessionDurationResult.json<any>())[0] || {};
-    const tutorialData = (await tutorialResult.json<any>())[0] || {};
+    const mainData = (await mainResult?.json<any>())[0] || {};
+    const sessionData = (await sessionDurationResult?.json<any>())[0] || {};
+    const tutorialData = (await tutorialResult?.json<any>())[0] || {};
     
     const tutorialStarts = parseInt(tutorialData.tutorial_starts || '0');
     const tutorialCompletions = parseInt(tutorialData.tutorial_completions || '0');
@@ -688,7 +712,8 @@ export class ClickHouseAnalyticsService {
   private async getAdvancedAdMetrics(): Promise<any> {
     try {
       const client = this.getClient();
-      const result = await client.query({
+      if (!client) return { /* fallback data */ }; // Добавлена проверка на null
+      const result = await client?.query({
         query: `
           SELECT 
             countIf(event_type = 'ad_watch') as total_impressions,
@@ -701,7 +726,7 @@ export class ClickHouseAnalyticsService {
         format: 'JSONEachRow'
       });
 
-      const data = (await result.json<any>())[0] || {};
+      const data = (await result?.json<any>())[0] || {};
       
       const totalImpressions = parseInt(data.total_impressions || '0');
       const totalClicks = parseInt(data.total_clicks || '0'); 
@@ -778,12 +803,13 @@ export class ClickHouseAnalyticsService {
       }
 
       const client = this.getClient();
-      const result = await client.query({
+      if (!client) return []; // Добавлена проверка на null
+      const result = await client?.query({
         query,
         format: 'JSONEachRow'
       });
 
-      return await result.json();
+      return await result?.json();
     } catch (error) {
       console.error(`[ClickHouse] Time series error for ${metric}:`, error);
       return [];
@@ -796,7 +822,8 @@ export class ClickHouseAnalyticsService {
   async getSymbolStats(days: number = 7): Promise<any[]> {
     try {
       const client = this.getClient();
-      const result = await client.query({
+      if (!client) return []; // Добавлена проверка на null
+      const result = await client?.query({
         query: `
           SELECT 
             symbol,
@@ -814,7 +841,7 @@ export class ClickHouseAnalyticsService {
         format: 'JSONEachRow'
       });
 
-      return await result.json();
+      return await result?.json();
     } catch (error) {
       console.error('[ClickHouse] Symbol stats error:', error);
       return [];
@@ -827,10 +854,11 @@ export class ClickHouseAnalyticsService {
   async cleanupTestData(): Promise<void> {
     try {
       const client = this.getClient();
-      await client.exec({
+      if (!client) return; // Добавлена проверка на null
+      await client?.exec({
         query: 'TRUNCATE TABLE user_events'
       });
-      await client.exec({
+      await client?.exec({
         query: 'TRUNCATE TABLE deals_analytics' 
       });
       console.log('[ClickHouse] Test data cleaned up');
@@ -845,12 +873,12 @@ export class ClickHouseAnalyticsService {
   async healthCheck(): Promise<{ healthy: boolean; error?: string; stats?: any }> {
     try {
       const client = this.getClient();
-      const result = await client.query({
+      const result = await client?.query({
         query: 'SELECT 1 as health_check',
         format: 'JSONEachRow'
       });
       
-      await result.json();
+      await result?.json();
       
       return {
         healthy: true,

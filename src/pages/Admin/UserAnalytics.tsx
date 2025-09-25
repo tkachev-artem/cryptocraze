@@ -116,7 +116,10 @@ const UserAnalytics: React.FC = () => {
         tooltipValue: (value: number) => value.toString()
       };
     } else if (['sessions', 'screens_opened', 'avg_virtual_balance'].includes(metricId)) {
-      return engagementChartConfig;
+      return {
+        ...engagementChartConfig,
+        tooltipLabel: (engagementChartConfig.tooltipLabel as Function)(metricId)
+      };
     } else {
       // Дефолтный конфиг, если метрика не найдена
       return {
@@ -126,7 +129,7 @@ const UserAnalytics: React.FC = () => {
         showGradient: false,
         showYAxis: true,
         valueFormatter: (value: number) => value.toString(),
-        tooltipLabel: metricId === 'sessions' ? 'Sessions' : (metricId === 'screens_opened' ? 'Screens' : (metricId === 'avg_virtual_balance' ? 'Balance' : 'Users')),
+        tooltipLabel: 'Users',
         tooltipValue: (value: number) => value.toString()
       };
     }

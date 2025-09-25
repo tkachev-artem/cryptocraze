@@ -9,7 +9,7 @@ export const getRetentionChartConfig = (metricId: RetentionMetric) => {
     showYAxis: true,
     valueFormatter: (value: number) => `${Math.floor(value)}`, // Целое число пользователей
     tooltipLabel: 'Users',
-    tooltipValue: (value: number) => `${Math.floor(value)}`
+    tooltipValue: (value: number) => `${Math.floor(value)}`,
   };
 
   if (metricId === 'churn_rate') {
@@ -17,7 +17,7 @@ export const getRetentionChartConfig = (metricId: RetentionMetric) => {
       ...baseConfig,
       colors: ['red'],
       tooltipLabel: 'Churned Users',
-      tooltipValue: (value: number) => `${Math.floor(value)}`
+      tooltipValue: (value: number) => `${Math.floor(value)}`,
     };
   }
 

@@ -170,12 +170,14 @@ CREATE TABLE IF NOT EXISTS analytics (
   timestamp TIMESTAMP DEFAULT NOW(),
   session_id VARCHAR,
   user_agent TEXT,
-  ip_address VARCHAR(45)
+  ip_address VARCHAR(45),
+  country VARCHAR(2) -- ISO 3166-1 alpha-2 country code
 );
 CREATE INDEX IF NOT EXISTS idx_analytics_user_id ON analytics (user_id);
 CREATE INDEX IF NOT EXISTS idx_analytics_event_type ON analytics (event_type);
 CREATE INDEX IF NOT EXISTS idx_analytics_timestamp ON analytics (timestamp);
 CREATE INDEX IF NOT EXISTS idx_analytics_session_id ON analytics (session_id);
+CREATE INDEX IF NOT EXISTS idx_analytics_country ON analytics (country);
 
 -- User sessions tracking for engagement metrics
 CREATE TABLE IF NOT EXISTS user_sessions (

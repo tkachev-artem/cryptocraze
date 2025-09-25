@@ -11,7 +11,7 @@ CH_HOST="http://clickhouse:8123"
 CH_AUTH="default:clickhouse123"
 
 echo "🔄 Ожидание готовности ClickHouse..."
-sleep 10
+sleep 15 # Увеличено время ожидания
 
 echo "📊 Инициализация ClickHouse аналитической базы данных..."
 
@@ -20,12 +20,16 @@ execute_sql() {
     local sql="$1"
     local description="$2"
     
-    if curl -s -u "$CH_AUTH" "$CH_HOST" -d "$sql" > /dev/null 2>&1; then
+    # Добавляем вывод ошибок curl для лучшей диагностики
+    if curl -s -u "$CH_AUTH" "$CH_HOST" -d "$sql" > /dev/null; then
         echo "✅ $description"
     else
-        echo "⚠️ Ошибка: $description"
+        echo "⚠️ Ошибка: $description - $(curl -s -u "$CH_AUTH" "$CH_HOST" -d "$sql" 2>&1)"
     fi
 }
+
+# Создание базы данных, если она не существует
+execute_sql "CREATE DATABASE IF NOT EXISTS cryptocraze_analytics" "Создание базы данных cryptocraze_analytics"
 
 # Переключаемся на нашу базу данных
 execute_sql "USE cryptocraze_analytics" "Переключение на базу cryptocraze_analytics"
@@ -211,13 +215,14 @@ WHERE date >= today() - INTERVAL 90 DAY
 ORDER BY date DESC" "Создание представления kpi_dashboard"
 
 # Проверка созданных таблиц
-TABLES_COUNT=$(curl -s -u "$CH_AUTH" "$CH_HOST" -d "SELECT count() FROM system.tables WHERE database = 'cryptocraze_analytics' AND engine LIKE '%MergeTree%'" | tr -d ' ')
+# Улучшенный запрос для получения чистого числового значения
+TABLES_COUNT=$(curl -s -u "$CH_AUTH" "$CH_HOST" -d "SELECT count() FROM system.tables WHERE database = 'cryptocraze_analytics' AND engine LIKE '%MergeTree%' FORMAT TabSeparatedNoNames")
 
-if [ "$TABLES_COUNT" -gt 5 ]; then
+if [ -n "$TABLES_COUNT" ] && [ "$TABLES_COUNT" -gt 5 ]; then # Проверяем, что переменная не пуста и является числом
     echo "✅ ClickHouse инициализирован успешно! Создано $TABLES_COUNT таблиц"
     echo "📊 ClickHouse готов для аналитики"
 else
-    echo "⚠️ Инициализация завершена, но некоторые таблицы могли не создаться"
+    echo "⚠️ Инициализация завершена, но некоторые таблицы могли не создаться (количество таблиц: $TABLES_COUNT)"
 fi
 
 echo "🎉 Инициализация ClickHouse завершена!"

@@ -419,12 +419,4 @@ img {
   }
 }
 
-/* Стили для графика - только целые числа на оси Y */
-.chart-y-axis-whole-numbers .recharts-yAxis .recharts-cartesian-axis-tick:nth-child(even) {
-  display: none !important;
-}
-
-.chart-y-axis-whole-numbers .recharts-yAxis .recharts-cartesian-axis-tick-value {
-  font-size: 12px !important;
-  fill: #6b7280 !important;
-}
+/* Убираем хак скрытия тиков: будем управлять шкалой программно */

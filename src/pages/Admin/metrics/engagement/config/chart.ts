@@ -1,7 +1,4 @@
-import type { TutorialMetricId } from '../types';
-
-export const getTutorialChartConfig = (metricId: TutorialMetricId) => {
-  const baseConfig = {
+export const engagementChartConfig = {
     categories: ['Users'],
     colors: ['blue'],
     showLegend: false,
@@ -10,8 +7,4 @@ export const getTutorialChartConfig = (metricId: TutorialMetricId) => {
     valueFormatter: (value: number) => value.toString(),
     tooltipLabel: 'Users',
     tooltipValue: (value: number) => value.toString()
-  };
-
-  return baseConfig;
 };
-

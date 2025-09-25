@@ -3,7 +3,6 @@ import { Calendar, Users, Globe, ChevronDown, X } from 'lucide-react';
 import DateRangeFilter from './DateRangeFilter';
 import CountryFilter from './CountryFilter';
 import CustomCheckbox from './CustomCheckbox';
-import { TUTORIAL_FILTER_CONFIG } from '../metrics/tutorial/config/filters';
 
 type DateRange = {
   startDate: Date;
@@ -44,6 +43,22 @@ const FILTER_CONFIGS: Record<string, FilterDefinition[]> = {
       label: 'Date Range',
       icon: <Calendar className="w-4 h-4" />,
       defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    },
+    {
+      id: 'geography',
+      type: 'country',
+      label: 'Country',
+      icon: <Globe className="w-4 h-4" />
     }
   ],
   tutorial_complete: [
@@ -53,6 +68,22 @@ const FILTER_CONFIGS: Record<string, FilterDefinition[]> = {
       label: 'Date Range',
       icon: <Calendar className="w-4 h-4" />,
       defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    },
+    {
+      id: 'geography',
+      type: 'country',
+      label: 'Country',
+      icon: <Globe className="w-4 h-4" />
     }
   ],
   tutorial_skip_rate: [
@@ -62,6 +93,22 @@ const FILTER_CONFIGS: Record<string, FilterDefinition[]> = {
       label: 'Date Range',
       icon: <Calendar className="w-4 h-4" />,
       defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    },
+    {
+      id: 'geography',
+      type: 'country',
+      label: 'Country',
+      icon: <Globe className="w-4 h-4" />
     }
   ],
   pro_tutorial_start: [
@@ -71,6 +118,22 @@ const FILTER_CONFIGS: Record<string, FilterDefinition[]> = {
       label: 'Date Range',
       icon: <Calendar className="w-4 h-4" />,
       defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    },
+    {
+      id: 'geography',
+      type: 'country',
+      label: 'Country',
+      icon: <Globe className="w-4 h-4" />
     }
   ],
   pro_tutorial_complete: [
@@ -80,6 +143,22 @@ const FILTER_CONFIGS: Record<string, FilterDefinition[]> = {
       label: 'Date Range',
       icon: <Calendar className="w-4 h-4" />,
       defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    },
+    {
+      id: 'geography',
+      type: 'country',
+      label: 'Country',
+      icon: <Globe className="w-4 h-4" />
     }
   ],
   pro_tutorial_skip_rate: [
@@ -89,6 +168,22 @@ const FILTER_CONFIGS: Record<string, FilterDefinition[]> = {
       label: 'Date Range',
       icon: <Calendar className="w-4 h-4" />,
       defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    },
+    {
+      id: 'geography',
+      type: 'country',
+      label: 'Country',
+      icon: <Globe className="w-4 h-4" />
     }
   ],
   // Retention метрики
@@ -200,6 +295,47 @@ const FILTER_CONFIGS: Record<string, FilterDefinition[]> = {
       label: 'Date Range',
       icon: <Calendar className="w-4 h-4" />,
       defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    },
+    {
+      id: 'geography',
+      type: 'country',
+      label: 'Country',
+      icon: <Globe className="w-4 h-4" />
+    }
+  ],
+  screens_opened: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    },
+    {
+      id: 'geography',
+      type: 'country',
+      label: 'Country',
+      icon: <Globe className="w-4 h-4" />
     }
   ],
   // По умолчанию - только дата
@@ -210,6 +346,42 @@ const FILTER_CONFIGS: Record<string, FilterDefinition[]> = {
       label: 'Date Range',
       icon: <Calendar className="w-4 h-4" />,
       defaultValue: 'Last 7 days'
+    }
+  ],
+  trades_per_user: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    },
+    {
+      id: 'geography',
+      type: 'country',
+      label: 'Country',
+      icon: <Globe className="w-4 h-4" />
+    },
+    {
+      id: 'tradeActivity',
+      type: 'select',
+      label: 'Trade Activity',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'all', label: 'All', value: 'all' },
+        { id: 'profit', label: 'Profit', value: 'profit' },
+        { id: 'loss', label: 'Loss', value: 'loss' }
+      ]
     }
   ]
 };
@@ -278,10 +450,10 @@ const MetricFilters: React.FC<MetricFiltersProps> = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     const end = new Date();
-                    end.setHours(23, 59, 59, 999);
-                    const start = new Date();
-                    start.setDate(start.getDate() - 6);
-                    start.setHours(0, 0, 0, 0);
+                    end.setUTCHours(23, 59, 59, 999);
+                    const start = new Date(end);
+                    start.setUTCDate(end.getUTCDate() - 6);
+                    start.setUTCHours(0, 0, 0, 0);
                     onDateRangeChange({ startDate: start, endDate: end, label: 'Last 7 days' });
                   }}
                   className="ml-1 hover:bg-green-100 rounded-full p-0.5"

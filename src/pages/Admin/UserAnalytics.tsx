@@ -20,45 +20,19 @@ import {
   Hand, 
   Gift, 
   Play, 
-  Shield
+  Shield,
+  DollarSign
 } from 'lucide-react';
 import { AreaChart, Card } from '@tremor/react';
 import { config } from '../../lib/config';
 import MetricTable from './components/MetricTable';
 import MetricFilters from './components/MetricFilters';
 // Конфиги графиков встроены, чтобы избежать проблем с импортом
-
-// Функция для получения конфига графика
-const getChartConfig = (metricId: string) => {
-  const baseConfig = {
-    categories: ['Users'],
-    colors: ['blue'],
-    showLegend: false,
-    showGradient: false,
-    showYAxis: true,
-    valueFormatter: (value: number) => `${Math.floor(value)}`, // Целое число пользователей
-    tooltipLabel: 'Users',
-    tooltipValue: (value: number) => `${Math.floor(value)}`
-  };
-
-  // Для churn_rate используем красный цвет
-  if (metricId === 'churn_rate') {
-    return {
-      ...baseConfig,
-      colors: ['red'],
-      tooltipLabel: 'Churned Users',
-      tooltipValue: (value: number) => `${Math.floor(value)}`
-    };
-  }
-
-  return baseConfig;
-};
-
-// Используем valueFormatter из конфига
-const getValueFormatter = (metricId: string) => {
-  const config = getChartConfig(metricId);
-  return config.valueFormatter;
-};
+import { engagementMetrics } from '@/pages/Admin/metrics/engagement/config/metrics.tsx';
+import { engagementChartConfig } from '@/pages/Admin/metrics/engagement/config/chart.ts';
+import { getTutorialChartConfig } from '@/pages/Admin/metrics/tutorial/config/chart.ts';
+import { getRetentionChartConfig } from '@/pages/Admin/metrics/retention/config/retentionChart.ts';
+import { RetentionMetric } from '@/pages/Admin/metrics/retention/types/retention.ts';
 
 type DateRange = {
   startDate: Date;
@@ -96,45 +70,89 @@ const MetricRow: React.FC<MetricRowProps> = ({ metric, isSelected, onClick }) =>
       <div className="text-sm font-medium text-gray-900 truncate">{metric.title}</div>
       <div className="text-xs text-gray-500 truncate">{metric.description}</div>
     </div>
-    <div className="text-sm font-semibold text-gray-900">{metric.value}</div>
   </button>
 );
 
 const UserAnalytics: React.FC = () => {
   const [selectedMetric, setSelectedMetric] = useState<Metric | null>(null);
   const [metricsData, setMetricsData] = useState<Record<string, string | number>>({});
-  const [chartData, setChartData] = useState<Array<{ date: string; Users: number; percent?: number; totalUsers?: number }>>([]);
+  const [chartData, setChartData] = useState<Array<{ date: string; [key: string]: number | string }>>([]);
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
+  const [dynamicOverallPercent, setDynamicOverallPercent] = useState<number | null>(null);
+  const [dynamicYAxisMaxValue, setDynamicYAxisMaxValue] = useState<number | null>(null);
   
-  // Filter states
-  const [dateRange, setDateRange] = useState<DateRange>(() => {
-    const end = new Date();
-    end.setHours(23, 59, 59, 999);
-    const start = new Date();
-    start.setDate(start.getDate() - 6);
-    start.setHours(0, 0, 0, 0);
-    return { startDate: start, endDate: end, label: 'Last 7 days' };
-  });
-  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
+  const Y_AXIS_MULTIPLIER = 1.2; // Можно изменить на 1.3, 1.5 и т.д.
 
-  // Value formatter для графика - только целые числа
-  const valueFormatter = (number: number) =>
-    `${Intl.NumberFormat('us').format(Math.floor(number)).toString()}`;
+  // Определение метрик, для которых процент рассчитывается динамически
+  const dynamicPercentageMetricIds = new Set([
+    'tutorial_start', 'tutorial_complete', 'tutorial_skip_rate',
+    'pro_tutorial_start', 'pro_tutorial_complete', 'pro_tutorial_skip_rate',
+    'D1', 'D3', 'D7', 'D30',
+  ]);
 
-  // Используем valueFormatter из конфига
-  const getValueFormatter = (metricId: string) => {
-    const config = getChartConfig(metricId);
+  // Функция для получения конфига графика в зависимости от metricId
+  const getMetricChartConfig = (metricId: string) => {
+    const tutorialMetricIds = new Set([
+      'tutorial_start', 'tutorial_complete', 'tutorial_skip', 'tutorial_skip_rate',
+      'pro_tutorial_start', 'pro_tutorial_complete', 'pro_tutorial_skip', 'pro_tutorial_skip_rate'
+    ]);
+    const retentionMetricIds = new Set<RetentionMetric>(['D1', 'D3', 'D7', 'D30', 'churn_rate']);
+
+    if (tutorialMetricIds.has(metricId)) {
+      return getTutorialChartConfig(metricId as any);
+    } else if (retentionMetricIds.has(metricId as RetentionMetric)) {
+      return getRetentionChartConfig(metricId as RetentionMetric);
+    } else if (metricId === 'trades_per_user') {
+      return {
+        categories: ['Trades'],
+        colors: ['blue'],
+        showLegend: false,
+        showGradient: false,
+        showYAxis: true,
+        valueFormatter: (value: number) => value.toString(),
+        tooltipLabel: 'Trades',
+        tooltipValue: (value: number) => value.toString()
+      };
+    } else if (['sessions', 'screens_opened', 'avg_virtual_balance'].includes(metricId)) {
+      return engagementChartConfig;
+    } else {
+      // Дефолтный конфиг, если метрика не найдена
+      return {
+        categories: ['Users'],
+        colors: ['blue'],
+        showLegend: false,
+        showGradient: false,
+        showYAxis: true,
+        valueFormatter: (value: number) => value.toString(),
+        tooltipLabel: metricId === 'sessions' ? 'Sessions' : (metricId === 'screens_opened' ? 'Screens' : (metricId === 'avg_virtual_balance' ? 'Balance' : 'Users')),
+        tooltipValue: (value: number) => value.toString()
+      };
+    }
+  };
+
+  const getMetricValueFormatter = (metricId: string) => {
+    const config = getMetricChartConfig(metricId);
     return config.valueFormatter;
   };
 
-  // Y-axis tick formatter - только целые числа
-  const yAxisTickFormatter = (value: number) => {
-    return Math.floor(value).toString();
+  const getMetricTooltipValueFormatter = (metricId: string) => {
+    const config = getMetricChartConfig(metricId);
+    return config.tooltipValue;
   };
 
-
+  // Filter states
+  const [dateRange, setDateRange] = useState<DateRange>(() => {
+    const end = new Date();
+    end.setUTCHours(23, 59, 59, 999);
+    const start = new Date(end);
+    start.setUTCDate(end.getUTCDate() - 6);
+    start.setUTCHours(0, 0, 0, 0);
+    console.log('[UserAnalytics] Initial dateRange (UTC): ', { startDate: start.toISOString(), endDate: end.toISOString() });
+    return { startDate: start, endDate: end, label: 'Last 7 days' };
+  });
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
 
   // Define all metrics with their properties
   const allMetrics: Metric[] = [
@@ -144,11 +162,8 @@ const UserAnalytics: React.FC = () => {
     { id: 'signup_rate', title: 'Signup Rate', value: '—', icon: <UserCheck className="w-4 h-4 text-white" />, color: 'bg-green-500', category: 'Acquisition', description: 'Conversion from visitor to user' },
     { id: 'trade_open_rate', title: 'Trade Open Rate', value: '—', icon: <TrendingUp className="w-4 h-4 text-white" />, color: 'bg-emerald-500', category: 'Acquisition', description: 'Users who started first trade' },
     
-    // Engagement
-    { id: 'sessions', title: 'Sessions', value: '—', icon: <BarChart3 className="w-4 h-4 text-white" />, color: 'bg-purple-500', category: 'Engagement', description: 'Total user sessions' },
-    { id: 'screens_opened', title: 'Screens Opened', value: '—', icon: <Monitor className="w-4 h-4 text-white" />, color: 'bg-violet-500', category: 'Engagement', description: 'Average screens per session' },
-    { id: 'trades_per_user', title: 'Trades/User', value: '—', icon: <MousePointer className="w-4 h-4 text-white" />, color: 'bg-cyan-500', category: 'Engagement', description: 'Average trades per active user' },
-    { id: 'avg_virtual_balance', title: 'Avg Virtual Balance', value: '—', icon: <Wallet className="w-4 h-4 text-white" />, color: 'bg-teal-500', category: 'Engagement', description: 'Average virtual money balance' },
+    // Engagement (теперь импортируются)
+    ...engagementMetrics,
     
     // Retention
     { id: 'D1', title: 'D1 Retention', value: '0%', icon: <RotateCcw className="w-4 h-4 text-white" />, color: 'bg-orange-500', category: 'Retention', description: 'Active for 1+ days' },
@@ -168,6 +183,7 @@ const UserAnalytics: React.FC = () => {
     { id: 'pro_tutorial_skip_rate', title: 'Pro Tutorial Skip Rate', value: '—', icon: <SkipForward className="w-4 h-4 text-white" />, color: 'bg-slate-600', category: 'Tutorial', description: 'Premium users who skipped pro tutorial' },
     
     // Trading
+    { id: 'trades_per_user', title: 'Trades/User', value: '0', icon: <DollarSign className="w-4 h-4 text-white" />, color: 'bg-fuchsia-600', category: 'Trading', description: 'Number of trades per user' },
     { id: 'price_stream_start', title: 'Price Stream Start', value: '—', icon: <Activity className="w-4 h-4 text-white" />, color: 'bg-pink-500', category: 'Trading', description: 'Users who viewed live prices' },
     { id: 'order_open', title: 'Order Open', value: '—', icon: <ArrowUpRight className="w-4 h-4 text-white" />, color: 'bg-green-600', category: 'Trading', description: 'Total orders placed' },
     { id: 'order_close_auto', title: 'Order Close Auto', value: '—', icon: <ArrowDownRight className="w-4 h-4 text-white" />, color: 'bg-orange-600', category: 'Trading', description: 'Orders closed automatically' },
@@ -184,8 +200,6 @@ const UserAnalytics: React.FC = () => {
     setChartError(null);
 
     try {
-      console.log(`Loading chart data for metric: ${metricId}`);
-
       // Build query parameters with date range and filters
       const params = new URLSearchParams({
         startDate: dateRange.startDate.toISOString(),
@@ -199,71 +213,134 @@ const UserAnalytics: React.FC = () => {
         )
       });
 
-      const response = await fetch(`${config.api.baseUrl}/admin/dashboard/metric/${metricId}/trend?${params}`, {
+      let apiUrl = `${config.api.baseUrl}/admin/dashboard/metric/${metricId}/trend?${params}`;
+
+      if (metricId === 'trades_per_user') {
+        apiUrl = `${config.api.baseUrl}/admin/dashboard/chart/trades_by_date?${params}`;
+      }
+
+      const response = await fetch(apiUrl, {
         credentials: 'include'
       });
 
-      console.log(`Response status: ${response.status}`);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('Chart data received:', data);
 
-        // Проверяем, является ли метрика tutorial-метрикой
-        const isTutorialMetric = [
-          'tutorial_start', 'tutorial_complete', 'tutorial_skip_rate',
-          'pro_tutorial_start', 'pro_tutorial_complete', 'pro_tutorial_skip_rate'
-        ].includes(metricId);
+        // Единый формат для всех метрик (как retention): { date, value } => { date, Users }
+        // Обработка разных типов ответов с бэкенда
+        let trendData: Array<{ date: string; value: number }> = [];
+        let totalValue: number | null = null;
+        let totalDenominator: number | null = null;
 
-        let formattedData: Array<{ date: string; Users: number; percent?: number; totalUsers?: number }>;
-
-        if (isTutorialMetric) {
-          // Для tutorial-метрик сервер возвращает { date, percent, userCount, totalUsers }
-          // Мы показываем userCount как значение на графике
-          formattedData = data.map((item: any) => ({
-            date: item.date, // Сервер уже возвращает в правильном формате
-            Users: Math.floor(item.userCount || 0),
-            percent: item.percent,
-            totalUsers: Math.floor(item.totalUsers || 0)
-          }));
+        if (metricId === 'sessions') {
+          const { trend, totalSessions, totalUsers } = data;
+          trendData = trend;
+          // Для метрики 'sessions' обновляем dynamicYAxisMaxValue на основе максимального значения в тренде
+          const maxDataValue = trendData.reduce((max: number, item: any) => Math.max(max, item.value || 0), 0);
+          const currentMultiplier = maxDataValue < 3 ? 3 : (maxDataValue <= 5 ? 2 : (maxDataValue > 10 ? 1 : Y_AXIS_MULTIPLIER));
+          const calculatedMaxValue = Math.ceil(maxDataValue * currentMultiplier);
+          setDynamicYAxisMaxValue(calculatedMaxValue > 0 ? calculatedMaxValue : 1); // Убедимся, что это не 0
+          if (totalUsers > 0) {
+            totalValue = parseFloat((totalSessions / totalUsers).toFixed(2)); // Среднее количество сессий на пользователя
+          } else {
+            totalValue = 0;
+          }
+        } else if (metricId === 'screens_opened') {
+          const { trend, totalScreensOpened } = data;
+          trendData = trend;
+          // Для метрики 'screens_opened' также обновляем dynamicYAxisMaxValue
+          const maxDataValue = trendData.reduce((max: number, item: any) => Math.max(max, item.value || 0), 0);
+          const currentMultiplier = maxDataValue < 3 ? 3 : (maxDataValue <= 5 ? 2 : (maxDataValue > 10 ? 1 : Y_AXIS_MULTIPLIER));
+          const calculatedMaxValue = Math.ceil(maxDataValue * currentMultiplier);
+          setDynamicYAxisMaxValue(calculatedMaxValue > 0 ? calculatedMaxValue : 1); // Убедимся, что это не 0
+        } else if (metricId === 'trades_per_user') {
+          trendData = data.map((item: any) => ({ date: item.date, value: item.count }));
+          // Для метрики 'trades_per_user' также обновляем dynamicYAxisMaxValue на основе максимального значения в тренде
+          const maxDataValue = trendData.reduce((max: number, item: any) => Math.max(max, item.value || 0), 0);
+          const currentMultiplier = maxDataValue < 3 ? 3 : (maxDataValue <= 5 ? 2 : (maxDataValue > 10 ? 1 : Y_AXIS_MULTIPLIER));
+          const calculatedMaxValue = Math.ceil(maxDataValue * currentMultiplier);
+          setDynamicYAxisMaxValue(calculatedMaxValue > 0 ? calculatedMaxValue : 1); // Убедимся, что это не 0
+        } else if (metricId === 'avg_virtual_balance') {
+          const { trend, avgBalance } = data;
+          trendData = trend;
+          totalValue = Math.floor(avgBalance);
+          // Для метрики 'avg_virtual_balance' также обновляем dynamicYAxisMaxValue на основе avgBalance
+          const maxDataValue = Math.floor(avgBalance); // Для плоского тренда maxDataValue - это сам avgBalance
+          const currentMultiplier = maxDataValue < 3 ? 3 : (maxDataValue <= 5 ? 2 : (maxDataValue > 10 ? 1 : Y_AXIS_MULTIPLIER));
+          const calculatedMaxValue = Math.ceil(maxDataValue * currentMultiplier);
+          setDynamicYAxisMaxValue(calculatedMaxValue > 0 ? calculatedMaxValue : 1); // Убедимся, что это не 0
         } else {
-          // Для остальных метрик - стандартная обработка
-          formattedData = data.map((item: any) => ({
-            date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-            Users: Math.floor(item.value || 0)
-          }));
+          trendData = data; // Для tutorial и retention, где data - это уже массив тренда
+          // Если метрика не попадает в перечисленные выше, используем максимальное значение из данных
+          const maxDataValue = trendData.reduce((max: number, item: any) => Math.max(max, item.value || 0), 0);
+          const currentMultiplier = maxDataValue < 3 ? 3 : (maxDataValue <= 5 ? 2 : (maxDataValue > 10 ? 1 : Y_AXIS_MULTIPLIER));
+          const calculatedMaxValue = Math.ceil(maxDataValue * currentMultiplier);
+          setDynamicYAxisMaxValue(calculatedMaxValue > 0 ? calculatedMaxValue : 1);
         }
 
+        if (dynamicPercentageMetricIds.has(metricId)) {
+          const totalUsersResponse = await fetch(`${config.api.baseUrl}/admin/dashboard/total-users-in-period?startDate=${dateRange.startDate.toISOString()}&endDate=${dateRange.endDate.toISOString()}`, {
+            credentials: 'include'
+          });
+          if (totalUsersResponse.ok) {
+            const overviewData = await totalUsersResponse.json();
+            // Для trades_per_user totalValue уже содержит totalTradingUsers
+            const totalEventsForPercentage = totalValue !== null ? totalValue : trendData.reduce((sum: number, item: any) => sum + (item.value || 0), 0); 
+            const totalUsersInPeriod = overviewData.totalUsers;
+
+            const currentMultiplier = totalUsersInPeriod > 100 ? 1 : Y_AXIS_MULTIPLIER;
+            // Удаляем расчет и установку dynamicYAxisMaxValue здесь, так как это делается в блоках выше.
+            // const calculatedMaxValue = Math.ceil(totalUsersInPeriod * currentMultiplier);
+            // setDynamicYAxisMaxValue(calculatedMaxValue > 0 ? calculatedMaxValue : 1); // Убедимся, что это не 0
+
+            if (totalUsersInPeriod > 0) {
+              const calculatedPercent = Math.round((totalEventsForPercentage / totalUsersInPeriod) * 100);
+              setDynamicOverallPercent(calculatedPercent);
+            } else {
+              setDynamicOverallPercent(0);
+            }
+          } else {
+            setDynamicOverallPercent(0);
+            console.error('[UserAnalytics] Failed to fetch total users in period.');
+          }
+        } else {
+          setDynamicOverallPercent(null); // Сбрасываем для метрик без процента
+        }
+
+        const formattedData: Array<{ date: string; [key: string]: number | string }> = trendData.map((item: any) => {
+          const dateObj = new Date(item.date);
+          if (isNaN(dateObj.getTime())) {
+            console.error('[UserAnalytics] Invalid date received in trendData:', item.date);
+            return { date: 'Invalid Date', [getMetricChartConfig(selectedMetric.id).categories[0]]: item.value || 0 };
+          }
+          return {
+            date: dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            [getMetricChartConfig(selectedMetric.id).categories[0]]: item.value || 0
+          };
+        });
+
         // Создаем полный период данных на основе выбранного диапазона
-        const fullData: Array<{ date: string; Users: number; percent?: number; totalUsers?: number }> = [];
+        const fullData: Array<{ date: string; [key: string]: number | string }> = [];
         const startDate = new Date(dateRange.startDate);
         const endDate = new Date(dateRange.endDate);
 
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          console.error('[UserAnalytics] Invalid dateRange (startDate or endDate) when creating fullData:', { startDate: dateRange.startDate, endDate: dateRange.endDate });
+          setChartError('Invalid date range for chart display.');
+          setChartData([]);
+          setChartLoading(false);
+          return;
+        }
+
         for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-          let dateString: string;
-          if (isTutorialMetric) {
-            // Для tutorial-метрик используем ISO формат даты
-            dateString = d.toISOString().slice(0, 10);
-          } else {
-            // Для остальных метрик используем локализованный формат
-            dateString = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          if (isNaN(d.getTime())) {
+            console.error('[UserAnalytics] Invalid date encountered in fullData loop:', d);
+            break; // Прерываем цикл, если дата стала недействительной
           }
-
-          // Ищем данные для этой даты
-          const existingData = formattedData.find(item => {
-            if (isTutorialMetric) {
-              return item.date === dateString;
-            } else {
-              return item.date === dateString;
-            }
-          });
-
-          fullData.push({
-            date: dateString,
-            Users: existingData ? Math.floor(existingData.Users) : 0,
-            percent: existingData?.percent,
-            totalUsers: existingData?.totalUsers
-          });
+          const dateString = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const existingData = formattedData.find(item => item.date === dateString);
+          const categoryName = getMetricChartConfig(selectedMetric.id).categories[0];
+          fullData.push({ date: dateString, [categoryName]: existingData ? existingData[categoryName] : 0 });
         }
 
         // Улучшаем отображение для коротких периодов (Today/Yesterday/2 days)
@@ -272,39 +349,24 @@ const UserAnalytics: React.FC = () => {
         if (inclusiveDays <= 1) {
           const prev = new Date(startDate.getTime() - msPerDay);
           const next = new Date(endDate.getTime() + msPerDay);
-          const dateFormat = isTutorialMetric ?
-            (d: Date) => d.toISOString().slice(0, 10) :
-            (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
+          const dateFormat = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
           const padded = [
-            { date: dateFormat(prev), Users: 0, percent: undefined, totalUsers: undefined },
-            fullData[0] ? { ...fullData[0], date: dateFormat(startDate) } : { date: dateFormat(startDate), Users: 0, percent: undefined, totalUsers: undefined },
-            { date: dateFormat(next), Users: 0, percent: undefined, totalUsers: undefined }
+            { date: dateFormat(prev), [getMetricChartConfig(selectedMetric.id).categories[0]]: 0 },
+            fullData[0] ? { ...fullData[0], date: dateFormat(startDate) } : { date: dateFormat(startDate), [getMetricChartConfig(selectedMetric.id).categories[0]]: 0 },
+            { date: dateFormat(next), [getMetricChartConfig(selectedMetric.id).categories[0]]: 0 }
           ];
-          console.log('Chart data padded for single-day range:', padded);
           setChartData(padded);
         } else if (inclusiveDays === 2) {
           const prev = new Date(startDate.getTime() - msPerDay);
           const next = new Date(endDate.getTime() + msPerDay);
-          const dateFormat = isTutorialMetric ?
-            (d: Date) => d.toISOString().slice(0, 10) :
-            (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
+          const dateFormat = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
           const padded = [
-            { date: dateFormat(prev), Users: 0, percent: undefined, totalUsers: undefined },
-            ...fullData.map(item => {
-              if (isTutorialMetric) {
-                return { ...item, date: dateFormat(new Date(item.date)) };
-              } else {
-                return item;
-              }
-            }),
-            { date: dateFormat(next), Users: 0, percent: undefined, totalUsers: undefined }
+            { date: dateFormat(prev), [getMetricChartConfig(selectedMetric.id).categories[0]]: 0 },
+            ...fullData,
+            { date: dateFormat(next), [getMetricChartConfig(selectedMetric.id).categories[0]]: 0 }
           ];
-          console.log('Chart data padded for two-day range:', padded);
           setChartData(padded);
         } else {
-          console.log('Chart data with selected date range:', fullData);
           setChartData(fullData);
         }
       } else {
@@ -355,9 +417,53 @@ const UserAnalytics: React.FC = () => {
             D7: data.d7Retention !== undefined ? `${data.d7Retention}%` : '0%',
             D30: data.d30Retention !== undefined ? `${data.d30Retention}%` : '0%',
             churn_rate: '—', // Will calculate from churn endpoint
-            sessions: data.totalEvents || '—',
+            // Новые метрики Engagement
+            sessions: '—',
+            screens_opened: '—',
+            trades_per_user: '—',
+            avg_virtual_balance: '—',
+            sessions_total: data.totalEvents || '—', // Переименовано для ясности
             ads_watched: '—',
           };
+
+          // Отдельные запросы для Engagement метрик, так как они возвращают { trend, totalValue }
+          const engagementMetricRequests: Promise<any>[] = [];
+          const engagementMetricIds = ['sessions', 'screens_opened', 'trades_per_user', 'avg_virtual_balance', 'churn_rate'];
+
+          engagementMetricIds.forEach(id => {
+            let url = `${config.api.baseUrl}/admin/dashboard/metric/${id}/trend?${params}`;
+            if (id === 'trades_per_user') {
+              url = `${config.api.baseUrl}/admin/dashboard/chart/trades_by_date?${params}`;
+            }
+            engagementMetricRequests.push(
+              fetch(url, { credentials: 'include' })
+                .then(res => res.ok ? res.json() : Promise.reject(new Error(`Failed to fetch ${id} data`)))
+                .catch(error => { console.error(`Error fetching ${id}:`, error); return null; })
+            );
+          });
+
+          const engagementResults = await Promise.all(engagementMetricRequests);
+
+          engagementResults.forEach((result, index) => {
+            const metricId = engagementMetricIds[index];
+            if (result) {
+              if (metricId === 'sessions') {
+                processedMetrics.sessions = result.totalUsers > 0 ? parseFloat((result.totalSessions / result.totalUsers).toFixed(2)).toString() : '0';
+              } else if (metricId === 'screens_opened') {
+                processedMetrics.screens_opened = result.totalScreensOpened.toString();
+              } else if (metricId === 'trades_per_user') {
+                // Агрегируем общее количество сделок напрямую из массива result
+                const totalTrades = result.reduce((sum: number, item: any) => sum + (item.count || 0), 0);
+                processedMetrics.trades_per_user = totalTrades.toString();
+              } else if (metricId === 'avg_virtual_balance') {
+                processedMetrics.avg_virtual_balance = Math.floor(result.avgBalance).toString();
+              } else if (metricId === 'churn_rate') {
+                // Для churn_rate мы ожидаем тренд с процентами, берем последнее значение
+                processedMetrics.churn_rate = result.length > 0 ? `${result[result.length - 1].value}%` : '0%';
+              }
+            }
+          });
+
           console.log('Processed metrics:', processedMetrics);
           setMetricsData(processedMetrics);
         } else if (response.status === 503) {
@@ -413,11 +519,11 @@ const UserAnalytics: React.FC = () => {
     if (selectedMetric) {
       loadChartData(selectedMetric.id);
     }
-  }, [dateRange, selectedFilters]);
+  }, [dateRange, selectedFilters]); // Добавляем metricsData в зависимости
 
 
   // Update metrics with loaded data
-  console.log('Current metricsData:', metricsData);
+  console.log('[UserAnalytics] Current metricsData:', metricsData);
   const metricsWithData = allMetrics.map(metric => ({
     ...metric,
     value: metricsData[metric.id] !== undefined ? metricsData[metric.id] : metric.value
@@ -493,95 +599,99 @@ const UserAnalytics: React.FC = () => {
               </h3>
               <p className="text-2xl font-bold text-gray-900 mb-4">
                 {(() => {
-                  // Для tutorial-метрик рассчитываем общий процент за период
-                  const isTutorialMetric = [
-                    'tutorial_start', 'tutorial_complete', 'tutorial_skip_rate',
-                    'pro_tutorial_start', 'pro_tutorial_complete', 'pro_tutorial_skip_rate'
-                  ].includes(selectedMetric.id);
-
-                  if (isTutorialMetric && chartData.length > 0) {
-                    // Сервер теперь возвращает одинаковый percent для всех дней (общий за период)
-                    return `${chartData[0]?.percent || 0}%`;
-                  }
-
-                  return selectedMetric.value;
+                  const isDynamic = dynamicPercentageMetricIds.has(selectedMetric.id);
+                  console.log('[UserAnalytics] Rendering percentage:', {
+                    metricId: selectedMetric.id,
+                    isDynamic,
+                    dynamicOverallPercent,
+                    selectedMetricValue: selectedMetric.value
+                  });
+                  return isDynamic && dynamicOverallPercent !== null
+                    ? `${dynamicOverallPercent}%`
+                    : selectedMetric.value;
                 })()}
               </p>
               <div className="mt-6 hidden sm:block">
               <AreaChart
-                data={chartData.length > 0 ? chartData : [
-                  { date: 'No Data', Users: 0 }
-                ]}
+                data={chartData.length > 0 
+                  ? chartData 
+                  : [{ date: 'No Data', [getMetricChartConfig(selectedMetric.id).categories[0]]: 0 }]}
                 index="date"
-                categories={['Users']}
-                colors={['blue']}
+                categories={getMetricChartConfig(selectedMetric.id).categories}
+                colors={getMetricChartConfig(selectedMetric.id).colors}
                 showLegend={false}
                 showGradient={false}
-                  valueFormatter={getValueFormatter(selectedMetric.id)}
+                  valueFormatter={getMetricValueFormatter(selectedMetric.id)}
                   showYAxis={true}
                   yAxisWidth={60}
-                  maxValue={Math.max(...chartData.map(d => d.Users), 1)}
+                  minValue={0}
+                  maxValue={dynamicYAxisMaxValue}
                   customTooltip={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
                       return (
                         <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
                           <p className="text-gray-700 font-medium text-sm mb-1">{label}</p>
                           <p className="text-blue-600 text-sm">
-                            Users: {getValueFormatter(selectedMetric.id)(typeof payload[0].value === 'number' ? payload[0].value : 0)}
+                            {getMetricChartConfig(selectedMetric.id).tooltipLabel}: {getMetricTooltipValueFormatter(selectedMetric.id)(payload[0].value as any)}
                           </p>
                         </div>
                       );
                     }
                     return null;
                   }}
-                  className="h-48 chart-y-axis-whole-numbers [&_.recharts-cartesian-axis-tick-value]:text-xs [&_.recharts-cartesian-axis-tick-value]:fill-gray-600"
-                />
+                  className="h-48 [&_.recharts-cartesian-axis-tick-value]:text-xs [&_.recharts-cartesian-axis-tick-value]:fill-gray-600"
+                >
+                  {/* <YAxis tickFormatter={formatYAxisTick} /> */}
+                </AreaChart>
               </div>
               <div className="mt-6 block sm:hidden">
                 <AreaChart
-                  data={chartData.length > 0 ? chartData : [
-                    { date: 'No Data', Users: 0 }
-                  ]}
+                  data={chartData.length > 0 
+                    ? chartData 
+                    : [{ date: 'No Data', [getMetricChartConfig(selectedMetric.id).categories[0]]: 0 }]}
                   index="date"
-                  categories={['Users']}
-                  colors={['blue']}
+                  categories={getMetricChartConfig(selectedMetric.id).categories}
+                  colors={getMetricChartConfig(selectedMetric.id).colors}
                   showLegend={false}
                   showGradient={false}
-                  valueFormatter={getValueFormatter(selectedMetric.id)}
+                  valueFormatter={getMetricValueFormatter(selectedMetric.id)}
                   startEndOnly={true}
                 showYAxis={true}
                   yAxisWidth={60}
-                  maxValue={Math.max(...chartData.map(d => d.Users), 1)}
+                  minValue={0}
+                  maxValue={dynamicYAxisMaxValue || 100}
                   customTooltip={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
                       return (
                         <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
                           <p className="text-gray-700 font-medium text-sm mb-1">{label}</p>
                           <p className="text-blue-600 text-sm">
-                            Users: {getValueFormatter(selectedMetric.id)(typeof payload[0].value === 'number' ? payload[0].value : 0)}
+                            {getMetricChartConfig(selectedMetric.id).tooltipLabel}: {getMetricTooltipValueFormatter(selectedMetric.id)(payload[0].value as any)}
                           </p>
                         </div>
                       );
                     }
                     return null;
                   }}
-                  className="h-48 chart-y-axis-whole-numbers [&_.recharts-cartesian-axis-tick-value]:text-xs [&_.recharts-cartesian-axis-tick-value]:fill-gray-600"
-                />
+                  className="h-48 [&_.recharts-cartesian-axis-tick-value]:text-xs [&_.recharts-cartesian-axis-tick-value]:fill-gray-600"
+                >
+                  {/* <YAxis tickFormatter={formatYAxisTick} /> */}
+                </AreaChart>
               </div>
             </div>
 
             {/* Table */}
-              <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Detailed Data</h3>
-                <MetricTable
-                  metricId={selectedMetric.id}
-                  title={selectedMetric.title}
-                  isOpen={true}
-                  onClose={() => {}}
-                  dateRange={dateRange}
-                  selectedFilters={selectedFilters}
-                />
-              </div>
+            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Detailed Data</h3>
+              <MetricTable
+                metricId={selectedMetric.id}
+                title={selectedMetric.title}
+                isOpen={true}
+                onClose={() => {}}
+                dateRange={dateRange}
+                selectedFilters={selectedFilters}
+              />
+            </div>
             </div>
           </div>
         ) : (

@@ -38,6 +38,7 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
     
     setLoading(true);
     setError(null);
+    setData([]); // Сбрасываем данные перед новой загрузкой, чтобы избежать отображения устаревших данных
     
     try {
       let endpoint = '';
@@ -55,6 +56,8 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
         )
       });
 
+      // console.log('[MetricTable] Fetching data for metric:', metricId, 'with params:', Object.fromEntries(params.entries()));
+
       if (['D1', 'D3', 'D7', 'D30'].includes(metricId)) {
         endpoint = '/admin/dashboard/table/retention';
         params.append('window', metricId);
@@ -70,6 +73,14 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
       ) {
         endpoint = '/admin/dashboard/table/tutorial';
         params.append('metricId', metricId);
+        // bust cache for tutorial endpoints to avoid any proxy/browser caching artifacts
+        params.append('_t', String(Date.now()));
+      } else if (metricId === 'sessions') {
+        endpoint = '/admin/dashboard/table/sessions';
+      } else if (metricId === 'screens_opened') {
+        endpoint = '/admin/dashboard/table/screens_opened';
+      } else if (metricId === 'trades_per_user') {
+        endpoint = '/admin/dashboard/table/trades_per_user';
       } else {
         // Placeholder for other metrics
         setData([]);
@@ -78,7 +89,7 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
         return;
       }
 
-      const response = await fetch(`${config.api.baseUrl}${endpoint}?${params}`, {
+      const response = await fetch(`${config.api.baseUrl}${endpoint}?${params.toString()}`, {
         credentials: 'include'
       });
 
@@ -87,6 +98,7 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
       }
 
       const result = await response.json();
+      // console.log('[MetricTable] Data received for metric:', metricId, ':', result.data);
       
       // Сортируем данные
       let sortedData = result.data || [];
@@ -115,6 +127,12 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
         sortedData = sortedData.sort((a: any, b: any) => {
           return new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime();
         });
+      } else if (metricId === 'screens_opened') {
+        // Сортируем данные для screens_opened: по количеству открытых экранов (по убыванию)
+        sortedData = sortedData.sort((a: any, b: any) => b.screensOpenedCount - a.screensOpenedCount);
+      } else if (metricId === 'trades_per_user') {
+        // Сортируем данные для trades_per_user: по дате события (новые сначала)
+        sortedData = sortedData.sort((a: any, b: any) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime());
       }
       
       setData(sortedData);
@@ -199,12 +217,31 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
                     </span>
                   )}
                 </td>
-                <td className="py-4 px-4 text-sm text-gray-700">{new Date(row.installDate).toLocaleDateString()}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">
+                  {(() => {
+                    const installDate = new Date(row.installDate);
+                    if (isNaN(installDate.getTime())) {
+                      return '—';
+                    }
+                    return installDate.toISOString().slice(0, 10);
+                  })()}
+                </td>
                 <td className="py-4 px-4 text-sm">
                   {row[`${metricId.toLowerCase()}Returned`] ? (
                     <span className="inline-flex items-center gap-1 text-green-600 font-medium">
                       <Check className="w-4 h-4 text-green-500" />
-                      {new Date(new Date(row.installDate).getTime() + (metricId === 'D1' ? 1 : metricId === 'D3' ? 3 : metricId === 'D7' ? 7 : 30) * 86400000).toLocaleDateString()}
+                      {(() => {
+                        const installDate = new Date(row.installDate);
+                        if (isNaN(installDate.getTime())) {
+                          return '—';
+                        }
+                        const daysOffset = metricId === 'D1' ? 1 : metricId === 'D3' ? 3 : metricId === 'D7' ? 7 : 30;
+                        const returnDate = new Date(installDate.getTime() + daysOffset * 86400000);
+                        if (isNaN(returnDate.getTime())) {
+                          return '—';
+                        }
+                        return returnDate.toISOString().slice(0, 10);
+                      })()}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 text-red-600 font-medium">
@@ -259,7 +296,15 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
                     </span>
                   )}
                 </td>
-                <td className="py-4 px-4 text-sm text-gray-700">{new Date(row.installDate).toLocaleDateString()}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">
+                  {(() => {
+                    const installDate = new Date(row.installDate);
+                    if (isNaN(installDate.getTime())) {
+                      return '—';
+                    }
+                    return installDate.toISOString().slice(0, 10);
+                  })()}
+                </td>
                 <td className="py-4 px-4 text-sm">
                   <span className="inline-flex items-center gap-1 text-red-600 font-medium">
                     <span className="w-2 h-2 bg-red-500 rounded-full"></span>
@@ -287,17 +332,65 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
               <th className="text-left py-4 px-4 font-bold text-gray-900">User ID</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Email</th>
               <th className="text-left py-4 px-4 font-bold text-gray-900">Region</th>
               <th className="text-left py-4 px-4 font-bold text-gray-900">Type</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Tutorial</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Active Date</th>
               <th className="text-left py-4 px-4 font-bold text-gray-900">Action</th>
               <th className="text-left py-4 px-4 font-bold text-gray-900">Event Date</th>
             </tr>
           </thead>
           <tbody>
             {data.map((row) => (
-              <tr key={row.userId + row.eventDate} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+              <tr key={row.userId + (row.eventDate || row.activeDate)} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                <td className="py-4 px-4 text-sm text-gray-900 font-mono">{row.userId}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">
+                  <div className="flex items-center gap-2">
+                    {row.country && row.country !== 'Unknown' && (
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded font-medium">
+                        {row.country}
+                      </span>
+                    )}
+                    <span>{row.country || 'Unknown'}</span>
+                  </div>
+                </td>
+                <td className="py-4 px-4 text-sm">
+                  {row.isPremium ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-black bg-[#F5A600] rounded-full">
+                      PRO
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
+                      FREE
+                    </span>
+                  )}
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.activeDate ? new Date(row.activeDate).toUTCString() : '—'}</td>
+                <td className={`py-4 px-4 text-sm capitalize ${row.action === 'no_tutorial' ? 'text-red-600 font-semibold' : 'text-gray-700'}`}>{row.action === 'no_tutorial' ? 'No Tutorial' : `${row.tutorialType === 'pro' ? 'Pro' : 'Regular'} ${row.action}`}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.eventDate ? new Date(row.eventDate).toUTCString() : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+
+    // Таблица для Sessions
+    if (metricId === 'sessions') {
+      return (
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="text-left py-4 px-4 font-bold text-gray-900">User ID</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Email</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Region</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Type</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Number</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Active Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row) => (
+              <tr key={row.userId} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                 <td className="py-4 px-4 text-sm text-gray-900 font-mono">{row.userId}</td>
                 <td className="py-4 px-4 text-sm text-gray-700">{row.email || '—'}</td>
                 <td className="py-4 px-4 text-sm text-gray-700">
@@ -321,9 +414,121 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
                     </span>
                   )}
                 </td>
-                <td className="py-4 px-4 text-sm text-gray-700">{row.tutorialType === 'pro' ? 'Pro' : 'Regular'}</td>
-                <td className="py-4 px-4 text-sm text-gray-700 capitalize">{row.action}</td>
-                <td className="py-4 px-4 text-sm text-gray-700">{new Date(row.eventDate).toLocaleString()}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.numberOfSessions || 0}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.lastActiveDate ? new Date(row.lastActiveDate).toUTCString() : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+
+    // Таблица для Screens Opened
+    if (metricId === 'screens_opened') {
+      return (
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="text-left py-4 px-4 font-bold text-gray-900">User ID</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Region</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Type</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Number</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Last Active</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row) => (
+              <tr key={row.userId} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                <td className="py-4 px-4 text-sm text-gray-900 font-mono">{row.userId}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">
+                  <div className="flex items-center gap-2">
+                    {row.country && row.country !== 'Unknown' && (
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded font-medium">
+                        {row.country}
+                      </span>
+                    )}
+                    <span>{row.country || 'Unknown'}</span>
+                  </div>
+                </td>
+                <td className="py-4 px-4 text-sm">
+                  {row.isPremium ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-black bg-[#F5A600] rounded-full">
+                      PRO
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
+                      FREE
+                    </span>
+                  )}
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.screensOpenedCount || 0}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.lastActiveDate ? new Date(row.lastActiveDate).toUTCString() : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+
+    // Таблица для Trades/User
+    if (metricId === 'trades_per_user') {
+      return (
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="text-left py-4 px-4 font-bold text-gray-900">User ID</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Region</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Type</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Size</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Open Price</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Close Price</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Event Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row) => (
+              <tr key={row.userId + row.eventDate} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                <td className="py-4 px-4 text-sm text-gray-900 font-mono">{row.userId}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">
+                  <div className="flex items-center gap-2">
+                    {row.country && row.country !== 'Unknown' && (
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded font-medium">
+                        {row.country}
+                      </span>
+                    )}
+                    <span>{row.country || 'Unknown'}</span>
+                  </div>
+                </td>
+                <td className="py-4 px-4 text-sm">
+                  {row.isPremium ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-black bg-[#F5A600] rounded-full">
+                      PRO
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
+                      FREE
+                    </span>
+                  )}
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.tradeSize !== undefined ? `${row.tradeSize.toFixed(2)} (${row.tradeType})` : '—'}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.openPrice !== undefined ? `${row.openPrice.toFixed(2)} (${row.multiplier}x)` : '—'}</td>
+                <td className="py-4 px-4 text-sm">
+                  {row.closePrice !== undefined ? `${row.closePrice.toFixed(2)} ` : '—'}
+                  {row.profit !== undefined && (
+                    <span className={`font-medium ${row.profit > 0 ? 'text-green-600' : row.profit < 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                      {row.profit > 0 ? `(+${row.profit.toFixed(2)})` : `(${row.profit.toFixed(2)})`}
+                    </span>
+                  )}
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-700">
+                  {(() => {
+                    const eventDateString = row.eventDate; // Сырая строка из API
+                    const dateObject = new Date(eventDateString); // Преобразование в объект Date
+                    const utcString = dateObject.toUTCString(); // Форматирование в UTC
+                    
+                    return eventDateString ? utcString : '—';
+                  })()}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -374,7 +579,7 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
                 </td>
               <td className="py-4 px-4 text-sm text-gray-700">
                 {row.lastActiveDate || row.last_active_at 
-                  ? new Date(row.lastActiveDate || row.last_active_at).toLocaleDateString()
+                  ? new Date(row.lastActiveDate || row.last_active_at).toISOString().slice(0, 10)
                   : '—'
                 }
               </td>

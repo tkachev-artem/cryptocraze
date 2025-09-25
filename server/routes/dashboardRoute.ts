@@ -2,9 +2,10 @@ import { Router } from 'express';
 import { isAdminWithAuth } from '../simpleOAuth.js';
 import { clickhouseAnalyticsService } from '../services/clickhouseAnalyticsService.js';
 import { db } from '../db.js';
-import { users, analytics } from '../../shared/schema.js';
-import { inArray } from 'drizzle-orm';
+import { users, analytics, deals } from '../../shared/schema.js';
+import { inArray, sql, and, desc, asc } from 'drizzle-orm';
 import { GeoLocationService } from '../services/geoLocationService.js';
+import { adminAnalyticsService } from '../services/adminAnalyticsService.js';
 
 const router = Router();
 
@@ -190,7 +191,8 @@ class SimpleDataCache {
           D1: await this.calculateRetentionTrend(client, 1),
           D3: await this.calculateRetentionTrend(client, 3), 
           D7: await this.calculateRetentionTrend(client, 7),
-          D30: await this.calculateRetentionTrend(client, 30)
+          D30: await this.calculateRetentionTrend(client, 30),
+          churn_rate: await this.calculateChurnRateTrend(client)
         },
         retentionTable: retentionTable
       };
@@ -211,7 +213,7 @@ class SimpleDataCache {
           d30Retention: 0
         },
         daily: [],
-        trends: { D1: [], D3: [], D7: [], D30: [] },
+        trends: { D1: [], D3: [], D7: [], D30: [], churn_rate: [] },
         retentionTable: []
       };
     }
@@ -292,6 +294,145 @@ class SimpleDataCache {
     }
     
     return trendData;
+  }
+
+  // Рассчитываем реальный churn rate trend
+  private async calculateChurnRateTrend(client: any): Promise<any[]> {
+    const trendData: any[] = [];
+    const periodDays = 30; // Берем последние 30 дней для расчета тренда
+
+    for (let i = periodDays - 1; i >= 0; i--) {
+      const targetDate = new Date(Date.now() - i * 86400000); // День установки
+      const targetDateStr = targetDate.toISOString().slice(0, 10);
+
+      try {
+        // Получаем всех пользователей, которые установили приложение в targetDate
+        const installQuery = `
+          SELECT DISTINCT user_id
+          FROM cryptocraze_analytics.user_events
+          WHERE user_id != '999999999'
+            AND length(user_id) > 5
+            AND user_id IN (
+              SELECT user_id
+              FROM cryptocraze_analytics.user_events
+              WHERE date = '${targetDateStr}'
+                AND user_id != '999999999'
+                AND length(user_id) > 5
+            )
+            AND user_id NOT IN (
+              SELECT user_id
+              FROM cryptocraze_analytics.user_events
+              WHERE date < '${targetDateStr}'
+                AND user_id != '999999999'
+                AND length(user_id) > 5
+            )
+        `;
+        const installResponse = await client.query({ query: installQuery, format: 'JSONEachRow' });
+        const installUsers = await installResponse.json();
+        const totalInstallUsers = installUsers.length;
+
+        if (totalInstallUsers === 0) {
+          trendData.push({ date: targetDateStr, value: 0 });
+          continue;
+        }
+
+        // Получаем пользователей, которые вернулись хотя бы один раз за 30 дней после targetDate
+        const thirtyDaysLater = new Date(targetDate.getTime() + 30 * 86400000); // 30 дней после установки
+        const thirtyDaysLaterStr = thirtyDaysLater.toISOString().slice(0, 10);
+
+        const returnedQuery = `
+          SELECT DISTINCT user_id
+          FROM cryptocraze_analytics.user_events
+          WHERE user_id IN (${installUsers.map((u: any) => `'${u.user_id}'`).join(',')})
+            AND date > '${targetDateStr}' AND date < '${thirtyDaysLaterStr}'
+        `;
+        const returnedResponse = await client.query({ query: returnedQuery, format: 'JSONEachRow' });
+        const returnedUsers = await returnedResponse.json();
+        const totalReturnedUsers = returnedUsers.length;
+
+        // Отток = (Общее количество установивших - Вернувшихся) / Общее количество установивших * 100
+        const churnedUsers = totalInstallUsers - totalReturnedUsers;
+        const churnRate = totalInstallUsers > 0 ? (churnedUsers / totalInstallUsers) * 100 : 0;
+
+        trendData.push({
+          date: targetDateStr,
+          value: parseFloat(churnRate.toFixed(2)) // Процент оттока
+        });
+
+      } catch (error) {
+        console.error(`[SimpleCache] Error calculating churn rate trend for ${targetDateStr}:`, error);
+        trendData.push({ date: targetDateStr, value: 0 });
+      }
+    }
+    return trendData;
+  }
+
+  // Helper function to get filtered user IDs and their attributes
+  public async getFilteredUserAttributes(client: any, tsFrom: string, tsTo: string, filters: any = {}): Promise<Map<string, any>> {
+    console.log('[getFilteredUserAttributes] Filters received:', filters);
+    console.log('[getFilteredUserAttributes] Date range (tsFrom, tsTo): ', { tsFrom, tsTo });
+    // 1. Get all unique user_ids from ClickHouse within the date range
+    const clickhouseUserIdsQuery = `
+      SELECT DISTINCT user_id
+      FROM cryptocraze_analytics.user_events
+      WHERE timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
+        AND user_id != '999999999'
+        AND length(user_id) > 5
+    `;
+    console.log('[getFilteredUserAttributes] ClickHouse User IDs Query:', clickhouseUserIdsQuery);
+    const chUserIdsResp = await client.query({ query: clickhouseUserIdsQuery, format: 'JSONEachRow' });
+    const chUserIds = (await chUserIdsResp.json()).map((r: any) => r.user_id);
+    console.log('[getFilteredUserAttributes] Initial ClickHouse User IDs count:', chUserIds.length);
+    console.log('[getFilteredUserAttributes] Initial ClickHouse User IDs (first 5):', chUserIds.slice(0, 5));
+
+    let userDataMap = new Map<string, any>();
+
+    if (chUserIds.length > 0) {
+      // 2. Get user attributes (isPremium, country) from PostgreSQL for these user_ids
+      console.log('[getFilteredUserAttributes] Fetching PostgreSQL user attributes...');
+      const pgUsers = await (db as any).select({ id: users.id, email: users.email, isPremium: users.isPremium })
+        .from(users)
+        .where(inArray(users.id, chUserIds));
+      const userCountries = await (db as any).select({ userId: analytics.userId, country: analytics.country })
+        .from(analytics)
+        .where(inArray(analytics.userId, chUserIds));
+      console.log('[getFilteredUserAttributes] PostgreSQL Users count:', pgUsers.length);
+      console.log('[getFilteredUserAttributes] PostgreSQL User Countries count:', userCountries.length);
+
+      pgUsers.forEach((u: any) => {
+        const c = userCountries.find((uc: any) => uc.userId === u.id);
+        userDataMap.set(u.id, { email: u.email, isPremium: u.isPremium, country: c?.country || 'Unknown' });
+      });
+      console.log('[getFilteredUserAttributes] UserDataMap size after PG fetch:', userDataMap.size);
+
+      // 3. Apply filters (userType, country) in JavaScript (since ClickHouse doesn't have isPremium/country directly)
+      let filteredUserIds: string[] = [];
+      userDataMap.forEach((userAttrs, userId) => {
+        let include = true;
+        if (filters.userType) {
+          if (filters.userType === 'premium' && !userAttrs.isPremium) include = false;
+          if (filters.userType === 'free' && userAttrs.isPremium) include = false;
+        }
+        if (Array.isArray(filters.country) && filters.country.length > 0 && !filters.country.includes(userAttrs.country)) {
+          include = false;
+        }
+        if (include) {
+          filteredUserIds.push(userId);
+        }
+      });
+      console.log('[getFilteredUserAttributes] Filtered User IDs count after JS filtering:', filteredUserIds.length);
+      console.log('[getFilteredUserAttributes] Filtered User IDs (first 5) after JS filtering:', filteredUserIds.slice(0, 5));
+
+      // Return a map of filtered user attributes (only those passing the filters)
+      const finalFilteredMap = new Map<string, any>();
+      filteredUserIds.forEach(userId => {
+        finalFilteredMap.set(userId, userDataMap.get(userId));
+      });
+      console.log('[getFilteredUserAttributes] Final filtered UserDataMap size:', finalFilteredMap.size);
+      return finalFilteredMap;
+    }
+    console.log('[getFilteredUserAttributes] No ClickHouse User IDs found, returning empty map.');
+    return new Map<string, any>(); // Return empty map if no user IDs
   }
 
   // Рассчитываем процент retention
@@ -490,132 +631,303 @@ router.get('/metric/:metricId/trend', isAdminWithAuth, async (req, res) => {
 
     // Извлекаем фильтры из query параметров
     const filters = {
+      startDate: req.query.startDate as string,
+      endDate: req.query.endDate as string,
       userType: req.query.userType as string,
       country: req.query.country ? (req.query.country as string).split(',') : [],
       search: req.query.search as string,
-      startDate: req.query.startDate as string,
-      endDate: req.query.endDate as string
+      tradeActivity: req.query.tradeActivity as string,
     };
-    // Обработка tutorial-метрик отдельной веткой (проценты + количество пользователей)
+
+    const startParam = (req.query.startDate as string) || new Date(Date.now() - 6 * 86400000).toISOString();
+    const endParam = (req.query.endDate as string) || new Date().toISOString();
+    const startDateObj = new Date(startParam);
+    const endDateObj = new Date(endParam);
+    const formatUTCDate = (d: Date) => new Date(d).toISOString().slice(0, 10);
+    const startUTC = formatUTCDate(startDateObj);
+    const endUTC = formatUTCDate(endDateObj);
+    const nextDayAfterEndUTC = new Date(`${endUTC}T00:00:00.000Z`);
+    nextDayAfterEndUTC.setUTCDate(nextDayAfterEndUTC.getUTCDate() + 1);
+    const endNextUTC = nextDayAfterEndUTC.toISOString().slice(0, 10);
+
+    const tsFrom = `${startUTC} 00:00:00`;
+    const tsTo = `${endNextUTC} 00:00:00`;
+
     const tutorialMetricIds = new Set([
-      'tutorial_start', 'tutorial_complete', 'tutorial_skip_rate',
-      'pro_tutorial_start', 'pro_tutorial_complete', 'pro_tutorial_skip_rate'
+      'tutorial_start', 'tutorial_complete', 'tutorial_skip', 'tutorial_skip_rate',
+      'pro_tutorial_start', 'pro_tutorial_complete', 'pro_tutorial_skip', 'pro_tutorial_skip_rate'
     ]);
     
     if (tutorialMetricIds.has(metricId)) {
       const client = (clickhouseAnalyticsService as any).getClient();
-      const start = filters.startDate ? new Date(filters.startDate) : new Date(Date.now() - 6 * 86400000);
-      const end = filters.endDate ? new Date(filters.endDate) : new Date();
-      start.setHours(0, 0, 0, 0);
-      end.setHours(0, 0, 0, 0);
 
-      // Условия фильтрации по странам и типу пользователя пока опускаем (страна в ClickHouse не хранится напрямую)
       const isPro = metricId.startsWith('pro_');
-      const action = metricId.includes('start') ? 'start' : metricId.includes('complete') ? 'complete' : 'skip';
+      const action = metricId.endsWith('start')
+        ? 'start'
+        : metricId.endsWith('complete')
+        ? 'complete'
+        : 'skip';
 
-      // Получаем общие данные за весь период
-      const dateFrom = start.toISOString().slice(0, 10);
-      const dateTo = end.toISOString().slice(0, 10);
+      const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
+      const filteredUserIds = Array.from(userAttributesMap.keys());
 
-      // Общий числитель: количество уникальных пользователей с событием за весь период
-      const totalUsersQuery = `
-        SELECT
-          countDistinct(user_id) AS user_count
-        FROM cryptocraze_analytics.user_events
-        WHERE date >= '${dateFrom}' AND date <= '${dateTo}'
-          AND user_id != '999999999'
-          AND length(user_id) > 5
-          AND (
-            (event_type = 'tutorial_progress' AND JSONExtractString(event_data, 'action') = '${action}' ${isPro ? "AND JSONExtractString(event_data, 'step') = 'pro_tutorial'" : "AND JSONExtractString(event_data, 'step') != 'pro_tutorial'"})
-          )
-      `;
-
-      // Общий знаменатель: общее количество уникальных пользователей за весь период
-      const totalUsersDenomQuery = `
-        SELECT
-          countDistinct(user_id) AS total_user_count
-        FROM cryptocraze_analytics.user_events
-        WHERE date >= '${dateFrom}' AND date <= '${dateTo}'
-          AND user_id != '999999999'
-          AND length(user_id) > 5
-      `;
-
-      const [numResp, denResp] = await Promise.all([
-        client.query({ query: totalUsersQuery, format: 'JSONEachRow' }),
-        client.query({ query: totalUsersDenomQuery, format: 'JSONEachRow' })
-      ]);
-      const numerators = await numResp.json();
-      const denominators = await denResp.json();
-
-      const totalUsers = numerators[0]?.user_count || 0;
-      const totalDenom = denominators[0]?.total_user_count || 0;
-      const percent = totalDenom > 0 ? Math.round((totalUsers / totalDenom) * 100) : 0;
-
-      // Получаем данные по дням для правильного графика
-      const dailyUsersQuery = `
-        SELECT
-          date,
-          countDistinct(user_id) AS user_count
-        FROM cryptocraze_analytics.user_events
-        WHERE date >= '${dateFrom}' AND date <= '${dateTo}'
-          AND user_id != '999999999'
-          AND length(user_id) > 5
-          AND (
-            (event_type = 'tutorial_progress' AND JSONExtractString(event_data, 'action') = '${action}' ${isPro ? "AND JSONExtractString(event_data, 'step') = 'pro_tutorial'" : "AND JSONExtractString(event_data, 'step') != 'pro_tutorial'"})
-          )
-        GROUP BY date
-        ORDER BY date
-      `;
-
-      const dailyUsersResponse = await client.query({ query: dailyUsersQuery, format: 'JSONEachRow' });
-      const dailyUsers = await dailyUsersResponse.json();
-
-      const byDateUsers = new Map<string, number>();
-      dailyUsers.forEach((r: any) => byDateUsers.set(r.date, Number(r.user_count) || 0));
-
-      // Получаем общее количество пользователей по дням
-      const dailyTotalUsersQuery = `
-        SELECT
-          date,
-          countDistinct(user_id) AS total_count
-        FROM cryptocraze_analytics.user_events
-        WHERE date >= '${dateFrom}' AND date <= '${dateTo}'
-          AND user_id != '999999999'
-          AND length(user_id) > 5
-        GROUP BY date
-        ORDER BY date
-      `;
-
-      const dailyTotalResponse = await client.query({ query: dailyTotalUsersQuery, format: 'JSONEachRow' });
-      const dailyTotal = await dailyTotalResponse.json();
-
-      const byDateTotal = new Map<string, number>();
-      dailyTotal.forEach((r: any) => byDateTotal.set(r.date, Number(r.total_count) || 0));
-
-      // Создаем данные по дням для графика
-      const result: Array<{
-        date: string;
-        percent: number;
-        userCount: number;
-        totalUsers: number;
-      }> = [];
-
-      for (let i = 0; i < 7; i++) {
-        const currentDate = new Date(start);
-        currentDate.setDate(currentDate.getDate() + i);
-        const dateStr = currentDate.toISOString().slice(0, 10);
-
-        const userCount = byDateUsers.get(dateStr) || 0;
-
-        result.push({
-          date: dateStr,
-          percent,
-          userCount,
-          totalUsers: totalDenom
-        });
+      if (filteredUserIds.length === 0) {
+        return res.json([]);
       }
 
-      return res.json(result);
+      const userIdsCondition = `user_id IN (${filteredUserIds.map(id => `'${id}'`).join(',')})`;
+
+      const whereEvent = `event_type = 'tutorial_progress' AND JSONExtractString(event_data, 'action') = '${action}' ` +
+        (isPro
+          ? "AND JSONExtractString(event_data, 'step') = 'pro_tutorial'"
+          : "AND (JSONExtractString(event_data, 'step') != 'pro_tutorial' OR JSONExtractString(event_data, 'step') IS NULL)");
+
+      // Все события (user_id, event_date) за период для метрики
+      const baseQuery = `
+        SELECT
+          user_id,
+          min(toDate(timestamp)) AS date
+        FROM cryptocraze_analytics.user_events
+        WHERE timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
+          AND user_id != '999999999'
+          AND length(user_id) > 5
+          AND ${userIdsCondition} /* Применяем фильтр по user_id */
+          AND (${whereEvent})
+        GROUP BY user_id
+      `;
+
+      const baseResp = await client.query({ query: baseQuery, format: 'JSONEachRow' });
+      const baseRows = await baseResp.json();
+
+      // Агрегируем по датам БЕЗ дополнительных фильтров (только период)
+      const countsByDate = new Map<string, number>();
+      for (const row of baseRows) {
+        const dateStr = row.date; // already YYYY-MM-DD
+        countsByDate.set(dateStr, (countsByDate.get(dateStr) || 0) + 1);
+      }
+
+      // Собираем непрерывный ряд дат
+      const out: any[] = [];
+      const seriesStart = new Date(`${startUTC}T00:00:00.000Z`);
+      seriesStart.setHours(0, 0, 0, 0);
+      const seriesEnd = new Date(`${endUTC}T00:00:00.000Z`);
+      seriesEnd.setHours(0, 0, 0, 0);
+      for (let d = new Date(seriesStart); d <= seriesEnd; d.setDate(d.getDate() + 1)) {
+        const key = d.toISOString().slice(0, 10);
+        out.push({ date: key, value: Math.floor(countsByDate.get(key) || 0) });
+      }
+      return res.json(out);
+    }
+    else if (metricId === 'sessions') {
+      const client = (clickhouseAnalyticsService as any).getClient();
+
+      const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
+      const filteredUserIds = Array.from(userAttributesMap.keys());
+
+      if (filteredUserIds.length === 0) {
+        return res.json({ trend: [], totalSessions: 0, totalUsers: 0 });
+      }
+
+      const userIdsCondition = `AND user_id IN (${filteredUserIds.map(id => `'${id}'`).join(',')})`;
+
+      const trendQuery = `
+        SELECT
+          toDate(timestamp) AS date,
+          count(DISTINCT session_id) AS value
+        FROM cryptocraze_analytics.user_events
+        WHERE timestamp >= '${startUTC} 00:00:00' AND timestamp < '${endNextUTC} 00:00:00'
+          AND user_id != '999999999'
+          AND length(user_id) > 5
+          ${userIdsCondition}
+        GROUP BY date
+        ORDER BY date
+      `;
+
+      const totalSessionsUsersQuery = `
+        SELECT
+          count(DISTINCT session_id) AS total_sessions,
+          count(DISTINCT user_id) AS total_users
+        FROM cryptocraze_analytics.user_events
+        WHERE timestamp >= '${startUTC} 00:00:00' AND timestamp < '${endNextUTC} 00:00:00'
+          AND user_id != '999999999'
+          AND length(user_id) > 5
+          ${userIdsCondition}
+      `;
+
+      const [trendResp, totalResp] = await Promise.all([
+        client.query({ query: trendQuery, format: 'JSONEachRow' }),
+        client.query({ query: totalSessionsUsersQuery, format: 'JSONEachRow' })
+      ]);
+
+      const trendData = await trendResp.json();
+      const totalData = (await totalResp.json())[0] || { total_sessions: 0, total_users: 0 };
+
+      // Добавляем информацию о общем количестве сессий и пользователей в ответ
+      return res.json({ trend: trendData, totalSessions: totalData.total_sessions, totalUsers: totalData.total_users });
+    }
+    else if (metricId === 'screens_opened') {
+      const client = (clickhouseAnalyticsService as any).getClient();
+
+      const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
+      const filteredUserIds = Array.from(userAttributesMap.keys());
+
+      if (filteredUserIds.length === 0) {
+        return res.json({ trend: [], totalScreensOpened: 0 });
+      }
+
+      const userIdsCondition = `AND user_id IN (${filteredUserIds.map(id => `'${id}'`).join(',')})`;
+
+      const trendQuery = `
+        SELECT
+          toDate(timestamp) AS date,
+          count(*) AS value
+        FROM cryptocraze_analytics.user_events
+        WHERE timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
+          AND event_type = 'screen_view'
+          AND user_id != '999999999'
+          AND length(user_id) > 5
+          ${userIdsCondition}
+        GROUP BY date
+        ORDER BY date
+      `;
+
+      const totalScreensQuery = `
+        SELECT
+          count(*) AS total_screens_opened
+        FROM cryptocraze_analytics.user_events
+        WHERE timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
+          AND event_type = 'screen_view'
+          AND user_id != '999999999'
+          AND length(user_id) > 5
+          ${userIdsCondition}
+      `;
+
+      const [trendResp, totalResp] = await Promise.all([
+        client.query({ query: trendQuery, format: 'JSONEachRow' }),
+        client.query({ query: totalScreensQuery, format: 'JSONEachRow' })
+      ]);
+
+      const trendData = await trendResp.json();
+      const totalData = (await totalResp.json())[0] || { total_screens_opened: 0 };
+
+      return res.json({ trend: trendData, totalScreensOpened: totalData.total_screens_opened });
+    }
+    else if (metricId === 'trades_per_user') {
+      // Удалены локальные определения дат, используем глобальные
+      const client = (clickhouseAnalyticsService as any).getClient();
+
+      // Удалены отладочные console.log
+      const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
+      const filteredUserIds = Array.from(userAttributesMap.keys());
+
+      if (filteredUserIds.length === 0) {
+        return res.json({ trend: [], totalTradingUsers: 0 });
+      }
+
+      let whereConditions: any[] = [
+        inArray(deals.userId, filteredUserIds as string[]),
+        and(sql`${deals.closedAt} >= ${tsFrom}`, sql`${deals.closedAt} < ${tsTo}`),
+        sql`${deals.status} = 'closed'`,
+      ];
+
+      if (filters.tradeActivity === 'profit') {
+        whereConditions.push(sql`${deals.profit} > 0`);
+      } else if (filters.tradeActivity === 'loss') {
+        whereConditions.push(sql`${deals.profit} < 0`);
+      }
+
+      // Получаем трендовые данные (количество уникальных пользователей в день)
+      const rawDealsQuery = (db as any).select({
+        closedAt: deals.closedAt,
+        userId: deals.userId,
+      })
+      .from(deals)
+      .where(and(...whereConditions));
+      // .groupBy(sql`DATE(${deals.closedAt}::timestamptz AT TIME ZONE 'UTC')`)
+      // .orderBy(sql`DATE(${deals.closedAt}::timestamptz AT TIME ZONE 'UTC')`);
+
+      // Получаем общее количество уникальных пользователей
+      const totalTradingUsersQuery = (db as any).select({ count: sql<number>`count(DISTINCT ${deals.userId})` })
+        .from(deals)
+        .where(and(...whereConditions));
+
+      const [rawDealsData, totalTradingUsersResult] = await Promise.all([
+        rawDealsQuery,
+        totalTradingUsersQuery
+      ]);
+
+      console.log('[Trades/User Trend] rawDealsData:', rawDealsData); // Отладочный вывод
+
+      const trendMap = new Map<string, number>();
+      for (const row of rawDealsData) {
+        if (row.closedAt) {
+          // Приводим к UTC и получаем дату в формате YYYY-MM-DD
+          const utcDate = new Date(row.closedAt); // PostgreSQL timestamp (without time zone) считается локальным временем сервера
+          const dateKey = utcDate.toISOString().slice(0, 10); // Преобразуем в UTC-дату
+          trendMap.set(dateKey, (trendMap.get(dateKey) || 0) + 1);
+        }
+      }
+
+      const totalTradingUsers = totalTradingUsersResult[0]?.count || 0;
+
+      // Формируем непрерывный ряд дат
+      const out: any[] = [];
+      const seriesStart = new Date(`${startUTC}T00:00:00.000Z`);
+      seriesStart.setHours(0, 0, 0, 0);
+      const seriesEnd = new Date(`${endUTC}T00:00:00.000Z`);
+      seriesEnd.setHours(0, 0, 0, 0);
+
+      for (let d = new Date(seriesStart); d <= seriesEnd; d.setDate(d.getDate() + 1)) {
+        const key = d.toISOString().slice(0, 10);
+        out.push({ date: key, value: Math.floor(Number(trendMap.get(key) || 0)) });
+      }
+
+      return res.json({ trend: out, totalTradingUsers: totalTradingUsers });
+    }
+    else if (metricId === 'avg_virtual_balance') {
+      const client = (clickhouseAnalyticsService as any).getClient();
+
+      let userWhereConditions: any[] = [];
+
+      if (filters.userType) {
+        if (filters.userType === 'premium') {
+          userWhereConditions.push(sql`${users.isPremium} = true`);
+        } else if (filters.userType === 'free') {
+          userWhereConditions.push(sql`${users.isPremium} = false`);
+        }
+      }
+
+      let query = (db as any).select({
+        avgVirtualBalance: sql`avg(${users.balance})`.mapWith(Number)
+      }).from(users);
+
+      if (filters.country && filters.country.length > 0) {
+        query = query.leftJoin(analytics, sql`${users.id} = ${analytics.userId}`)
+          .where(sql`${analytics.country} IN (${sql.join(filters.country.map((c: string) => `'${c}'`), sql`,`)})`);
+        // Если есть другие условия, объединяем их
+        if (userWhereConditions.length > 0) {
+          query = query.where(and(...userWhereConditions));
+        }
+      } else if (userWhereConditions.length > 0) {
+        query = query.where(and(...userWhereConditions));
+      }
+
+      const avgBalanceResult = await query;
+
+      const avgBalance = avgBalanceResult[0]?.avgVirtualBalance || 0;
+
+      // Для тренда возвращаем то же среднее значение для каждого дня в выбранном диапазоне
+      const out: any[] = [];
+      const seriesStart = new Date(`${startUTC}T00:00:00.000Z`);
+      seriesStart.setHours(0, 0, 0, 0);
+      const seriesEnd = new Date(`${endUTC}T00:00:00.000Z`);
+      seriesEnd.setHours(0, 0, 0, 0);
+
+      for (let d = new Date(seriesStart); d <= seriesEnd; d.setDate(d.getDate() + 1)) {
+        const key = d.toISOString().slice(0, 10);
+        out.push({ date: key, value: Math.floor(avgBalance) }); // Плоский тренд со средним значением
+      }
+      return res.json({ trend: out, avgBalance: avgBalance });
     }
 
     // Остальные метрики — как раньше (кешированные)
@@ -664,48 +976,67 @@ router.get('/table/tutorial', isAdminWithAuth, async (req, res) => {
     const page = parseInt((req.query.page as string) || '1');
     const limit = parseInt((req.query.limit as string) || (req.query.size as string) || '20');
     const offset = (page - 1) * limit;
-    const startDate = (req.query.startDate as string) || new Date(Date.now() - 6 * 86400000).toISOString();
-    const endDate = (req.query.endDate as string) || new Date().toISOString();
+    const startParam = (req.query.startDate as string) || new Date(Date.now() - 6 * 86400000).toISOString();
+    const endParam = (req.query.endDate as string) || new Date().toISOString();
+    const startDateObj = new Date(startParam);
+    const endDateObj = new Date(endParam);
+    startDateObj.setHours(0, 0, 0, 0);
+    endDateObj.setHours(23, 59, 59, 999);
+    // Для tutorial-таблицы учитываем ТОЛЬКО период времени
+
+    const client = (clickhouseAnalyticsService as any).getClient();
+    // Локальные дневные границы [start 00:00; nextDay 00:00)
+    const formatLocalDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const startDateStr = formatLocalDate(startDateObj);
+    const nextDay = new Date(endDateObj);
+    nextDay.setDate(nextDay.getDate() + 1);
+    const nextDayStr = formatLocalDate(nextDay);
+    const tsFrom = `${startDateStr} 00:00:00`;
+    const tsTo = `${nextDayStr} 00:00:00`;
+
     const filters = {
       userType: req.query.userType as string,
       country: req.query.country ? (req.query.country as string).split(',') : [],
-      search: req.query.search as string
+      search: req.query.search as string,
     };
 
-    const client = (clickhouseAnalyticsService as any).getClient();
-    const dateFrom = new Date(startDate).toISOString().slice(0, 10);
-    const dateTo = new Date(endDate).toISOString().slice(0, 10);
+    const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
+    const filteredUserIds = Array.from(userAttributesMap.keys());
+
+    if (filteredUserIds.length === 0) {
+      return res.json({ data: [], total: 0, page, limit, totalPages: 0 });
+    }
+
+    const userIdsCondition = `AND user_id IN (${filteredUserIds.map(id => `'${id}'`).join(',')})`;
 
     const isPro = metricId.startsWith('pro_');
-    const action = metricId.includes('start') ? 'start' : metricId.includes('complete') ? 'complete' : 'skip';
-
+    const action = metricId.endsWith('start') ? 'start' : metricId.endsWith('complete') ? 'complete' : 'skip';
     const whereEvent = `event_type = 'tutorial_progress' AND JSONExtractString(event_data, 'action') = '${action}' ` +
       (isPro ? "AND JSONExtractString(event_data, 'step') = 'pro_tutorial'" : "AND (JSONExtractString(event_data, 'step') != 'pro_tutorial' OR JSONExtractString(event_data, 'step') IS NULL)");
 
-    // Основные данные по пользователям из ClickHouse
     const baseQuery = `
-      SELECT 
+      SELECT
         user_id,
-        any(timestamp) AS event_date,
+        min(timestamp) AS event_date,
         any(JSONExtractString(event_data, 'action')) AS action,
         '${isPro ? 'pro' : 'regular'}' AS tutorial_type
       FROM cryptocraze_analytics.user_events
-      WHERE date >= '${dateFrom}' AND date <= '${dateTo}'
+      WHERE timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
         AND user_id != '999999999'
         AND length(user_id) > 5
+        ${userIdsCondition}
         AND (${whereEvent})
       GROUP BY user_id
       ORDER BY event_date DESC
-      LIMIT ${limit} OFFSET ${offset}
     `;
 
     const countQuery = `
-      SELECT 
-        countDistinct(user_id) AS total
+      SELECT countDistinct(user_id) AS total
       FROM cryptocraze_analytics.user_events
-      WHERE date >= '${dateFrom}' AND date <= '${dateTo}'
+      WHERE timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
         AND user_id != '999999999'
         AND length(user_id) > 5
+        ${userIdsCondition}
         AND (${whereEvent})
     `;
 
@@ -716,52 +1047,47 @@ router.get('/table/tutorial', isAdminWithAuth, async (req, res) => {
     const baseRows = await baseResp.json();
     const totalRows = (await countResp.json())[0]?.total || 0;
 
-    // Подтянем email и страну из PostgreSQL
-    const userIds = baseRows.map((r: any) => r.user_id);
-    let userDataMap = new Map<string, any>();
-    if (userIds.length > 0) {
-      const pgUsers = await (db as any).select({ id: users.id, email: users.email, isPremium: users.isPremium })
-        .from(users)
-        .where(inArray(users.id, userIds));
-      const userCountries = await (db as any).select({ userId: analytics.userId, country: analytics.country })
-        .from(analytics)
-        .where(inArray(analytics.userId, userIds));
+    // Поскольку userAttributesMap уже содержит отфильтрованных пользователей, нет необходимости в повторной фильтрации
+    // Просто используем userDataMap для обогащения данных
+    let userDataMap = userAttributesMap; // Используем уже отфильтрованную карту
 
-      pgUsers.forEach(u => {
-        const c = userCountries.find(uc => uc.userId === u.id);
-        userDataMap.set(u.id, { email: u.email, isPremium: u.isPremium, country: c?.country || 'Unknown' });
-      });
+    // Дополнительный запрос для получения activeDate (первая активность пользователя в выбранном диапазоне)
+    const userActiveDateMap = new Map<string, string>();
+    if (filteredUserIds.length > 0) { // Используем filteredUserIds
+      const activeDateQuery = `
+        SELECT
+          user_id,
+          max(timestamp) AS active_date
+        FROM cryptocraze_analytics.user_events
+        WHERE user_id IN (${filteredUserIds.map(id => `'${id}'`).join(',')}) /* Применяем фильтр по user_id */
+          AND timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
+        GROUP BY user_id
+      `;
+      console.log('[Tutorial Table] activeDateQuery:', activeDateQuery);
+      const activeDateResp = await client.query({ query: activeDateQuery, format: 'JSONEachRow' });
+      const activeDateRows = await activeDateResp.json();
+      activeDateRows.forEach((r: any) => userActiveDateMap.set(r.user_id, r.active_date));
     }
 
-    // Применим фильтры по userType/country/search на результирующем наборе
-    let rows = baseRows.map((r: any) => {
-      const ud = userDataMap.get(r.user_id) || {};
+    let rows: any[] = baseRows.map((r: any) => {
+        const ud = userDataMap.get(r.user_id) || {};
       return {
-        userId: r.user_id,
-        email: ud.email || `${r.user_id}@unknown.com`,
-        country: ud.country || 'Unknown',
-        isPremium: !!ud.isPremium,
+          userId: r.user_id,
+        email: ud.email || null,
+          country: ud.country || 'Unknown',
+          isPremium: !!ud.isPremium,
+        activeDate: userActiveDateMap.get(r.user_id) || null, // Добавляем activeDate
         eventDate: r.event_date,
         action: r.action,
         tutorialType: r.tutorial_type
       };
     });
 
-    if (filters.userType === 'premium') rows = rows.filter(r => r.isPremium);
-    if (filters.userType === 'free') rows = rows.filter(r => !r.isPremium);
-    if (filters.country.length > 0) rows = rows.filter(r => filters.country.includes(r.country));
-    if (filters.search) {
-      const s = filters.search.toLowerCase();
-      rows = rows.filter(r => r.email?.toLowerCase().includes(s) || r.userId.toLowerCase().includes(s));
-    }
+    // Так как фильтрация уже произошла через getFilteredUserAttributes, totalFilteredRows = rows.length
+    const totalFilteredRows = rows.length; 
 
-    res.json({
-      data: rows,
-      total: totalRows,
-      page,
-      limit,
-      totalPages: Math.ceil(totalRows / limit)
-    });
+    const paged = rows.slice(offset, offset + limit);
+    res.json({ data: paged, total: totalFilteredRows, page, limit, totalPages: Math.ceil(totalFilteredRows / limit) });
   } catch (error) {
     console.error('Tutorial table error:', error);
     res.status(500).json({ error: 'Failed to get tutorial table' });
@@ -789,6 +1115,62 @@ router.get('/countries', isAdminWithAuth, async (req, res) => {
   } catch (error) {
     console.error('Countries error:', error);
     res.status(500).json({ error: 'Failed to get countries list' });
+  }
+});
+
+// Новый эндпоинт для получения общего количества активных пользователей за период
+router.get('/total-users-in-period', isAdminWithAuth, async (req, res) => {
+  try {
+    if (!dataCache.isReady()) {
+      return res.status(503).json({ error: 'Data is loading, please wait...' });
+    }
+
+    const { startDate, endDate } = req.query;
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'startDate and endDate are required' });
+    }
+
+    const filters = {
+      userType: req.query.userType as string,
+      country: req.query.country ? (req.query.country as string).split(',') : [],
+    };
+
+    const client = (clickhouseAnalyticsService as any).getClient();
+    const startUTC = new Date(startDate as string).toISOString().slice(0, 10);
+    const endUTC = new Date(endDate as string).toISOString().slice(0, 10);
+    const nextDayAfterEndUTC = new Date(`${endUTC}T00:00:00.000Z`);
+    nextDayAfterEndUTC.setUTCDate(nextDayAfterEndUTC.getUTCDate() + 1);
+    const endNextUTC = nextDayAfterEndUTC.toISOString().slice(0, 10);
+
+    const tsFrom = `${startUTC} 00:00:00`;
+    const tsTo = `${endNextUTC} 00:00:00`;
+
+    const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
+    const filteredUserIds = Array.from(userAttributesMap.keys());
+
+    if (filteredUserIds.length === 0) {
+      return res.json({ totalUsers: 0 });
+    }
+
+    const userIdsCondition = `AND user_id IN (${filteredUserIds.map(id => `'${id}'`).join(',')})`;
+
+    const totalUsersQuery = `
+      SELECT
+        count(DISTINCT user_id) AS total_users
+      FROM cryptocraze_analytics.user_events
+      WHERE timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
+        AND user_id != '999999999'
+        AND length(user_id) > 5
+        ${userIdsCondition}
+    `;
+
+    const response = await client.query({ query: totalUsersQuery, format: 'JSONEachRow' });
+    const result = await response.json();
+
+    res.json({ totalUsers: result[0]?.total_users || 0 });
+  } catch (error) {
+    console.error('Total users in period error:', error);
+    res.status(500).json({ error: 'Failed to get total users in period' });
   }
 });
 
@@ -852,6 +1234,354 @@ router.get('/table/churn', isAdminWithAuth, async (req, res) => {
   }
 });
 
+// Эндпоинт для таблицы Sessions
+router.get('/table/sessions', isAdminWithAuth, async (req, res) => {
+  try {
+    if (!dataCache.isReady()) {
+      return res.status(503).json({ error: 'Data is loading, please wait...' });
+    }
+
+    const page = parseInt((req.query.page as string) || '1');
+    const limit = parseInt((req.query.limit as string) || (req.query.size as string) || '20');
+    const offset = (page - 1) * limit;
+    const startParam = (req.query.startDate as string) || new Date(Date.now() - 6 * 86400000).toISOString();
+    const endParam = (req.query.endDate as string) || new Date().toISOString();
+    const startDateObj = new Date(startParam);
+    const endDateObj = new Date(endParam);
+
+    // Приводим даты к UTC для ClickHouse
+    const formatUTCDate = (d: Date) => d.toISOString().slice(0, 10);
+    const startUTC = formatUTCDate(startDateObj);
+    const endUTC = formatUTCDate(endDateObj);
+    const nextDayAfterEndUTC = new Date(`${endUTC}T00:00:00.000Z`);
+    nextDayAfterEndUTC.setUTCDate(nextDayAfterEndUTC.getUTCDate() + 1);
+    const endNextUTC = nextDayAfterEndUTC.toISOString().slice(0, 10);
+
+    const tsFrom = `${startUTC} 00:00:00`;
+    const tsTo = `${endNextUTC} 00:00:00`;
+
+    const client = (clickhouseAnalyticsService as any).getClient();
+
+    const filters = {
+      userType: req.query.userType as string,
+      country: req.query.country ? (req.query.country as string).split(',') : [],
+      search: req.query.search as string,
+    };
+
+    const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
+    const filteredUserIds = Array.from(userAttributesMap.keys());
+
+    let sessionData: any[] = [];
+    let totalSessionsUsers = 0;
+
+    if (filteredUserIds.length > 0) {
+      const userIdsCondition = `AND user_id IN (${filteredUserIds.map(id => `'${id}'`).join(',')})`;
+
+      // Получаем количество сессий для каждого уникального пользователя
+      const sessionsPerUserQuery = `
+        SELECT
+          user_id,
+          count(DISTINCT session_id) AS number_of_sessions,
+          max(timestamp) AS last_active_date
+        FROM cryptocraze_analytics.user_events
+        WHERE timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
+          AND user_id != '999999999'
+          AND length(user_id) > 5
+          ${userIdsCondition}
+        GROUP BY user_id
+        ORDER BY number_of_sessions DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `;
+
+      const countSessionsUsersQuery = `
+        SELECT count(DISTINCT user_id) AS total
+        FROM cryptocraze_analytics.user_events
+        WHERE timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
+          AND user_id != '999999999'
+          AND length(user_id) > 5
+          ${userIdsCondition}
+      `;
+
+      const [sessionsResp, countResp] = await Promise.all([
+        client.query({ query: sessionsPerUserQuery, format: 'JSONEachRow' }),
+        client.query({ query: countSessionsUsersQuery, format: 'JSONEachRow' })
+      ]);
+
+      sessionData = await sessionsResp.json();
+      totalSessionsUsers = (await countResp.json())[0]?.total || 0;
+    } else {
+      return res.json({ data: [], total: 0, page, limit, totalPages: 0 });
+    }
+
+    const userIdsWithSessions = sessionData.map((s: any) => s.user_id);
+    let userDataMap = new Map<string, any>();
+
+    if (userIdsWithSessions.length > 0) {
+      const pgUsers = await (db as any).select({ id: users.id, email: users.email, isPremium: users.isPremium })
+        .from(users)
+        .where(inArray(users.id, userIdsWithSessions));
+      const userCountries = await (db as any).select({ userId: analytics.userId, country: analytics.country })
+        .from(analytics)
+        .where(inArray(analytics.userId, userIdsWithSessions));
+      pgUsers.forEach((u: any) => {
+        const c = userCountries.find((uc: any) => uc.userId === u.id);
+        userDataMap.set(u.id, { email: u.email, isPremium: u.isPremium, country: c?.country || 'Unknown' });
+      });
+    }
+
+    const rows = sessionData.map((s: any) => {
+      const ud = userDataMap.get(s.user_id) || {};
+      return {
+        userId: s.user_id,
+        email: ud.email || null,
+        country: ud.country || 'Unknown',
+        isPremium: !!ud.isPremium,
+        numberOfSessions: s.number_of_sessions,
+        lastActiveDate: s.last_active_date, // Добавляем последнюю активность
+      };
+    });
+
+    res.json({ data: rows, total: totalSessionsUsers, page, limit, totalPages: Math.ceil(totalSessionsUsers / limit) });
+  } catch (error) {
+    console.error('Sessions table error:', error);
+    res.status(500).json({ error: 'Failed to get sessions table' });
+  }
+});
+
+// Эндпоинт для таблицы Screens Opened
+router.get('/table/screens_opened', isAdminWithAuth, async (req, res) => {
+  try {
+    if (!dataCache.isReady()) {
+      return res.status(503).json({ error: 'Data is loading, please wait...' });
+    }
+
+    const page = parseInt((req.query.page as string) || '1');
+    const limit = parseInt((req.query.limit as string) || (req.query.size as string) || '20');
+    const offset = (page - 1) * limit;
+    const startParam = (req.query.startDate as string) || new Date(Date.now() - 6 * 86400000).toISOString();
+    const endParam = (req.query.endDate as string) || new Date().toISOString();
+    const startDateObj = new Date(startParam);
+    const endDateObj = new Date(endParam);
+
+    const formatUTCDate = (d: Date) => d.toISOString().slice(0, 10);
+    const startUTC = formatUTCDate(startDateObj);
+    const endUTC = formatUTCDate(endDateObj);
+    const nextDayAfterEndUTC = new Date(`${endUTC}T00:00:00.000Z`);
+    nextDayAfterEndUTC.setUTCDate(nextDayAfterEndUTC.getUTCDate() + 1);
+    const endNextUTC = nextDayAfterEndUTC.toISOString().slice(0, 10);
+
+    const tsFrom = `${startUTC} 00:00:00`;
+    const tsTo = `${endNextUTC} 00:00:00`;
+
+    const client = (clickhouseAnalyticsService as any).getClient();
+
+    // Получаем количество открытых экранов и последнюю активность для каждого пользователя
+    const screensOpenedPerUserQuery = `
+      SELECT
+        user_id,
+        count(*) AS screens_opened_count,
+        max(timestamp) AS last_active_date
+      FROM cryptocraze_analytics.user_events
+      WHERE timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
+        AND event_type = 'screen_view'
+        AND user_id != '999999999'
+        AND length(user_id) > 5
+      GROUP BY user_id
+    `;
+
+    const totalUsersWithScreensQuery = `
+      SELECT count(DISTINCT user_id) AS total
+      FROM cryptocraze_analytics.user_events
+      WHERE timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
+        AND event_type = 'screen_view'
+        AND user_id != '999999999'
+        AND length(user_id) > 5
+    `;
+
+    const [screensResp, countResp] = await Promise.all([
+      client.query({ query: screensOpenedPerUserQuery, format: 'JSONEachRow' }),
+      client.query({ query: totalUsersWithScreensQuery, format: 'JSONEachRow' })
+    ]);
+
+    let screensData = await screensResp.json();
+    const totalScreensUsers = (await countResp.json())[0]?.total || 0;
+
+    // Применяем фильтры
+    const filters = {
+      userType: req.query.userType as string,
+      country: req.query.country ? (req.query.country as string).split(',') : [],
+      search: req.query.search as string,
+    };
+
+    const userIdsWithScreens = screensData.map((s: any) => s.user_id);
+    let userDataMap = new Map<string, any>();
+
+    if (userIdsWithScreens.length > 0) {
+      const pgUsers = await (db as any).select({ id: users.id, email: users.email, isPremium: users.isPremium })
+        .from(users)
+        .where(inArray(users.id, userIdsWithScreens));
+      const userCountries = await (db as any).select({ userId: analytics.userId, country: analytics.country })
+        .from(analytics)
+        .where(inArray(analytics.userId, userIdsWithScreens));
+      pgUsers.forEach((u: any) => {
+        const c = userCountries.find((uc: any) => uc.userId === u.id);
+        userDataMap.set(u.id, { email: u.email, isPremium: u.isPremium, country: c?.country || 'Unknown' });
+      });
+    }
+
+    let rows = screensData.map((s: any) => {
+      const ud = userDataMap.get(s.user_id) || {};
+      return {
+        userId: s.user_id,
+        email: ud.email || null,
+        country: ud.country || 'Unknown',
+        isPremium: !!ud.isPremium,
+        screensOpenedCount: s.screens_opened_count,
+        lastActiveDate: s.last_active_date,
+      };
+    });
+
+    // Применяем фильтры (userType, country, search)
+    if (filters.userType) {
+      if (filters.userType === 'premium') {
+        rows = rows.filter((item: any) => item.isPremium);
+      } else if (filters.userType === 'free') {
+        rows = rows.filter((item: any) => !item.isPremium);
+      }
+    }
+
+    if (filters.country && filters.country.length > 0) {
+      rows = rows.filter((item: any) => filters.country.includes(item.country));
+    }
+
+    if (filters.search) {
+      const search = filters.search.toLowerCase();
+      rows = rows.filter((item: any) => 
+        item.email.toLowerCase().includes(search) ||
+        item.userId.toLowerCase().includes(search)
+      );
+    }
+    
+    const totalFilteredRows = rows.length; // Общее количество строк после фильтрации
+
+    const paged = rows.slice(offset, offset + limit);
+    res.json({ data: paged, total: totalFilteredRows, page, limit, totalPages: Math.ceil(totalFilteredRows / limit) });
+  } catch (error) {
+    console.error('Screens Opened table error:', error);
+    res.status(500).json({ error: 'Failed to get screens opened table' });
+  }
+});
+
+// Эндпоинт для таблицы Trades/User
+router.get('/table/trades_per_user', isAdminWithAuth, async (req, res) => {
+  try {
+    const page = parseInt((req.query.page as string) || '1');
+    const limit = parseInt((req.query.limit as string) || (req.query.size as string) || '20');
+    const offset = (page - 1) * limit;
+    const startParam = (req.query.startDate as string) || new Date(Date.now() - 6 * 86400000).toISOString();
+    const endParam = (req.query.endDate as string) || new Date().toISOString();
+    const startDateObj = new Date(startParam);
+    const endDateObj = new Date(endParam);
+
+    // Приводим даты к UTC для ClickHouse
+    const formatUTCDate = (d: Date) => d.toISOString().slice(0, 10);
+    const startUTC = formatUTCDate(startDateObj);
+    const endUTC = formatUTCDate(endDateObj);
+    const nextDayAfterEndUTC = new Date(`${endUTC}T00:00:00.000Z`);
+    nextDayAfterEndUTC.setUTCDate(nextDayAfterEndUTC.getUTCDate() + 1);
+    const endNextUTC = nextDayAfterEndUTC.toISOString().slice(0, 10);
+
+    const tsFrom = `${startUTC} 00:00:00`;
+    const tsTo = `${endNextUTC} 00:00:00`;
+
+    // Получаем отфильтрованные user_id из dataCache
+    const filters = {
+      userType: req.query.userType as string,
+      country: req.query.country ? (req.query.country as string).split(',') : [],
+      search: req.query.search as string,
+      tradeActivity: req.query.tradeActivity as string,
+    };
+
+    const client = (clickhouseAnalyticsService as any).getClient();
+    const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
+    const filteredUserIds = Array.from(userAttributesMap.keys());
+
+    if (filteredUserIds.length === 0) {
+      return res.json({ data: [], total: 0, page, limit, totalPages: 0 });
+    }
+
+    let whereConditions: any[] = [
+      inArray(deals.userId, filteredUserIds as string[]),
+      and(sql`${deals.closedAt} >= ${tsFrom}`, sql`${deals.closedAt} < ${tsTo}`),
+      sql`${deals.status} = 'closed'`,
+    ];
+
+    // Фильтр по прибыльности/убыточности
+    if (filters.tradeActivity === 'profit') {
+      whereConditions.push(sql`${deals.profit} > 0`);
+    } else if (filters.tradeActivity === 'loss') {
+      whereConditions.push(sql`${deals.profit} < 0`);
+    }
+
+    // Запрос для получения сделок
+    const dealsQuery = (db as any).select({
+      id: deals.id,
+      userId: deals.userId,
+      symbol: deals.symbol,
+      direction: deals.direction,
+      amount: deals.amount,
+      multiplier: deals.multiplier,
+      openPrice: deals.openPrice,
+      takeProfit: deals.takeProfit,
+      stopLoss: deals.stopLoss,
+      openedAt: sql`(${deals.openedAt} AT TIME ZONE 'UTC')` as any,
+      status: deals.status,
+      closedAt: sql`(${deals.closedAt} AT TIME ZONE 'UTC')` as any,
+      closePrice: deals.closePrice,
+      profit: deals.profit,
+    })
+    .from(deals)
+    .where(and(...whereConditions))
+    .orderBy(desc(deals.openedAt))
+    .limit(limit)
+    .offset(offset);
+
+    // Запрос для подсчета общего количества сделок
+    const countDealsQuery = (db as any).select({ count: sql<number>`count(*)` })
+      .from(deals)
+      .where(and(...whereConditions));
+
+    const [dealsData, totalDealsResult] = await Promise.all([
+      dealsQuery,
+      countDealsQuery
+    ]);
+
+    const totalTrades = totalDealsResult[0]?.count || 0;
+
+    const rows = dealsData.map((d: any) => {
+      const ud = userAttributesMap.get(d.userId) || {};
+      return {
+        userId: d.userId,
+        email: ud.email || null,
+        country: ud.country || 'Unknown',
+        isPremium: !!ud.isPremium,
+        tradeType: d.direction,
+        tradeSize: parseFloat(d.amount),
+        openPrice: parseFloat(d.openPrice),
+        closePrice: d.closePrice ? parseFloat(d.closePrice) : null,
+        profit: d.profit ? parseFloat(d.profit) : null,
+        multiplier: d.multiplier,
+        eventDate: d.closedAt || d.openedAt, // Используем closedAt если есть, иначе openedAt
+      };
+    });
+
+    res.json({ data: rows, total: totalTrades, page, limit, totalPages: Math.ceil(totalTrades / limit) });
+  } catch (error) {
+    console.error('Trades/User table error:', error);
+    res.status(500).json({ error: 'Failed to get trades/user table' });
+  }
+});
+
 // Остальные эндпоинты (оставляем как есть для совместимости)
 router.get('/overview', isAdminWithAuth, async (req, res) => {
   try {
@@ -902,6 +1632,57 @@ router.get('/metric/:metricId', isAdminWithAuth, async (req, res) => {
   } catch (error) {
     console.error('Dashboard metric error:', error);
     res.status(500).json({ error: 'Failed to fetch metric data' });
+  }
+});
+
+// Новый эндпоинт для получения количества сделок по датам
+router.get('/chart/trades_by_date', isAdminWithAuth, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query as { startDate: string; endDate: string };
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'startDate and endDate are required' });
+    }
+
+    // Приводим даты к UTC для ClickHouse (используем те же tsFrom/tsTo)
+    const formatUTCDate = (d: Date) => new Date(d).toISOString().slice(0, 10);
+    const startDateObj = new Date(startDate);
+    const endDateObj = new Date(endDate);
+    const startUTC = formatUTCDate(startDateObj);
+    const endUTC = formatUTCDate(endDateObj);
+    const nextDayAfterEndUTC = new Date(`${endUTC}T00:00:00.000Z`);
+    nextDayAfterEndUTC.setUTCDate(nextDayAfterEndUTC.getUTCDate() + 1);
+    const endNextUTC = nextDayAfterEndUTC.toISOString().slice(0, 10);
+
+    const tsFrom = `${startUTC} 00:00:00`;
+    const tsTo = `${endNextUTC} 00:00:00`;
+
+    const filters = {
+      userType: req.query.userType as string,
+      country: req.query.country ? (req.query.country as string).split(',') : [],
+      tradeActivity: req.query.tradeActivity as string,
+      search: req.query.search as string, // Добавляем поиск, если потребуется
+    };
+
+    const client = (clickhouseAnalyticsService as any).getClient();
+    const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
+    const filteredUserIds = Array.from(userAttributesMap.keys());
+
+    // Если нет отфильтрованных пользователей, возвращаем пустые данные
+    if (filteredUserIds.length === 0) {
+      return res.json([]);
+    }
+
+    const result = await adminAnalyticsService.getTradesCountByDate(
+      startDate,
+      endDate,
+      filteredUserIds,
+      filters.tradeActivity
+    );
+    res.json(result.data);
+  } catch (error) {
+    console.error('Trades by date chart error:', error);
+    res.status(500).json({ error: 'Failed to get trades by date chart data' });
   }
 });
 

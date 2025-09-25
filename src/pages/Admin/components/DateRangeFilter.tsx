@@ -20,9 +20,9 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ selectedRange, onChan
       label: 'Today',
       getValue: () => {
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        today.setUTCHours(0, 0, 0, 0);
         const endOfDay = new Date(today);
-        endOfDay.setHours(23, 59, 59, 999);
+        endOfDay.setUTCHours(23, 59, 59, 999);
         return { startDate: today, endDate: endOfDay, label: 'Today' };
       }
     },
@@ -30,10 +30,10 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ selectedRange, onChan
       label: 'Yesterday',
       getValue: () => {
         const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        yesterday.setHours(0, 0, 0, 0);
+        yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+        yesterday.setUTCHours(0, 0, 0, 0);
         const endOfYesterday = new Date(yesterday);
-        endOfYesterday.setHours(23, 59, 59, 999);
+        endOfYesterday.setUTCHours(23, 59, 59, 999);
         return { startDate: yesterday, endDate: endOfYesterday, label: 'Yesterday' };
       }
     },
@@ -41,10 +41,10 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ selectedRange, onChan
       label: 'Last 7 days',
       getValue: () => {
         const end = new Date();
-        end.setHours(23, 59, 59, 999);
-        const start = new Date();
-        start.setDate(start.getDate() - 6);
-        start.setHours(0, 0, 0, 0);
+        end.setUTCHours(23, 59, 59, 999);
+        const start = new Date(end);
+        start.setUTCDate(end.getUTCDate() - 6);
+        start.setUTCHours(0, 0, 0, 0);
         return { startDate: start, endDate: end, label: 'Last 7 days' };
       }
     },
@@ -52,10 +52,10 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ selectedRange, onChan
       label: 'Last 30 days',
       getValue: () => {
         const end = new Date();
-        end.setHours(23, 59, 59, 999);
-        const start = new Date();
-        start.setDate(start.getDate() - 29);
-        start.setHours(0, 0, 0, 0);
+        end.setUTCHours(23, 59, 59, 999);
+        const start = new Date(end);
+        start.setUTCDate(end.getUTCDate() - 29);
+        start.setUTCHours(0, 0, 0, 0);
         return { startDate: start, endDate: end, label: 'Last 30 days' };
       }
     },
@@ -63,10 +63,10 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ selectedRange, onChan
       label: 'Last 90 days',
       getValue: () => {
         const end = new Date();
-        end.setHours(23, 59, 59, 999);
-        const start = new Date();
-        start.setDate(start.getDate() - 89);
-        start.setHours(0, 0, 0, 0);
+        end.setUTCHours(23, 59, 59, 999);
+        const start = new Date(end);
+        start.setUTCDate(end.getUTCDate() - 89);
+        start.setUTCHours(0, 0, 0, 0);
         return { startDate: start, endDate: end, label: 'Last 90 days' };
       }
     },
@@ -74,8 +74,8 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ selectedRange, onChan
       label: 'This month',
       getValue: () => {
         const now = new Date();
-        const start = new Date(now.getFullYear(), now.getMonth(), 1);
-        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+        const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
         return { startDate: start, endDate: end, label: 'This month' };
       }
     },
@@ -83,8 +83,8 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ selectedRange, onChan
       label: 'Last month',
       getValue: () => {
         const now = new Date();
-        const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+        const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+        const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999));
         return { startDate: start, endDate: end, label: 'Last month' };
       }
     }

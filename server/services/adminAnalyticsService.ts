@@ -335,6 +335,54 @@ export class AdminAnalyticsService {
   }
 
   /**
+   * Получить количество сделок по датам за период
+   */
+  async getTradesCountByDate(startDate: string, endDate: string, filteredUserIds: string[], tradeActivity?: string) {
+    try {
+      console.log(`[AdminAnalytics] Getting trades count by date for range: ${startDate} to ${endDate}. Users: ${filteredUserIds.length}, Activity: ${tradeActivity || 'all'}`);
+
+      let whereConditions = [
+        `deals.closed_at IS NOT NULL`,
+        `deals.closed_at >= ('${startDate}'::timestamp AT TIME ZONE 'UTC')::timestamp without time zone`,
+        `deals.closed_at <= ('${endDate}'::timestamp AT TIME ZONE 'UTC')::timestamp without time zone`,
+        `deals.user_id IN (${filteredUserIds.map(id => `'${id}'`).join(',')})` // Применяем фильтр по user_id
+      ];
+
+      if (tradeActivity === 'profit') {
+        whereConditions.push(`deals.profit > 0`);
+      } else if (tradeActivity === 'loss') {
+        whereConditions.push(`deals.profit < 0`);
+      }
+
+      const result = await db.execute(sql`
+        SELECT 
+          DATE(deals.closed_at AT TIME ZONE 'UTC') as date,
+          COUNT(*) as count
+        FROM deals
+        WHERE ${sql.raw(whereConditions.join(' AND '))}
+        GROUP BY DATE(deals.closed_at AT TIME ZONE 'UTC')
+        ORDER BY DATE(deals.closed_at AT TIME ZONE 'UTC') ASC
+      `);
+
+      const data = result.rows?.map((row: any) => ({
+        date: this.formatDate(row.date),
+        count: this.safeNumber(row.count),
+      })) || [];
+
+      console.log(`[AdminAnalytics] Retrieved ${data.length} trade count records`);
+
+      return { data };
+
+    } catch (error) {
+      console.error('[AdminAnalytics] Error in getTradesCountByDate:', error);
+      return {
+        data: [],
+        error: 'Failed to retrieve trades count data'
+      };
+    }
+  }
+
+  /**
    * Форматирование даты для единообразия
    */
   private formatDate(date: any): string {

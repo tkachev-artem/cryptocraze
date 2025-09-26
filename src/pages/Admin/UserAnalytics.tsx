@@ -108,7 +108,7 @@ const UserAnalytics: React.FC = () => {
     // Retention — проценты
     'D1', 'D3', 'D7', 'D30',
     // Trading/Forms — проценты
-    'win_rate', 'form_abandonment_rate'
+    'win_rate'
   ]);
 
   // Функция для получения конфига графика в зависимости от metricId
@@ -134,6 +134,17 @@ const UserAnalytics: React.FC = () => {
         valueFormatter: (value: number) => formatAxisTick(value, 2),
         tooltipLabel: base.tooltipLabel,
         tooltipValue: (value: number) => formatAxisTick(value, 2)
+      };
+    }
+    
+    // Специальная конфигурация для signup_rate - показываем проценты
+    if (metricId === 'signup_rate') {
+      return {
+        categories: ['Signup Rate'],
+        colors: ['blue'],
+        valueFormatter: (value: number) => `${Math.round(value)}%`,
+        tooltipLabel: 'Signup Rate',
+        tooltipValue: (value: number) => `${Math.round(value)}%`
       };
     } else if (retentionMetricIds.has(metricId as RetentionMetric)) {
       if (metricId === 'churn_rate') {
@@ -252,7 +263,6 @@ const UserAnalytics: React.FC = () => {
   // Define all metrics with their properties
   const allMetrics: Metric[] = [
     // User Acquisition
-    { id: 'first_open', title: 'First Open', value: '—', icon: <Eye className="w-4 h-4 text-white" />, color: 'bg-indigo-500', category: 'Acquisition', description: 'Users who opened app' },
     { id: 'signup_rate', title: 'Signup Rate', value: '—', icon: <UserCheck className="w-4 h-4 text-white" />, color: 'bg-green-500', category: 'Acquisition', description: 'Conversion from visitor to user' },
 
     // Engagement (теперь импортируются)
@@ -286,33 +296,16 @@ const UserAnalytics: React.FC = () => {
     
     { id: 'average_holding_time', title: 'Avg Hold Time', value: '—', icon: <Clock className="w-4 h-4 text-white" />, color: 'bg-purple-600', category: 'Trading', description: 'Average position holding time' },
     
-    // Technical Metrics
-    { id: 'page_load_time', title: 'Page Load Time', value: '—', icon: <Monitor className="w-4 h-4 text-white" />, color: 'bg-indigo-600', category: 'Technical', description: 'Average page loading time' },
-    { id: 'api_response_time', title: 'API Response', value: '—', icon: <Activity className="w-4 h-4 text-white" />, color: 'bg-blue-600', category: 'Technical', description: 'Average API response time' },
-    { id: 'websocket_stability', title: 'WebSocket Stability', value: '—', icon: <Zap className="w-4 h-4 text-white" />, color: 'bg-yellow-600', category: 'Technical', description: 'WebSocket connection stability' },
-    { id: 'browser_compatibility', title: 'Browser Support', value: '—', icon: <Globe className="w-4 h-4 text-white" />, color: 'bg-green-600', category: 'Technical', description: 'Browser compatibility metrics' },
-    
-    // Web-Specific Metrics
-    { id: 'browser_distribution', title: 'Browser Distribution', value: '—', icon: <Monitor className="w-4 h-4 text-white" />, color: 'bg-purple-600', category: 'Web', description: 'Distribution across browsers' },
-    { id: 'device_type_distribution', title: 'Device Types', value: '—', icon: <Smartphone className="w-4 h-4 text-white" />, color: 'bg-blue-600', category: 'Web', description: 'Desktop/tablet/mobile distribution' },
-    { id: 'screen_resolution_usage', title: 'Screen Resolutions', value: '—', icon: <Maximize className="w-4 h-4 text-white" />, color: 'bg-green-600', category: 'Web', description: 'Most used screen resolutions' },
-    { id: 'scroll_depth', title: 'Scroll Depth', value: '—', icon: <ArrowDown className="w-4 h-4 text-white" />, color: 'bg-orange-600', category: 'Web', description: 'Average page scroll depth' },
-    { id: 'form_abandonment_rate', title: 'Form Abandonment', value: '0%', icon: <XCircle className="w-4 h-4 text-white" />, color: 'bg-red-600', category: 'Web', description: 'Percentage of abandoned forms' },
-    { id: 'navigation_patterns', title: 'Navigation Patterns', value: '—', icon: <Navigation className="w-4 h-4 text-white" />, color: 'bg-indigo-500', category: 'Web', description: 'User navigation behavior' },
     
     // Extended Engagement
     { id: 'session_duration', title: 'Session Duration', value: '—', icon: <Clock className="w-4 h-4 text-white" />, color: 'bg-blue-600', category: 'Engagement', description: 'Average session duration' },
-    { id: 'pages_per_session', title: 'Pages/Session', value: '—', icon: <FileText className="w-4 h-4 text-white" />, color: 'bg-green-600', category: 'Engagement', description: 'Average pages per session' },
     { id: 'daily_active_traders', title: 'Daily Active Traders', value: '—', icon: <Users className="w-4 h-4 text-white" />, color: 'bg-purple-600', category: 'Engagement', description: 'Number of active traders per day' },
     { id: 'trading_frequency', title: 'Trading Frequency', value: '—', icon: <Repeat className="w-4 h-4 text-white" />, color: 'bg-orange-600', category: 'Engagement', description: 'Average trading frequency' },
-    { id: 'average_position_size', title: 'Avg Position Size', value: '—', icon: <TrendingUp className="w-4 h-4 text-white" />, color: 'bg-blue-500', category: 'Engagement', description: 'Average position size per trade' },
-    { id: 'leverage_usage_distribution', title: 'Leverage Usage', value: '—', icon: <BarChart3 className="w-4 h-4 text-white" />, color: 'bg-red-600', category: 'Engagement', description: 'Distribution of leverage usage' },
+    
     
     // Extended User Acquisition
     { id: 'page_visits', title: 'Page Visits', value: '—', icon: <Eye className="w-4 h-4 text-white" />, color: 'bg-blue-600', category: 'Acquisition', description: 'Total page visits to the site' },
-    { id: 'traffic_source', title: 'Traffic Source', value: '—', icon: <Globe className="w-4 h-4 text-white" />, color: 'bg-green-600', category: 'Acquisition', description: 'Distribution of traffic sources' },
-    { id: 'referrer_domain', title: 'Referrer Domain', value: '—', icon: <Link className="w-4 h-4 text-white" />, color: 'bg-purple-600', category: 'Acquisition', description: 'Top referring domains' },
-    { id: 'campaign_attribution', title: 'Campaign Attribution', value: '—', icon: <Target className="w-4 h-4 text-white" />, color: 'bg-orange-600', category: 'Acquisition', description: 'Marketing campaign performance' },
+    
   ];
 
   const loadChartData = async (metricId: string) => {
@@ -457,7 +450,26 @@ const UserAnalytics: React.FC = () => {
             'pro_tutorial_start', 'pro_tutorial_complete',
             'churn_rate'
           ]);
-          if (tutorialHeaderIds.has(metricId)) {
+          
+          // Специальная логика для signup_rate
+          if (metricId === 'signup_rate') {
+            try {
+              // Получаем общее количество first_open и signup за период
+              const signupRateResponse = await fetch(`${config.api.baseUrl}/admin/dashboard/metric/signup_rate/trend?startDate=${dateRange.startDate.toISOString()}&endDate=${dateRange.endDate.toISOString()}`, { credentials: 'include' });
+              if (signupRateResponse.ok) {
+                const signupData = await signupRateResponse.json();
+                if (signupData && Array.isArray(signupData)) {
+                  const totalFirstOpens = signupData.reduce((sum, item) => sum + (item.firstOpens || 0), 0);
+                  const totalSignups = signupData.reduce((sum, item) => sum + (item.signups || 0), 0);
+                  const signupRate = totalFirstOpens > 0 ? Math.round((totalSignups / totalFirstOpens) * 100) : 0;
+                  setDynamicOverallPercent(signupRate);
+                }
+              }
+            } catch (error) {
+              console.error('Error loading signup rate data:', error);
+              setDynamicOverallPercent(0);
+            }
+          } else if (tutorialHeaderIds.has(metricId)) {
             try {
               const totalUsersResponse = await fetch(`${config.api.baseUrl}/admin/dashboard/total-users-in-period?startDate=${dateRange.startDate.toISOString()}&endDate=${dateRange.endDate.toISOString()}`, { credentials: 'include' });
               if (totalUsersResponse.ok) {
@@ -605,17 +617,6 @@ const UserAnalytics: React.FC = () => {
             manual_close_rate: '0%',
             average_holding_time: '—',
             // Technical Metrics
-            page_load_time: '—',
-            api_response_time: '—',
-            websocket_stability: '—',
-            browser_compatibility: '—',
-            // Web-Specific Metrics
-            browser_distribution: '—',
-            device_type_distribution: '—',
-            screen_resolution_usage: '—',
-            scroll_depth: '—',
-            form_abandonment_rate: '0%',
-            navigation_patterns: '—',
             // Extended Engagement
             session_duration: '—',
             pages_per_session: '—',
@@ -625,7 +626,6 @@ const UserAnalytics: React.FC = () => {
             leverage_usage_distribution: '—',
             // Extended User Acquisition
             page_visits: '—',
-            traffic_source: '—',
             referrer_domain: '—',
             campaign_attribution: '—',
           };
@@ -636,11 +636,9 @@ const UserAnalytics: React.FC = () => {
             'sessions', 'screens_opened', 'trades_per_user', 'avg_virtual_balance', 'churn_rate', 
             'order_open', 'order_close', 'win_rate', 'average_profit_loss', 'max_profit_trade', 
             'max_loss_trade', 'manual_close_rate', 
-            'average_holding_time', 'page_load_time', 'api_response_time', 'websocket_stability', 
-            'browser_compatibility', 'browser_distribution', 'device_type_distribution', 
-            'screen_resolution_usage', 'scroll_depth', 'form_abandonment_rate', 'navigation_patterns',
+            'average_holding_time',
             'session_duration', 'pages_per_session', 'daily_active_traders', 'trading_frequency',
-            'average_position_size', 'leverage_usage_distribution', 'page_visits', 'traffic_source',
+            'average_position_size', 'leverage_usage_distribution', 'page_visits',
             'referrer_domain', 'campaign_attribution'
           ];
 
@@ -692,26 +690,6 @@ const UserAnalytics: React.FC = () => {
                 processedMetrics.manual_close_rate = result.manualCloseRate ? `${result.manualCloseRate}%` : '0%';
               } else if (metricId === 'average_holding_time') {
                 processedMetrics.average_holding_time = result.averageHoldingTime || '—';
-              } else if (metricId === 'page_load_time') {
-                processedMetrics.page_load_time = result.pageLoadTime || '—';
-              } else if (metricId === 'api_response_time') {
-                processedMetrics.api_response_time = result.apiResponseTime || '—';
-              } else if (metricId === 'websocket_stability') {
-                processedMetrics.websocket_stability = result.websocketStability || '—';
-              } else if (metricId === 'browser_compatibility') {
-                processedMetrics.browser_compatibility = result.browserCompatibility || '—';
-              } else if (metricId === 'browser_distribution') {
-                processedMetrics.browser_distribution = result.browserDistribution || '—';
-              } else if (metricId === 'device_type_distribution') {
-                processedMetrics.device_type_distribution = result.deviceTypeDistribution || '—';
-              } else if (metricId === 'screen_resolution_usage') {
-                processedMetrics.screen_resolution_usage = result.screenResolutionUsage || '—';
-              } else if (metricId === 'scroll_depth') {
-                processedMetrics.scroll_depth = result.scrollDepth || '—';
-              } else if (metricId === 'form_abandonment_rate') {
-                processedMetrics.form_abandonment_rate = result.formAbandonmentRate ? `${result.formAbandonmentRate}%` : '0%';
-              } else if (metricId === 'navigation_patterns') {
-                processedMetrics.navigation_patterns = result.navigationPatterns || '—';
               } else if (metricId === 'session_duration') {
                 processedMetrics.session_duration = result.sessionDuration || '—';
               } else if (metricId === 'pages_per_session') {
@@ -726,8 +704,6 @@ const UserAnalytics: React.FC = () => {
                 processedMetrics.leverage_usage_distribution = result.leverageUsageDistribution || '—';
               } else if (metricId === 'page_visits') {
                 processedMetrics.page_visits = result.pageVisits || '—';
-              } else if (metricId === 'traffic_source') {
-                processedMetrics.traffic_source = result.trafficSource || '—';
               } else if (metricId === 'referrer_domain') {
                 processedMetrics.referrer_domain = result.referrerDomain || '—';
               } else if (metricId === 'campaign_attribution') {
@@ -882,6 +858,10 @@ const UserAnalytics: React.FC = () => {
                   const dataExists = Array.isArray(chartData) && chartData.length > 0;
                   // Для tutorial метрик всегда показываем % в шапке
                   if (tutorialHeaderIds.has(selectedMetric.id)) {
+                    return `${Math.round(Number(dynamicOverallPercent ?? 0))}%`;
+                  }
+                  // Для signup_rate показываем % в шапке
+                  if (selectedMetric.id === 'signup_rate') {
                     return `${Math.round(Number(dynamicOverallPercent ?? 0))}%`;
                   }
                   if (isPercent) {

@@ -32,6 +32,7 @@ import { GeoLocationService } from './services/geoLocationService.js';
 import AnalyticsLogger from './middleware/analyticsLogger.js';
 import { registerAdRoutes } from './adRoutes';
 import dashboardRouter from './routes/dashboardRoute.js';
+import collectRouter from './routes/collectRoute.js';
 console.log('[Routes] Dashboard router imported:', typeof dashboardRouter);
 import { adminRoutes as workerAdminRoutes, getWorkerSystemHealth } from './services/workers/index.js';
 import { and, eq, gte, lte, inArray, sql, desc, asc, count, sum, lt, isNull, isNotNull, gt } from 'drizzle-orm';
@@ -218,6 +219,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mount admin dashboard router (with optimizations)
   app.use('/api/admin/analytics', dashboardRouter);
   app.use('/api/admin/dashboard', dashboardRouter);
+  // Analytics collector
+  app.use('/api/collect', collectRouter);
 
   // Account: delete user and related data
   app.delete('/api/account/delete', isAuthenticated, async (req: AuthenticatedRequest, res: Response) => {

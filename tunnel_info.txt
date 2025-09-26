@@ -1,4 +1,4 @@
-TUNNEL_URL=https://witch-howard-station-losing.trycloudflare.com
-TUNNEL_PID=91292
-STARTED_AT=Fri Sep 26 10:45:52 MSK 2025
+TUNNEL_URL=https://comic-certified-champagne-wales.trycloudflare.com
+TUNNEL_PID=71748
+STARTED_AT=Fri Sep 26 19:40:26 MSK 2025
 LOG_FILE=/Users/artemtkacev/Desktop/cc-games/cryptocraze/tunnel.log

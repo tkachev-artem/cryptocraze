@@ -14,6 +14,7 @@ import { useAppSelector, useAppDispatch } from './app/hooks';
 import { selectIsAuthenticated } from './app/userSlice';
 import { closeCoinExchange } from './app/coinExchangeSlice';
 import { useTranslation } from './lib/i18n';
+import { initAnalytics, track } from './lib/analytics';
 
 // Loading fallback component for lazy routes
 const RouteLoading: React.FC = () => (
@@ -33,6 +34,8 @@ export const App: React.FC = () => {
 
   // Глобальный запрет back-свайпа (слева-направо) и pull-to-refresh (сверху-вниз)
   useEffect(() => {
+    // Инициализация аналитики (first_open, landing, page_view)
+    try { initAnalytics(); } catch {}
     const el = appScrollRef.current ?? document.body
 
     const handleTouchStart = (e: TouchEvent) => {
@@ -79,6 +82,19 @@ export const App: React.FC = () => {
       el.removeEventListener('touchend', handleTouchEnd as EventListener)
     }
   }, [])
+
+  // Отслеживаем успешную авторизацию (Google OAuth редирект на /home)
+  useEffect(() => {
+    if (isAuthenticated) {
+      try {
+        const key = 'cc_signup_tracked';
+        if (!localStorage.getItem(key)) {
+          track({ event_type: 'signup', event_data: { method: 'google' } });
+          localStorage.setItem(key, '1');
+        }
+      } catch {}
+    }
+  }, [isAuthenticated])
 
 
 

@@ -105,6 +105,16 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
         endpoint = '';
       } else if (metricId === 'average_holding_time') {
         endpoint = '/admin/dashboard/table/average_holding_time';
+      } else if (metricId === 'session_duration') {
+        endpoint = '/admin/dashboard/table/session_duration';
+      } else if (metricId === 'daily_active_traders') {
+        endpoint = '/admin/dashboard/table/daily_active_traders';
+      } else if (metricId === 'trading_frequency') {
+        endpoint = '/admin/dashboard/table/trading_frequency';
+      } else if (metricId === 'page_visits') {
+        endpoint = '/admin/dashboard/table/page_visits';
+      } else if (metricId === 'signup_rate') {
+        endpoint = '/admin/dashboard/table/signup_rate';
       } else {
         // Placeholder for other metrics
         setData([]);
@@ -284,6 +294,166 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
       );
     }
 
+    // Таблица для Page Visits (топ путей)
+    if (metricId === 'page_visits') {
+      return (
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Path</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Views</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Last Seen</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row) => (
+              <tr key={row.path} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                <td className="py-4 px-4 text-sm text-gray-900">{row.path}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.views}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.lastSeen ? new Date(row.lastSeen).toUTCString() : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+
+    // Таблица для Signup Rate (дневные агрегаты)
+    if (metricId === 'signup_rate') {
+      return (
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Date</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">First Opens</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Signups</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Signup Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row) => (
+              <tr key={row.date} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                <td className="py-4 px-4 text-sm text-gray-900 font-mono">{row.date}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.firstOpens}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.signups}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.signupRate}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+
+    // Таблица для Session Duration
+    if (metricId === 'session_duration') {
+      return (
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="text-left py-4 px-4 font-bold text-gray-900">User ID</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Region</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Sessions</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Avg Duration (min)</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Last Active</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row) => (
+              <tr key={row.userId} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                <td className="py-4 px-4 text-sm text-gray-900 font-mono">{row.userId}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">
+                  <div className="flex items-center gap-2">
+                    {row.country && row.country !== 'Unknown' && (
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded font-medium">
+                        {row.country}
+                      </span>
+                    )}
+                    <span>{row.country || 'Unknown'}</span>
+                  </div>
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.sessions}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{Number(row.avgMinutes ?? 0).toFixed(2)}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.lastActive ? new Date(row.lastActive).toUTCString() : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+
+    // Таблица для Daily Active Traders
+    if (metricId === 'daily_active_traders') {
+      return (
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="text-left py-4 px-4 font-bold text-gray-900">User ID</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Region</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Trades</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Last Trade</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row) => (
+              <tr key={row.userId} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                <td className="py-4 px-4 text-sm text-gray-900 font-mono">{row.userId}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">
+                  <div className="flex items-center gap-2">
+                    {row.country && row.country !== 'Unknown' && (
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded font-medium">
+                        {row.country}
+                      </span>
+                    )}
+                    <span>{row.country || 'Unknown'}</span>
+                  </div>
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.trades}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.lastTradeAt ? new Date(row.lastTradeAt).toUTCString() : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+
+    // Таблица для Trading Frequency
+    if (metricId === 'trading_frequency') {
+      return (
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="text-left py-4 px-4 font-bold text-gray-900">User ID</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Region</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Trades</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Active Days</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Trades/Day</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Last Trade</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row) => (
+              <tr key={row.userId} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                <td className="py-4 px-4 text-sm text-gray-900 font-mono">{row.userId}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">
+                  <div className="flex items-center gap-2">
+                    {row.country && row.country !== 'Unknown' && (
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded font-medium">
+                        {row.country}
+                      </span>
+                    )}
+                    <span>{row.country || 'Unknown'}</span>
+                  </div>
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.totalTrades}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.activeDays}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{Number(row.tradesPerDay ?? 0).toFixed(2)}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.lastTradeAt ? new Date(row.lastTradeAt).toUTCString() : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
     if (metricId === 'churn_rate') {
       return (
         <table className="w-full">

@@ -1300,28 +1300,7 @@ router.get('/metric/:metricId/trend', isAdminWithAuth, async (req, res) => {
       const trendData = (result.rows as any[]).map(r => ({ date: r.date, value: Number(r.value ?? 0) }));
       return res.json(trendData);
     }
-    else if (metricId === 'take_profit_hit_rate') {
-      const client = clickhouseAnalyticsService.getClient();
-      const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
-      const filteredUserIds = Array.from(userAttributesMap.keys());
-      if (filteredUserIds.length === 0) return res.json([]);
-
-      const inList = filteredUserIds.map(id => `'${id}'`).join(',');
-      const result = await db.execute(sql`SELECT to_char(closed_at,'YYYY-MM-DD') AS date, AVG(CASE WHEN take_profit IS NOT NULL AND ((direction = 'up' AND close_price >= take_profit) OR (direction = 'down' AND close_price <= take_profit)) THEN 1 ELSE 0 END) * 100 AS value FROM deals WHERE closed_at >= ${sql.raw(`'${tsFrom}'`)} AND closed_at < ${sql.raw(`'${tsTo}'`)} AND status = 'closed' AND user_id IN (${sql.raw(inList)}) GROUP BY 1 ORDER BY 1`);
-      const trendData = (result.rows as any[]).map(r => ({ date: r.date, value: Number(r.value ?? 0) }));
-      return res.json(trendData);
-    }
-    else if (metricId === 'stop_loss_hit_rate') {
-      const client = clickhouseAnalyticsService.getClient();
-      const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
-      const filteredUserIds = Array.from(userAttributesMap.keys());
-      if (filteredUserIds.length === 0) return res.json([]);
-
-      const inList = filteredUserIds.map(id => `'${id}'`).join(',');
-      const result = await db.execute(sql`SELECT to_char(closed_at,'YYYY-MM-DD') AS date, AVG(CASE WHEN stop_loss IS NOT NULL AND ((direction = 'up' AND close_price <= stop_loss) OR (direction = 'down' AND close_price >= stop_loss)) THEN 1 ELSE 0 END) * 100 AS value FROM deals WHERE closed_at >= ${sql.raw(`'${tsFrom}'`)} AND closed_at < ${sql.raw(`'${tsTo}'`)} AND status = 'closed' AND user_id IN (${sql.raw(inList)}) GROUP BY 1 ORDER BY 1`);
-      const trendData = (result.rows as any[]).map(r => ({ date: r.date, value: Number(r.value ?? 0) }));
-      return res.json(trendData);
-    }
+    // Метрики TP/SL Hit Rate удалены
     else if (metricId === 'manual_close_rate') {
       const client = clickhouseAnalyticsService.getClient();
       const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
@@ -2328,145 +2307,10 @@ router.get('/table/max_loss_trade', isAdminWithAuth, async (req, res) => {
 });
 
 // Take Profit Hit Rate
-router.get('/table/take_profit_hit_rate', isAdminWithAuth, async (req, res) => {
-  try {
-    const page = parseInt((req.query.page as string) || '1');
-    const limit = parseInt((req.query.limit as string) || (req.query.size as string) || '20');
-    const offset = (page - 1) * limit;
-    const startParam = (req.query.startDate as string) || new Date(Date.now() - 6 * 86400000).toISOString();
-    const endParam = (req.query.endDate as string) || new Date().toISOString();
-    const startDateObj = new Date(startParam);
-    const endDateObj = new Date(endParam);
-    const formatUTCDate = (d: Date) => d.toISOString().slice(0, 10);
-    const startUTC = formatUTCDate(startDateObj);
-    const endUTC = formatUTCDate(endDateObj);
-    const nextDayAfterEndUTC = new Date(`${endUTC}T00:00:00.000Z`);
-    nextDayAfterEndUTC.setUTCDate(nextDayAfterEndUTC.getUTCDate() + 1);
-    const endNextUTC = nextDayAfterEndUTC.toISOString().slice(0, 10);
-    const tsFrom = `${startUTC} 00:00:00`;
-    const tsTo = `${endNextUTC} 00:00:00`;
-
-    const filters = {
-      userType: req.query.userType as string,
-      country: req.query.country ? (req.query.country as string).split(',') : [],
-      search: req.query.search as string,
-    };
-    const client = clickhouseAnalyticsService.getClient();
-    const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
-    const filteredUserIds = Array.from(userAttributesMap.keys());
-    if (filteredUserIds.length === 0) return res.json({ data: [], total: 0, page, limit, totalPages: 0 });
-    const inList = filteredUserIds.map(id => `'${id}'`).join(',');
-
-    const tableQuery = sql`SELECT user_id,
-      COUNT(*) AS closed_trades,
-      SUM(CASE WHEN take_profit IS NOT NULL THEN 1 ELSE 0 END) AS tp_set_count,
-      SUM(CASE WHEN take_profit IS NOT NULL AND ((direction='up' AND close_price >= take_profit) OR (direction='down' AND close_price <= take_profit)) THEN 1 ELSE 0 END) AS tp_hit_count,
-      AVG(CASE WHEN take_profit IS NOT NULL AND ((direction='up' AND close_price >= take_profit) OR (direction='down' AND close_price <= take_profit)) THEN 1 ELSE 0 END) * 100 AS tp_hit_rate,
-      AVG(CASE WHEN take_profit IS NOT NULL AND ((direction='up' AND close_price >= take_profit) OR (direction='down' AND close_price <= take_profit)) THEN COALESCE(profit,0)::float ELSE NULL END) AS avg_pnl_on_tp,
-      MAX(CASE WHEN take_profit IS NOT NULL AND ((direction='up' AND close_price >= take_profit) OR (direction='down' AND close_price <= take_profit)) THEN closed_at ELSE NULL END) AS last_tp_hit_at
-      FROM deals
-      WHERE status='closed' AND closed_at >= ${sql.raw(`'${tsFrom}'`)} AND closed_at < ${sql.raw(`'${tsTo}'`)} AND user_id IN (${sql.raw(inList)})
-      GROUP BY user_id
-      ORDER BY tp_hit_rate DESC
-      LIMIT ${limit} OFFSET ${offset}`;
-
-    const totalQuery = sql`SELECT COUNT(*) AS total_users FROM (
-      SELECT 1 FROM deals WHERE status='closed' AND closed_at >= ${sql.raw(`'${tsFrom}'`)} AND closed_at < ${sql.raw(`'${tsTo}'`)} AND user_id IN (${sql.raw(inList)}) GROUP BY user_id
-    ) t`;
-
-    const [tableResp, totalResp] = await Promise.all([db.execute(tableQuery), db.execute(totalQuery)]);
-    const total = Number((totalResp.rows as any[])[0]?.total_users || 0);
-    const rows = (tableResp.rows as any[]).map(r => {
-      const ud = userAttributesMap.get(r.user_id) || {} as any;
-      return {
-        userId: r.user_id,
-        email: ud.email || null,
-        country: ud.country || 'Unknown',
-        isPremium: !!ud.isPremium,
-        closedTrades: Number(r.closed_trades || 0),
-        tpSetCount: Number(r.tp_set_count || 0),
-        tpHitCount: Number(r.tp_hit_count || 0),
-        tpHitRate: Number(r.tp_hit_rate || 0),
-        avgPnLOnTP: Number(r.avg_pnl_on_tp || 0),
-        lastTPHitAt: r.last_tp_hit_at || null,
-      };
-    });
-    return res.json({ data: rows, total, page, limit, totalPages: Math.ceil(total / limit) });
-  } catch (error) {
-    console.error('Take Profit Hit Rate table error:', error);
-    return res.status(500).json({ error: 'Failed to get take profit hit rate table' });
-  }
-});
+// Метрика TP Hit Rate удалена
 
 // Stop Loss Hit Rate
-router.get('/table/stop_loss_hit_rate', isAdminWithAuth, async (req, res) => {
-  try {
-    const page = parseInt((req.query.page as string) || '1');
-    const limit = parseInt((req.query.limit as string) || (req.query.size as string) || '20');
-    const offset = (page - 1) * limit;
-    const startParam = (req.query.startDate as string) || new Date(Date.now() - 6 * 86400000).toISOString();
-    const endParam = (req.query.endDate as string) || new Date().toISOString();
-    const startDateObj = new Date(startParam);
-    const endDateObj = new Date(endParam);
-    const formatUTCDate = (d: Date) => d.toISOString().slice(0, 10);
-    const startUTC = formatUTCDate(startDateObj);
-    const endUTC = formatUTCDate(endDateObj);
-    const nextDayAfterEndUTC = new Date(`${endUTC}T00:00:00.000Z`);
-    nextDayAfterEndUTC.setUTCDate(nextDayAfterEndUTC.getUTCDate() + 1);
-    const endNextUTC = nextDayAfterEndUTC.toISOString().slice(0, 10);
-    const tsFrom = `${startUTC} 00:00:00`;
-    const tsTo = `${endNextUTC} 00:00:00`;
-    const filters = {
-      userType: req.query.userType as string,
-      country: req.query.country ? (req.query.country as string).split(',') : [],
-      search: req.query.search as string,
-    };
-    const client = clickhouseAnalyticsService.getClient();
-    const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
-    const filteredUserIds = Array.from(userAttributesMap.keys());
-    if (filteredUserIds.length === 0) return res.json({ data: [], total: 0, page, limit, totalPages: 0 });
-    const inList = filteredUserIds.map(id => `'${id}'`).join(',');
-
-    const tableQuery = sql`SELECT user_id,
-      COUNT(*) AS closed_trades,
-      SUM(CASE WHEN stop_loss IS NOT NULL THEN 1 ELSE 0 END) AS sl_set_count,
-      SUM(CASE WHEN stop_loss IS NOT NULL AND ((direction='up' AND close_price <= stop_loss) OR (direction='down' AND close_price >= stop_loss)) THEN 1 ELSE 0 END) AS sl_hit_count,
-      AVG(CASE WHEN stop_loss IS NOT NULL AND ((direction='up' AND close_price <= stop_loss) OR (direction='down' AND close_price >= stop_loss)) THEN 1 ELSE 0 END) * 100 AS sl_hit_rate,
-      AVG(CASE WHEN stop_loss IS NOT NULL AND ((direction='up' AND close_price <= stop_loss) OR (direction='down' AND close_price >= stop_loss)) THEN COALESCE(profit,0)::float ELSE NULL END) AS avg_pnl_on_sl,
-      MAX(CASE WHEN stop_loss IS NOT NULL AND ((direction='up' AND close_price <= stop_loss) OR (direction='down' AND close_price >= stop_loss)) THEN closed_at ELSE NULL END) AS last_sl_hit_at
-      FROM deals
-      WHERE status='closed' AND closed_at >= ${sql.raw(`'${tsFrom}'`)} AND closed_at < ${sql.raw(`'${tsTo}'`)} AND user_id IN (${sql.raw(inList)})
-      GROUP BY user_id
-      ORDER BY sl_hit_rate DESC
-      LIMIT ${limit} OFFSET ${offset}`;
-
-    const totalQuery = sql`SELECT COUNT(*) AS total_users FROM (
-      SELECT 1 FROM deals WHERE status='closed' AND closed_at >= ${sql.raw(`'${tsFrom}'`)} AND closed_at < ${sql.raw(`'${tsTo}'`)} AND user_id IN (${sql.raw(inList)}) GROUP BY user_id
-    ) t`;
-
-    const [tableResp, totalResp] = await Promise.all([db.execute(tableQuery), db.execute(totalQuery)]);
-    const total = Number((totalResp.rows as any[])[0]?.total_users || 0);
-    const rows = (tableResp.rows as any[]).map(r => {
-      const ud = userAttributesMap.get(r.user_id) || {} as any;
-      return {
-        userId: r.user_id,
-        email: ud.email || null,
-        country: ud.country || 'Unknown',
-        isPremium: !!ud.isPremium,
-        closedTrades: Number(r.closed_trades || 0),
-        slSetCount: Number(r.sl_set_count || 0),
-        slHitCount: Number(r.sl_hit_count || 0),
-        slHitRate: Number(r.sl_hit_rate || 0),
-        avgPnLOnSL: Number(r.avg_pnl_on_sl || 0),
-        lastSLHitAt: r.last_sl_hit_at || null,
-      };
-    });
-    return res.json({ data: rows, total, page, limit, totalPages: Math.ceil(total / limit) });
-  } catch (error) {
-    console.error('Stop Loss Hit Rate table error:', error);
-    return res.status(500).json({ error: 'Failed to get stop loss hit rate table' });
-  }
-});
+// Метрика SL Hit Rate удалена
 
 // Manual Close Rate (закрыто без TP и SL)
 router.get('/table/manual_close_rate', isAdminWithAuth, async (req, res) => {
@@ -3145,13 +2989,18 @@ router.get('/chart/trades_by_date', isAdminWithAuth, async (req, res) => {
       return res.json([]);
     }
 
+    // Получаем количество сделок по датам и считаем среднее на пользователя
     const result = await adminAnalyticsService.getTradesCountByDate(
       startDate,
       endDate,
       filteredUserIds,
       filters.tradeActivity
     );
-    res.json(result.data);
+    const data = (result.data || []).map((d: any) => ({
+      date: d.date,
+      value: d.users > 0 ? d.count / d.users : 0
+    }));
+    res.json({ trend: data, usersInPeriod: result.usersInPeriod });
   } catch (error) {
     console.error('Trades by date chart error:', error);
     res.status(500).json({ error: 'Failed to get trades by date chart data' });

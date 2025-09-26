@@ -108,11 +108,18 @@ const UserAnalytics: React.FC = () => {
     // Retention — проценты
     'D1', 'D3', 'D7', 'D30',
     // Trading/Forms — проценты
-    'win_rate', 'take_profit_hit_rate', 'stop_loss_hit_rate', 'manual_close_rate', 'form_abandonment_rate'
+    'win_rate', 'form_abandonment_rate'
   ]);
 
   // Функция для получения конфига графика в зависимости от metricId
   const getMetricChartConfig = (metricId: string) => {
+    const formatAxisTick = (value: number, decimals: number = 2) => {
+      const v = Number(value ?? 0);
+      if (!Number.isFinite(v)) return '0';
+      const fixed = v.toFixed(decimals);
+      // parseFloat уберёт хвостовые нули: 0.20 -> 0.2, 1.00 -> 1
+      return String(parseFloat(fixed));
+    };
     const tutorialMetricIds = new Set([
       'tutorial_start', 'tutorial_complete', 'tutorial_skip', 'tutorial_skip_rate',
       'pro_tutorial_start', 'pro_tutorial_complete', 'pro_tutorial_skip', 'pro_tutorial_skip_rate'
@@ -123,11 +130,25 @@ const UserAnalytics: React.FC = () => {
       const base = getTutorialChartConfig(metricId as any);
       return {
         ...base,
-        valueFormatter: (value: number) => Number(value ?? 0).toFixed(0),
+        // показываем дробные тики (0.2/0.4/0.6) без лишних нулей
+        valueFormatter: (value: number) => formatAxisTick(value, 2),
         tooltipLabel: base.tooltipLabel,
-        tooltipValue: (value: number) => Number(value ?? 0).toFixed(0)
+        tooltipValue: (value: number) => formatAxisTick(value, 2)
       };
     } else if (retentionMetricIds.has(metricId as RetentionMetric)) {
+      if (metricId === 'churn_rate') {
+        // churn_rate: график в абсолютных пользователях, шапка — процент
+        return {
+          categories: ['Users'],
+          colors: ['blue'],
+          showLegend: false,
+          showGradient: false,
+          showYAxis: true,
+          valueFormatter: (value: number) => formatAxisTick(value, 2),
+          tooltipLabel: 'Users',
+          tooltipValue: (value: number) => formatAxisTick(value, 2)
+        };
+      }
       return getRetentionChartConfig(metricId as RetentionMetric);
     } else if (metricId === 'trades_per_user') {
       return {
@@ -136,14 +157,16 @@ const UserAnalytics: React.FC = () => {
         showLegend: false,
         showGradient: false,
         showYAxis: true,
-        valueFormatter: (value: number) => value.toString(),
+        valueFormatter: (value: number) => formatAxisTick(value, 2),
         tooltipLabel: 'Trades',
-        tooltipValue: (value: number) => value.toString()
+        tooltipValue: (value: number) => formatAxisTick(value, 2)
       };
     } else if (['sessions', 'screens_opened', 'avg_virtual_balance'].includes(metricId)) {
       return {
         ...engagementChartConfig,
-        tooltipLabel: (engagementChartConfig.tooltipLabel as Function)(metricId)
+        tooltipLabel: (engagementChartConfig.tooltipLabel as Function)(metricId),
+        valueFormatter: (value: number) => formatAxisTick(value, 2),
+        tooltipValue: (value: number) => formatAxisTick(value, 2)
       };
     } else if (metricId === 'average_profit_loss') {
       return {
@@ -152,9 +175,9 @@ const UserAnalytics: React.FC = () => {
         showLegend: false,
         showGradient: false,
         showYAxis: true,
-        valueFormatter: (value: number) => Number(value ?? 0).toFixed(2),
+        valueFormatter: (value: number) => formatAxisTick(value, 2),
         tooltipLabel: 'Avg P/L',
-        tooltipValue: (value: number) => Number(value ?? 0).toFixed(2)
+        tooltipValue: (value: number) => formatAxisTick(value, 2)
       };
     } else if (['win_rate', 'take_profit_hit_rate', 'stop_loss_hit_rate', 'manual_close_rate'].includes(metricId)) {
       return {
@@ -163,9 +186,9 @@ const UserAnalytics: React.FC = () => {
         showLegend: false,
         showGradient: false,
         showYAxis: true,
-        valueFormatter: (value: number) => `${Number(value ?? 0).toFixed(2)}%`,
+        valueFormatter: (value: number) => `${formatAxisTick(value, 0)}%`,
         tooltipLabel: 'Value',
-        tooltipValue: (value: number) => `${Number(value ?? 0).toFixed(2)}%`
+        tooltipValue: (value: number) => `${formatAxisTick(value, 0)}%`
       };
     } else if (['max_profit_trade', 'max_loss_trade', 'average_holding_time'].includes(metricId)) {
       return {
@@ -174,9 +197,20 @@ const UserAnalytics: React.FC = () => {
         showLegend: false,
         showGradient: false,
         showYAxis: true,
-        valueFormatter: (value: number) => Number(value ?? 0).toFixed(2),
+        valueFormatter: (value: number) => formatAxisTick(value, 2),
         tooltipLabel: 'Value',
-        tooltipValue: (value: number) => Number(value ?? 0).toFixed(2)
+        tooltipValue: (value: number) => formatAxisTick(value, 2)
+      };
+    } else if (['order_open', 'order_close'].includes(metricId)) {
+      return {
+        categories: ['Orders'],
+        colors: ['blue'],
+        showLegend: false,
+        showGradient: false,
+        showYAxis: true,
+        valueFormatter: (value: number) => formatAxisTick(value, 2),
+        tooltipLabel: 'Orders',
+        tooltipValue: (value: number) => formatAxisTick(value, 2)
       };
     } else {
       // Дефолтный конфиг, если метрика не найдена
@@ -186,9 +220,9 @@ const UserAnalytics: React.FC = () => {
         showLegend: false,
         showGradient: false,
         showYAxis: true,
-        valueFormatter: (value: number) => Number(value ?? 0).toFixed(2),
+        valueFormatter: (value: number) => formatAxisTick(value, 2),
         tooltipLabel: 'Value',
-        tooltipValue: (value: number) => Number(value ?? 0).toFixed(2)
+        tooltipValue: (value: number) => formatAxisTick(value, 2)
       };
     }
   };
@@ -249,9 +283,7 @@ const UserAnalytics: React.FC = () => {
     { id: 'average_profit_loss', title: 'Avg P/L', value: '—', icon: <BarChart3 className="w-4 h-4 text-white" />, color: 'bg-blue-600', category: 'Trading', description: 'Average profit/loss per trade' },
     { id: 'max_profit_trade', title: 'Max Profit', value: '—', icon: <ArrowUpRight className="w-4 h-4 text-white" />, color: 'bg-green-500', category: 'Trading', description: 'Maximum profitable trade' },
     { id: 'max_loss_trade', title: 'Max Loss', value: '—', icon: <ArrowDownRight className="w-4 h-4 text-white" />, color: 'bg-red-500', category: 'Trading', description: 'Maximum losing trade' },
-    { id: 'take_profit_hit_rate', title: 'TP Hit Rate', value: '0%', icon: <CheckCircle className="w-4 h-4 text-white" />, color: 'bg-green-400', category: 'Trading', description: 'Take Profit trigger rate' },
-    { id: 'stop_loss_hit_rate', title: 'SL Hit Rate', value: '0%', icon: <AlertCircle className="w-4 h-4 text-white" />, color: 'bg-red-400', category: 'Trading', description: 'Stop Loss trigger rate' },
-    { id: 'manual_close_rate', title: 'Manual Close', value: '0%', icon: <Hand className="w-4 h-4 text-white" />, color: 'bg-blue-500', category: 'Trading', description: 'Percentage of manually closed trades' },
+    
     { id: 'average_holding_time', title: 'Avg Hold Time', value: '—', icon: <Clock className="w-4 h-4 text-white" />, color: 'bg-purple-600', category: 'Trading', description: 'Average position holding time' },
     
     // Technical Metrics
@@ -346,7 +378,14 @@ const UserAnalytics: React.FC = () => {
           setDynamicYAxisMinValue(min);
           setDynamicYAxisMaxValue(max);
         } else if (metricId === 'trades_per_user') {
-          trendData = data.map((item: any) => ({ date: item.date, value: item.count }));
+          const { trend, usersInPeriod } = data;
+          trendData = (trend || []).map((item: any) => ({ date: item.date, value: Number(item.value ?? (item.users > 0 ? item.count / item.users : 0)) }));
+          // Общий показатель за период = сумма сделок / уникальные пользователи периода
+          if (Array.isArray(trend)) {
+            const sumTrades = trend.reduce((s: number, i: any) => s + Number(i.count || 0), 0);
+            const denom = Number(usersInPeriod || 0);
+            totalValue = denom > 0 ? Math.round(sumTrades / denom) : 0;
+          }
           // Для метрики 'trades_per_user' также обновляем dynamicYAxisMaxValue на основе максимального значения в тренде
           const { min, max } = computeYAxis(trendData.map(i => i.value), 'auto');
           setDynamicYAxisMinValue(min);
@@ -379,6 +418,12 @@ const UserAnalytics: React.FC = () => {
         }
 
         if (dynamicPercentageMetricIds.has(metricId)) {
+          // Trading percentage metrics уже приходят как проценты (0-100) по дням
+          const tradingPercentIds = new Set(['win_rate','take_profit_hit_rate','stop_loss_hit_rate']);
+          if (tradingPercentIds.has(metricId)) {
+            const last = trendData.length > 0 ? trendData[trendData.length - 1] : null;
+            setDynamicOverallPercent(last ? Math.round(Number(last.value ?? 0)) : 0);
+          } else {
           const totalUsersResponse = await fetch(`${config.api.baseUrl}/admin/dashboard/total-users-in-period?startDate=${dateRange.startDate.toISOString()}&endDate=${dateRange.endDate.toISOString()}`, {
             credentials: 'include'
           });
@@ -403,8 +448,32 @@ const UserAnalytics: React.FC = () => {
             setDynamicOverallPercent(0);
             console.error('[UserAnalytics] Failed to fetch total users in period.');
           }
+          }
+        } else {
+          // Спец-правило: для tutorial-метрик в шапке показываем % от общего числа пользователей за период,
+          // при этом график остаётся в абсолютных значениях
+          const tutorialHeaderIds = new Set([
+            'tutorial_start', 'tutorial_complete',
+            'pro_tutorial_start', 'pro_tutorial_complete',
+            'churn_rate'
+          ]);
+          if (tutorialHeaderIds.has(metricId)) {
+            try {
+              const totalUsersResponse = await fetch(`${config.api.baseUrl}/admin/dashboard/total-users-in-period?startDate=${dateRange.startDate.toISOString()}&endDate=${dateRange.endDate.toISOString()}`, { credentials: 'include' });
+              if (totalUsersResponse.ok) {
+                const overviewData = await totalUsersResponse.json();
+                const totalUsersInPeriod = Number(overviewData.totalUsers || 0);
+                const events = trendData.reduce((sum: number, item: any) => sum + Number(item.value || 0), 0);
+                setDynamicOverallPercent(totalUsersInPeriod > 0 ? Math.round((events / totalUsersInPeriod) * 100) : 0);
+              } else {
+                setDynamicOverallPercent(0);
+              }
+            } catch {
+              setDynamicOverallPercent(0);
+          }
         } else {
           setDynamicOverallPercent(null); // Сбрасываем для метрик без процента
+          }
         }
 
         const chartConfigForMetric = getMetricChartConfig(selectedMetric.id);
@@ -566,7 +635,7 @@ const UserAnalytics: React.FC = () => {
           const engagementMetricIds = [
             'sessions', 'screens_opened', 'trades_per_user', 'avg_virtual_balance', 'churn_rate', 
             'order_open', 'order_close', 'win_rate', 'average_profit_loss', 'max_profit_trade', 
-            'max_loss_trade', 'take_profit_hit_rate', 'stop_loss_hit_rate', 'manual_close_rate', 
+            'max_loss_trade', 'manual_close_rate', 
             'average_holding_time', 'page_load_time', 'api_response_time', 'websocket_stability', 
             'browser_compatibility', 'browser_distribution', 'device_type_distribution', 
             'screen_resolution_usage', 'scroll_depth', 'form_abandonment_rate', 'navigation_patterns',
@@ -597,9 +666,10 @@ const UserAnalytics: React.FC = () => {
               } else if (metricId === 'screens_opened') {
                 processedMetrics.screens_opened = result.totalScreensOpened.toString();
               } else if (metricId === 'trades_per_user') {
-                // Агрегируем общее количество сделок напрямую из массива result
-                const totalTrades = result.reduce((sum: number, item: any) => sum + (item.count || 0), 0);
-                processedMetrics.trades_per_user = totalTrades.toString();
+                const trend = result.trend || [];
+                const usersInPeriod = Number(result.usersInPeriod || 0);
+                const totalTrades = trend.reduce((sum: number, item: any) => sum + (item.count || 0), 0);
+                processedMetrics.trades_per_user = usersInPeriod > 0 ? Math.round(totalTrades / usersInPeriod).toString() : '0';
               } else if (metricId === 'avg_virtual_balance') {
                 processedMetrics.avg_virtual_balance = Math.floor(result.avgBalance).toString();
               } else if (metricId === 'churn_rate') {
@@ -617,10 +687,7 @@ const UserAnalytics: React.FC = () => {
                 processedMetrics.max_profit_trade = result.maxProfitTrade || '—';
               } else if (metricId === 'max_loss_trade') {
                 processedMetrics.max_loss_trade = result.maxLossTrade || '—';
-              } else if (metricId === 'take_profit_hit_rate') {
-                processedMetrics.take_profit_hit_rate = result.takeProfitHitRate ? `${result.takeProfitHitRate}%` : '0%';
-              } else if (metricId === 'stop_loss_hit_rate') {
-                processedMetrics.stop_loss_hit_rate = result.stopLossHitRate ? `${result.stopLossHitRate}%` : '0%';
+              
               } else if (metricId === 'manual_close_rate') {
                 processedMetrics.manual_close_rate = result.manualCloseRate ? `${result.manualCloseRate}%` : '0%';
               } else if (metricId === 'average_holding_time') {
@@ -805,16 +872,41 @@ const UserAnalytics: React.FC = () => {
               </h3>
               <p className="text-2xl font-bold text-gray-900 mb-4">
                 {(() => {
-                  const isDynamic = dynamicPercentageMetricIds.has(selectedMetric.id);
-                  console.log('[UserAnalytics] Rendering percentage:', {
-                    metricId: selectedMetric.id,
-                    isDynamic,
-                    dynamicOverallPercent,
-                    selectedMetricValue: selectedMetric.value
-                  });
-                  return isDynamic && dynamicOverallPercent !== null
-                    ? `${dynamicOverallPercent}%`
-                    : selectedMetric.value;
+                  const isPercent = dynamicPercentageMetricIds.has(selectedMetric.id);
+                  const tutorialHeaderIds = new Set([
+                    'tutorial_start', 'tutorial_complete',
+                    'pro_tutorial_start', 'pro_tutorial_complete',
+                    'churn_rate'
+                  ]);
+                  // Если есть тренд, отображаем итог без прочерка
+                  const dataExists = Array.isArray(chartData) && chartData.length > 0;
+                  // Для tutorial метрик всегда показываем % в шапке
+                  if (tutorialHeaderIds.has(selectedMetric.id)) {
+                    return `${Math.round(Number(dynamicOverallPercent ?? 0))}%`;
+                  }
+                  if (isPercent) {
+                    if (dynamicOverallPercent !== null) return `${dynamicOverallPercent}%`;
+                    // если не успели посчитать — показываем 0%
+                    return '0%';
+                  }
+                  // user-based метрики без дробей
+                  const userBased = ['trades_per_user', 'daily_active_traders', 'wheel_spin_frequency', 'box_open_frequency', 'ads_watched_per_user', 'order_open', 'order_close'];
+                  if (userBased.includes(selectedMetric.id)) {
+                    if (dataExists) {
+                      const last = chartData[chartData.length - 1] as any;
+                      const key = getMetricChartConfig(selectedMetric.id).categories[0];
+                      return Math.round(Number(last?.[key] ?? 0)).toString();
+                    }
+                    return '0';
+                  }
+                  // иначе оставляем текущее значение, но если есть данные — берем последнее
+                  if (dataExists) {
+                    const last = chartData[chartData.length - 1] as any;
+                    const key = getMetricChartConfig(selectedMetric.id).categories[0];
+                    const v = Number(last?.[key] ?? 0);
+                    return Number.isFinite(v) ? v.toFixed(2) : '0';
+                  }
+                  return typeof selectedMetric.value === 'string' ? selectedMetric.value : Number(selectedMetric.value ?? 0).toFixed(2);
                 })()}
               </p>
               <div className="mt-6 hidden sm:block">

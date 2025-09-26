@@ -98,11 +98,11 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
       } else if (metricId === 'max_loss_trade') {
         endpoint = '/admin/dashboard/table/max_loss_trade';
       } else if (metricId === 'take_profit_hit_rate') {
-        endpoint = '/admin/dashboard/table/take_profit_hit_rate';
+        // removed metric
+        endpoint = '';
       } else if (metricId === 'stop_loss_hit_rate') {
-        endpoint = '/admin/dashboard/table/stop_loss_hit_rate';
-      } else if (metricId === 'manual_close_rate') {
-        endpoint = '/admin/dashboard/table/manual_close_rate';
+        // removed metric
+        endpoint = '';
       } else if (metricId === 'average_holding_time') {
         endpoint = '/admin/dashboard/table/average_holding_time';
       } else {
@@ -932,7 +932,7 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
               <th className="text-left py-4 px-4 font-bold text-gray-900">Amount</th>
               <th className="text-left py-4 px-4 font-bold text-gray-900">P&L</th>
               <th className="text-left py-4 px-4 font-bold text-gray-900">Closed At</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Duration (min)</th>
+              
             </tr>
           </thead>
           <tbody>
@@ -965,7 +965,7 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
                 <td className="py-4 px-4 text-sm text-gray-700">{Number(row.amount ?? 0).toFixed(2)}</td>
                 <td className="py-4 px-4 text-sm text-green-600 font-medium">{Number(row.pnl ?? 0).toFixed(2)}</td>
                 <td className="py-4 px-4 text-sm text-gray-700">{row.closedAt ? new Date(row.closedAt).toUTCString() : '—'}</td>
-                <td className="py-4 px-4 text-sm text-gray-700">{row.durationMinutes !== null ? row.durationMinutes : '—'}</td>
+                
               </tr>
             ))}
           </tbody>
@@ -987,7 +987,7 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
               <th className="text-left py-4 px-4 font-bold text-gray-900">Amount</th>
               <th className="text-left py-4 px-4 font-bold text-gray-900">P&L</th>
               <th className="text-left py-4 px-4 font-bold text-gray-900">Closed At</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Duration (min)</th>
+              
             </tr>
           </thead>
           <tbody>
@@ -1020,7 +1020,7 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
                 <td className="py-4 px-4 text-sm text-gray-700">{Number(row.amount ?? 0).toFixed(2)}</td>
                 <td className="py-4 px-4 text-sm text-red-600 font-medium">{Number(row.pnl ?? 0).toFixed(2)}</td>
                 <td className="py-4 px-4 text-sm text-gray-700">{row.closedAt ? new Date(row.closedAt).toUTCString() : '—'}</td>
-                <td className="py-4 px-4 text-sm text-gray-700">{row.durationMinutes !== null ? row.durationMinutes : '—'}</td>
+                
               </tr>
             ))}
           </tbody>
@@ -1028,168 +1028,10 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
       );
     }
 
-    // Таблица для Take Profit Hit Rate
-    if (metricId === 'take_profit_hit_rate') {
-      return (
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="text-left py-4 px-4 font-bold text-gray-900">User ID</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Region</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Type</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Closed Trades</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">TP Set</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">TP Hit</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">TP Hit Rate</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Avg P/L (TP)</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Last TP Hit</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((row) => (
-              <tr key={row.userId} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                <td className="py-4 px-4 text-sm text-gray-900 font-mono">{row.userId}</td>
-                <td className="py-4 px-4 text-sm text-gray-700">
-                  <div className="flex items-center gap-2">
-                    {row.country && row.country !== 'Unknown' && (
-                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded font-medium">
-                        {row.country}
-                      </span>
-                    )}
-                    <span>{row.country || 'Unknown'}</span>
-                  </div>
-                </td>
-                <td className="py-4 px-4 text-sm">
-                  {row.isPremium ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-black bg-[#F5A600] rounded-full">
-                      PRO
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
-                      FREE
-                    </span>
-                  )}
-                </td>
-                <td className="py-4 px-4 text-sm text-gray-700">{row.closedTrades}</td>
-                <td className="py-4 px-4 text-sm text-gray-700">{row.tpSetCount}</td>
-                <td className="py-4 px-4 text-sm text-green-600 font-medium">{row.tpHitCount}</td>
-                <td className="py-4 px-4 text-sm text-gray-700">{Number(row.tpHitRate ?? 0).toFixed(2)}%</td>
-                <td className={`py-4 px-4 text-sm ${Number(row.avgPnLOnTP ?? 0) > 0 ? 'text-green-600' : Number(row.avgPnLOnTP ?? 0) < 0 ? 'text-red-600' : 'text-gray-700'}`}>{Number(row.avgPnLOnTP ?? 0).toFixed(2)}</td>
-                <td className="py-4 px-4 text-sm text-gray-700">{row.lastTPHitAt ? new Date(row.lastTPHitAt).toUTCString() : '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      );
-    }
-
-    // Таблица для Stop Loss Hit Rate
-    if (metricId === 'stop_loss_hit_rate') {
-      return (
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="text-left py-4 px-4 font-bold text-gray-900">User ID</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Region</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Type</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Closed Trades</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">SL Set</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">SL Hit</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">SL Hit Rate</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Avg P/L (SL)</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Last SL Hit</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((row) => (
-              <tr key={row.userId} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                <td className="py-4 px-4 text-sm text-gray-900 font-mono">{row.userId}</td>
-                <td className="py-4 px-4 text-sm text-gray-700">
-                  <div className="flex items-center gap-2">
-                    {row.country && row.country !== 'Unknown' && (
-                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded font-medium">
-                        {row.country}
-                      </span>
-                    )}
-                    <span>{row.country || 'Unknown'}</span>
-                  </div>
-                </td>
-                <td className="py-4 px-4 text-sm">
-                  {row.isPremium ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-black bg-[#F5A600] rounded-full">
-                      PRO
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
-                      FREE
-                    </span>
-                  )}
-                </td>
-                <td className="py-4 px-4 text-sm text-gray-700">{row.closedTrades}</td>
-                <td className="py-4 px-4 text-sm text-gray-700">{row.slSetCount}</td>
-                <td className="py-4 px-4 text-sm text-red-600 font-medium">{row.slHitCount}</td>
-                <td className="py-4 px-4 text-sm text-gray-700">{Number(row.slHitRate ?? 0).toFixed(2)}%</td>
-                <td className={`py-4 px-4 text-sm ${Number(row.avgPnLOnSL ?? 0) > 0 ? 'text-green-600' : Number(row.avgPnLOnSL ?? 0) < 0 ? 'text-red-600' : 'text-gray-700'}`}>{Number(row.avgPnLOnSL ?? 0).toFixed(2)}</td>
-                <td className="py-4 px-4 text-sm text-gray-700">{row.lastSLHitAt ? new Date(row.lastSLHitAt).toUTCString() : '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      );
-    }
+    // Метрики TP/SL Hit Rate удалены
 
     // Таблица для Manual Close Rate
-    if (metricId === 'manual_close_rate') {
-      return (
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="text-left py-4 px-4 font-bold text-gray-900">User ID</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Region</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Type</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Closed Trades</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Manual Closes</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Manual Close Rate</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Avg P/L (Manual)</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Last Manual Close</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((row) => (
-              <tr key={row.userId} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                <td className="py-4 px-4 text-sm text-gray-900 font-mono">{row.userId}</td>
-                <td className="py-4 px-4 text-sm text-gray-700">
-                  <div className="flex items-center gap-2">
-                    {row.country && row.country !== 'Unknown' && (
-                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded font-medium">
-                        {row.country}
-                      </span>
-                    )}
-                    <span>{row.country || 'Unknown'}</span>
-                  </div>
-                </td>
-                <td className="py-4 px-4 text-sm">
-                  {row.isPremium ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-black bg-[#F5A600] rounded-full">
-                      PRO
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
-                      FREE
-                    </span>
-                  )}
-                </td>
-                <td className="py-4 px-4 text-sm text-gray-700">{row.closedTrades}</td>
-                <td className="py-4 px-4 text-sm text-gray-700">{row.manualCloseCount}</td>
-                <td className="py-4 px-4 text-sm text-gray-700">{Number(row.manualCloseRate ?? 0).toFixed(2)}%</td>
-                <td className={`py-4 px-4 text-sm ${Number(row.avgPnLOnManual ?? 0) > 0 ? 'text-green-600' : Number(row.avgPnLOnManual ?? 0) < 0 ? 'text-red-600' : 'text-gray-700'}`}>{Number(row.avgPnLOnManual ?? 0).toFixed(2)}</td>
-                <td className="py-4 px-4 text-sm text-gray-700">{row.lastManualCloseAt ? new Date(row.lastManualCloseAt).toUTCString() : '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      );
-    }
+    
 
     // Таблица для Average Holding Time
     if (metricId === 'average_holding_time') {

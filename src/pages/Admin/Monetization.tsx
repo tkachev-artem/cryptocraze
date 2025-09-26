@@ -128,17 +128,31 @@ const Monetization: React.FC = () => {
     { id: 'achievement_completion_rate', title: 'Achievement Rate', value: '0%', icon: <CheckCircle className="w-4 h-4 text-white" />, color: 'bg-indigo-500', category: 'Gamification', description: 'Percentage of achievements completed' },
   ];
 
+  // Унифицированное форматирование значений оси/tooltip
+  const formatAxisTick = (value: number, decimals: number = 2) => {
+    const v = Number(value ?? 0);
+    if (!Number.isFinite(v)) return '0';
+    return String(parseFloat(v.toFixed(decimals)));
+  };
+
+  const percentMetricIds = new Set([
+    'conversion_to_paid', 'pro_subscription_conversion', 'ad_engagement_rate',
+    'rewarded_video_completion_rate', 'interstitial_impression_rate', 'reward_redemption_rate',
+    'no_ads_activation_rate', 'achievement_completion_rate'
+  ]);
+
   // Функция для получения конфига графика
   const getMetricChartConfig = (metricId: string) => {
+    const isPercent = percentMetricIds.has(metricId);
     return {
       categories: ['Revenue'],
       colors: ['blue'],
       showLegend: false,
       showGradient: false,
       showYAxis: true,
-      valueFormatter: (value: number) => value.toString(),
-      tooltipLabel: 'Revenue',
-      tooltipValue: (value: number) => value.toString()
+      valueFormatter: (value: number) => isPercent ? `${formatAxisTick(value, 0)}%` : formatAxisTick(value, 2),
+      tooltipLabel: isPercent ? 'Percent' : 'Value',
+      tooltipValue: (value: number) => isPercent ? `${formatAxisTick(value, 0)}%` : formatAxisTick(value, 2)
     };
   };
 

@@ -357,10 +357,12 @@ export class AdminAnalyticsService {
         whereConditions.push(`deals.profit < 0`);
       }
 
+      // По дням: всего сделок и число уникальных пользователей с сделкой
       const result = await db.execute(sql`
         SELECT 
           DATE(deals.closed_at AT TIME ZONE 'UTC') as date,
-          COUNT(*) as count
+          COUNT(*) as count,
+          COUNT(DISTINCT deals.user_id) as users
         FROM deals
         WHERE ${sql.raw(whereConditions.join(' AND '))}
         GROUP BY DATE(deals.closed_at AT TIME ZONE 'UTC')
@@ -370,11 +372,20 @@ export class AdminAnalyticsService {
       const data = result.rows?.map((row: any) => ({
         date: this.formatDate(row.date),
         count: this.safeNumber(row.count),
+        users: this.safeNumber(row.users)
       })) || [];
+
+      // За период: число уникальных пользователей с хотя бы одной сделкой
+      const usersInPeriodResult = await db.execute(sql`
+        SELECT COUNT(DISTINCT deals.user_id) as users
+        FROM deals
+        WHERE ${sql.raw(whereConditions.join(' AND '))}
+      `);
+      const usersInPeriod = this.safeNumber((usersInPeriodResult.rows?.[0] as any)?.users || 0);
 
       console.log(`[AdminAnalytics] Retrieved ${data.length} trade count records`);
 
-      return { data };
+      return { data, usersInPeriod };
 
     } catch (error) {
       console.error('[AdminAnalytics] Error in getTradesCountByDate:', error);

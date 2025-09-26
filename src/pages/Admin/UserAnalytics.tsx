@@ -102,10 +102,13 @@ const UserAnalytics: React.FC = () => {
 
   // Определение метрик, для которых процент рассчитывается динамически
   const dynamicPercentageMetricIds = new Set([
-    'tutorial_start', 'tutorial_complete', 'tutorial_skip_rate',
-    'pro_tutorial_start', 'pro_tutorial_complete', 'pro_tutorial_skip_rate',
-    'D1', 'D3', 'D7', 'D30', 'win_rate', 'take_profit_hit_rate', 
-    'stop_loss_hit_rate', 'manual_close_rate', 'form_abandonment_rate'
+    // Tutorial и Pro Tutorial считаем по количеству событий (ось auto)
+    // 'tutorial_start', 'tutorial_complete', 'pro_tutorial_start', 'pro_tutorial_complete',
+    'tutorial_skip_rate', 'pro_tutorial_skip_rate',
+    // Retention — проценты
+    'D1', 'D3', 'D7', 'D30',
+    // Trading/Forms — проценты
+    'win_rate', 'take_profit_hit_rate', 'stop_loss_hit_rate', 'manual_close_rate', 'form_abandonment_rate'
   ]);
 
   // Функция для получения конфига графика в зависимости от metricId
@@ -117,7 +120,13 @@ const UserAnalytics: React.FC = () => {
     const retentionMetricIds = new Set<RetentionMetric>(['D1', 'D3', 'D7', 'D30', 'churn_rate']);
 
     if (tutorialMetricIds.has(metricId)) {
-      return getTutorialChartConfig(metricId as any);
+      const base = getTutorialChartConfig(metricId as any);
+      return {
+        ...base,
+        valueFormatter: (value: number) => Number(value ?? 0).toFixed(0),
+        tooltipLabel: base.tooltipLabel,
+        tooltipValue: (value: number) => Number(value ?? 0).toFixed(0)
+      };
     } else if (retentionMetricIds.has(metricId as RetentionMetric)) {
       return getRetentionChartConfig(metricId as RetentionMetric);
     } else if (metricId === 'trades_per_user') {
@@ -277,6 +286,8 @@ const UserAnalytics: React.FC = () => {
   const loadChartData = async (metricId: string) => {
     setChartLoading(true);
     setChartError(null);
+    // Сбрасываем проценты при переключении метрики, чтобы не тянуть старое значение (например, 5000%)
+    setDynamicOverallPercent(null);
 
     try {
       // Build query parameters with date range and filters
@@ -703,6 +714,8 @@ const UserAnalytics: React.FC = () => {
   // Загружаем данные графика при выборе метрики
   useEffect(() => {
     if (selectedMetric) {
+      // Жёсткий сброс процента при смене метрики
+      setDynamicOverallPercent(null);
       loadChartData(selectedMetric.id);
     }
   }, [selectedMetric]);
@@ -817,8 +830,6 @@ const UserAnalytics: React.FC = () => {
                   valueFormatter={getMetricValueFormatter(selectedMetric.id)}
                   showYAxis={true}
                   yAxisWidth={60}
-                  minValue={dynamicYAxisMinValue}
-                  maxValue={dynamicYAxisMaxValue}
                   customTooltip={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
                       return (
@@ -851,8 +862,6 @@ const UserAnalytics: React.FC = () => {
                   startEndOnly={true}
                 showYAxis={true}
                   yAxisWidth={60}
-                  minValue={dynamicYAxisMinValue}
-                  maxValue={dynamicYAxisMaxValue}
                   customTooltip={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
                       return (

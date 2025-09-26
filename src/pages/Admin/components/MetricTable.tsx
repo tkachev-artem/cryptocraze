@@ -1234,10 +1234,10 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
                   )}
                 </td>
                 <td className="py-4 px-4 text-sm text-gray-700">{row.closedTrades}</td>
-                <td className="py-4 px-4 text-sm text-gray-700">{row.avgHoldingMinutes.toFixed(2)}</td>
-                <td className="py-4 px-4 text-sm text-gray-700">{row.medianHoldingMinutes.toFixed(2)}</td>
-                <td className={`py-4 px-4 text-sm ${row.avgPnL > 0 ? 'text-green-600' : row.avgPnL < 0 ? 'text-red-600' : 'text-gray-700'}`}>{row.avgPnL.toFixed(2)}</td>
-                <td className="py-4 px-4 text-sm text-gray-700">{row.avgPositionSize.toFixed(2)}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{Number(row.avgHoldingMinutes ?? 0).toFixed(2)}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{Number(row.medianHoldingMinutes ?? 0).toFixed(2)}</td>
+                <td className={`py-4 px-4 text-sm ${Number(row.avgPnL ?? 0) > 0 ? 'text-green-600' : Number(row.avgPnL ?? 0) < 0 ? 'text-red-600' : 'text-gray-700'}`}>{Number(row.avgPnL ?? 0).toFixed(2)}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{Number(row.avgPositionSize ?? 0).toFixed(2)}</td>
                 <td className="py-4 px-4 text-sm text-gray-700">{row.lastTradeAt ? new Date(row.lastTradeAt).toUTCString() : '—'}</td>
               </tr>
             ))}

@@ -1351,12 +1351,23 @@ router.get('/metric/:metricId/trend', isAdminWithAuth, async (req, res) => {
     }
     else if (metricId === 'average_holding_time') {
       const client = clickhouseAnalyticsService.getClient();
+      if (!client) return res.json([]);
       const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
       const filteredUserIds = Array.from(userAttributesMap.keys());
       if (filteredUserIds.length === 0) return res.json([]);
 
       const inList = filteredUserIds.map(id => `'${id}'`).join(',');
-      const result = await db.execute(sql`SELECT to_char(closed_at,'YYYY-MM-DD') AS date, AVG(EXTRACT(EPOCH FROM (closed_at - opened_at))/60.0) AS value FROM deals WHERE closed_at >= ${sql.raw(`'${tsFrom}'`)} AND closed_at < ${sql.raw(`'${tsTo}'`)} AND status = 'closed' AND user_id IN (${sql.raw(inList)}) GROUP BY 1 ORDER BY 1`);
+      const result = await db.execute(sql`SELECT 
+        to_char(closed_at,'YYYY-MM-DD') AS date,
+        AVG(NULLIF(EXTRACT(EPOCH FROM (closed_at - opened_at))/60.0, 'NaN'::float))::float AS value
+      FROM deals 
+      WHERE status = 'closed'
+        AND opened_at IS NOT NULL
+        AND closed_at IS NOT NULL
+        AND closed_at >= ${sql.raw(`'${tsFrom}'`)} AND closed_at < ${sql.raw(`'${tsTo}'`)} 
+        AND user_id IN (${sql.raw(inList)})
+      GROUP BY 1 
+      ORDER BY 1`);
       const trendData = (result.rows as any[]).map(r => ({ date: r.date, value: Number(r.value ?? 0) }));
       return res.json(trendData);
     }

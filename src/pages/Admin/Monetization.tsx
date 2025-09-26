@@ -369,8 +369,6 @@ const Monetization: React.FC = () => {
                     valueFormatter={getMetricValueFormatter(selectedMetric.id)}
                     showYAxis={true}
                     yAxisWidth={60}
-                    minValue={dynamicYAxisMinValue}
-                    maxValue={dynamicYAxisMaxValue}
                     className="h-48 [&_.recharts-cartesian-axis-tick-value]:text-xs [&_.recharts-cartesian-axis-tick-value]:fill-gray-600"
                   />
                 </div>

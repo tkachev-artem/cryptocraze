@@ -21,8 +21,22 @@ import {
   Gift, 
   Play, 
   Shield,
-  DollarSign
+  DollarSign,
+  Clock,
+  AlertCircle,
+  Zap,
+  Globe,
+  Smartphone,
+  Maximize,
+  ArrowDown,
+  XCircle,
+  Navigation,
+  FileText,
+  Repeat,
+  Link,
+  Target
 } from 'lucide-react';
+import { computeYAxis } from './utils/computeYAxis';
 import { AreaChart, Card } from '@tremor/react';
 import { config } from '../../lib/config';
 import MetricTable from './components/MetricTable';
@@ -82,6 +96,7 @@ const UserAnalytics: React.FC = () => {
   const [chartError, setChartError] = useState<string | null>(null);
   const [dynamicOverallPercent, setDynamicOverallPercent] = useState<number | null>(null);
   const [dynamicYAxisMaxValue, setDynamicYAxisMaxValue] = useState<number | null>(null);
+  const [dynamicYAxisMinValue, setDynamicYAxisMinValue] = useState<number>(0);
   
   const Y_AXIS_MULTIPLIER = 1.2; // Можно изменить на 1.3, 1.5 и т.д.
 
@@ -89,7 +104,8 @@ const UserAnalytics: React.FC = () => {
   const dynamicPercentageMetricIds = new Set([
     'tutorial_start', 'tutorial_complete', 'tutorial_skip_rate',
     'pro_tutorial_start', 'pro_tutorial_complete', 'pro_tutorial_skip_rate',
-    'D1', 'D3', 'D7', 'D30',
+    'D1', 'D3', 'D7', 'D30', 'win_rate', 'take_profit_hit_rate', 
+    'stop_loss_hit_rate', 'manual_close_rate', 'form_abandonment_rate'
   ]);
 
   // Функция для получения конфига графика в зависимости от metricId
@@ -115,21 +131,43 @@ const UserAnalytics: React.FC = () => {
         tooltipLabel: 'Trades',
         tooltipValue: (value: number) => value.toString()
       };
-    } else if (metricId === 'daily_reward_claimed') {
-      return {
-        categories: ['Rewards'],
-        colors: ['blue'],
-        showLegend: false,
-        showGradient: false,
-        showYAxis: true,
-        valueFormatter: (value: number) => value.toString(),
-        tooltipLabel: 'Rewards',
-        tooltipValue: (value: number) => value.toString()
-      };
     } else if (['sessions', 'screens_opened', 'avg_virtual_balance'].includes(metricId)) {
       return {
         ...engagementChartConfig,
         tooltipLabel: (engagementChartConfig.tooltipLabel as Function)(metricId)
+      };
+    } else if (metricId === 'average_profit_loss') {
+      return {
+        categories: ['Avg P/L'],
+        colors: ['blue'],
+        showLegend: false,
+        showGradient: false,
+        showYAxis: true,
+        valueFormatter: (value: number) => Number(value ?? 0).toFixed(2),
+        tooltipLabel: 'Avg P/L',
+        tooltipValue: (value: number) => Number(value ?? 0).toFixed(2)
+      };
+    } else if (['win_rate', 'take_profit_hit_rate', 'stop_loss_hit_rate', 'manual_close_rate'].includes(metricId)) {
+      return {
+        categories: ['Value'],
+        colors: ['blue'],
+        showLegend: false,
+        showGradient: false,
+        showYAxis: true,
+        valueFormatter: (value: number) => `${Number(value ?? 0).toFixed(2)}%`,
+        tooltipLabel: 'Value',
+        tooltipValue: (value: number) => `${Number(value ?? 0).toFixed(2)}%`
+      };
+    } else if (['max_profit_trade', 'max_loss_trade', 'average_holding_time'].includes(metricId)) {
+      return {
+        categories: ['Value'],
+        colors: ['blue'],
+        showLegend: false,
+        showGradient: false,
+        showYAxis: true,
+        valueFormatter: (value: number) => Number(value ?? 0).toFixed(2),
+        tooltipLabel: 'Value',
+        tooltipValue: (value: number) => Number(value ?? 0).toFixed(2)
       };
     } else {
       // Дефолтный конфиг, если метрика не найдена
@@ -139,9 +177,9 @@ const UserAnalytics: React.FC = () => {
         showLegend: false,
         showGradient: false,
         showYAxis: true,
-        valueFormatter: (value: number) => value.toString(),
-        tooltipLabel: 'Users',
-        tooltipValue: (value: number) => value.toString()
+        valueFormatter: (value: number) => Number(value ?? 0).toFixed(2),
+        tooltipLabel: 'Value',
+        tooltipValue: (value: number) => Number(value ?? 0).toFixed(2)
       };
     }
   };
@@ -197,10 +235,43 @@ const UserAnalytics: React.FC = () => {
     { id: 'order_open', title: 'Order Open', value: '—', icon: <ArrowUpRight className="w-4 h-4 text-white" />, color: 'bg-green-600', category: 'Trading', description: 'Total orders placed' },
     { id: 'order_close', title: 'Order Close', value: '—', icon: <Hand className="w-4 h-4 text-white" />, color: 'bg-blue-600', category: 'Trading', description: 'Orders closed manually by users' },
     
-    // Gamification & Ads
-    { id: 'daily_reward_claimed', title: 'Daily Reward', value: '—', icon: <Gift className="w-4 h-4 text-white" />, color: 'bg-yellow-600', category: 'Gamification', description: 'Users who claimed daily rewards' },
-    { id: 'ads_watched', title: 'Ads Watched', value: '—', icon: <Play className="w-4 h-4 text-white" />, color: 'bg-red-600', category: 'Ads', description: 'Total ads viewed by users' },
-    { id: 'ads_consent', title: 'Ads Consent', value: '—', icon: <Shield className="w-4 h-4 text-white" />, color: 'bg-slate-500', category: 'Ads', description: 'Users who gave ads consent' },
+    // Trading Performance
+    { id: 'win_rate', title: 'Win Rate', value: '0%', icon: <TrendingUp className="w-4 h-4 text-white" />, color: 'bg-green-600', category: 'Trading', description: 'Percentage of profitable trades' },
+    { id: 'average_profit_loss', title: 'Avg P/L', value: '—', icon: <BarChart3 className="w-4 h-4 text-white" />, color: 'bg-blue-600', category: 'Trading', description: 'Average profit/loss per trade' },
+    { id: 'max_profit_trade', title: 'Max Profit', value: '—', icon: <ArrowUpRight className="w-4 h-4 text-white" />, color: 'bg-green-500', category: 'Trading', description: 'Maximum profitable trade' },
+    { id: 'max_loss_trade', title: 'Max Loss', value: '—', icon: <ArrowDownRight className="w-4 h-4 text-white" />, color: 'bg-red-500', category: 'Trading', description: 'Maximum losing trade' },
+    { id: 'take_profit_hit_rate', title: 'TP Hit Rate', value: '0%', icon: <CheckCircle className="w-4 h-4 text-white" />, color: 'bg-green-400', category: 'Trading', description: 'Take Profit trigger rate' },
+    { id: 'stop_loss_hit_rate', title: 'SL Hit Rate', value: '0%', icon: <AlertCircle className="w-4 h-4 text-white" />, color: 'bg-red-400', category: 'Trading', description: 'Stop Loss trigger rate' },
+    { id: 'manual_close_rate', title: 'Manual Close', value: '0%', icon: <Hand className="w-4 h-4 text-white" />, color: 'bg-blue-500', category: 'Trading', description: 'Percentage of manually closed trades' },
+    { id: 'average_holding_time', title: 'Avg Hold Time', value: '—', icon: <Clock className="w-4 h-4 text-white" />, color: 'bg-purple-600', category: 'Trading', description: 'Average position holding time' },
+    
+    // Technical Metrics
+    { id: 'page_load_time', title: 'Page Load Time', value: '—', icon: <Monitor className="w-4 h-4 text-white" />, color: 'bg-indigo-600', category: 'Technical', description: 'Average page loading time' },
+    { id: 'api_response_time', title: 'API Response', value: '—', icon: <Activity className="w-4 h-4 text-white" />, color: 'bg-blue-600', category: 'Technical', description: 'Average API response time' },
+    { id: 'websocket_stability', title: 'WebSocket Stability', value: '—', icon: <Zap className="w-4 h-4 text-white" />, color: 'bg-yellow-600', category: 'Technical', description: 'WebSocket connection stability' },
+    { id: 'browser_compatibility', title: 'Browser Support', value: '—', icon: <Globe className="w-4 h-4 text-white" />, color: 'bg-green-600', category: 'Technical', description: 'Browser compatibility metrics' },
+    
+    // Web-Specific Metrics
+    { id: 'browser_distribution', title: 'Browser Distribution', value: '—', icon: <Monitor className="w-4 h-4 text-white" />, color: 'bg-purple-600', category: 'Web', description: 'Distribution across browsers' },
+    { id: 'device_type_distribution', title: 'Device Types', value: '—', icon: <Smartphone className="w-4 h-4 text-white" />, color: 'bg-blue-600', category: 'Web', description: 'Desktop/tablet/mobile distribution' },
+    { id: 'screen_resolution_usage', title: 'Screen Resolutions', value: '—', icon: <Maximize className="w-4 h-4 text-white" />, color: 'bg-green-600', category: 'Web', description: 'Most used screen resolutions' },
+    { id: 'scroll_depth', title: 'Scroll Depth', value: '—', icon: <ArrowDown className="w-4 h-4 text-white" />, color: 'bg-orange-600', category: 'Web', description: 'Average page scroll depth' },
+    { id: 'form_abandonment_rate', title: 'Form Abandonment', value: '0%', icon: <XCircle className="w-4 h-4 text-white" />, color: 'bg-red-600', category: 'Web', description: 'Percentage of abandoned forms' },
+    { id: 'navigation_patterns', title: 'Navigation Patterns', value: '—', icon: <Navigation className="w-4 h-4 text-white" />, color: 'bg-indigo-500', category: 'Web', description: 'User navigation behavior' },
+    
+    // Extended Engagement
+    { id: 'session_duration', title: 'Session Duration', value: '—', icon: <Clock className="w-4 h-4 text-white" />, color: 'bg-blue-600', category: 'Engagement', description: 'Average session duration' },
+    { id: 'pages_per_session', title: 'Pages/Session', value: '—', icon: <FileText className="w-4 h-4 text-white" />, color: 'bg-green-600', category: 'Engagement', description: 'Average pages per session' },
+    { id: 'daily_active_traders', title: 'Daily Active Traders', value: '—', icon: <Users className="w-4 h-4 text-white" />, color: 'bg-purple-600', category: 'Engagement', description: 'Number of active traders per day' },
+    { id: 'trading_frequency', title: 'Trading Frequency', value: '—', icon: <Repeat className="w-4 h-4 text-white" />, color: 'bg-orange-600', category: 'Engagement', description: 'Average trading frequency' },
+    { id: 'average_position_size', title: 'Avg Position Size', value: '—', icon: <TrendingUp className="w-4 h-4 text-white" />, color: 'bg-blue-500', category: 'Engagement', description: 'Average position size per trade' },
+    { id: 'leverage_usage_distribution', title: 'Leverage Usage', value: '—', icon: <BarChart3 className="w-4 h-4 text-white" />, color: 'bg-red-600', category: 'Engagement', description: 'Distribution of leverage usage' },
+    
+    // Extended User Acquisition
+    { id: 'page_visits', title: 'Page Visits', value: '—', icon: <Eye className="w-4 h-4 text-white" />, color: 'bg-blue-600', category: 'Acquisition', description: 'Total page visits to the site' },
+    { id: 'traffic_source', title: 'Traffic Source', value: '—', icon: <Globe className="w-4 h-4 text-white" />, color: 'bg-green-600', category: 'Acquisition', description: 'Distribution of traffic sources' },
+    { id: 'referrer_domain', title: 'Referrer Domain', value: '—', icon: <Link className="w-4 h-4 text-white" />, color: 'bg-purple-600', category: 'Acquisition', description: 'Top referring domains' },
+    { id: 'campaign_attribution', title: 'Campaign Attribution', value: '—', icon: <Target className="w-4 h-4 text-white" />, color: 'bg-orange-600', category: 'Acquisition', description: 'Marketing campaign performance' },
   ];
 
   const loadChartData = async (metricId: string) => {
@@ -248,10 +319,9 @@ const UserAnalytics: React.FC = () => {
           const { trend, totalSessions, totalUsers } = data;
           trendData = trend;
           // Для метрики 'sessions' обновляем dynamicYAxisMaxValue на основе максимального значения в тренде
-          const maxDataValue = trendData.reduce((max: number, item: any) => Math.max(max, item.value || 0), 0);
-          const currentMultiplier = maxDataValue < 3 ? 3 : (maxDataValue <= 5 ? 2 : (maxDataValue > 10 ? 1 : Y_AXIS_MULTIPLIER));
-          const calculatedMaxValue = Math.ceil(maxDataValue * currentMultiplier);
-          setDynamicYAxisMaxValue(calculatedMaxValue > 0 ? calculatedMaxValue : 1); // Убедимся, что это не 0
+          const { min, max } = computeYAxis(trendData.map(i => i.value), 'auto');
+          setDynamicYAxisMinValue(min);
+          setDynamicYAxisMaxValue(max);
           if (totalUsers > 0) {
             totalValue = parseFloat((totalSessions / totalUsers).toFixed(2)); // Среднее количество сессий на пользователя
           } else {
@@ -261,43 +331,40 @@ const UserAnalytics: React.FC = () => {
           const { trend, totalScreensOpened } = data;
           trendData = trend;
           // Для метрики 'screens_opened' также обновляем dynamicYAxisMaxValue
-          const maxDataValue = trendData.reduce((max: number, item: any) => Math.max(max, item.value || 0), 0);
-          const currentMultiplier = maxDataValue < 3 ? 3 : (maxDataValue <= 5 ? 2 : (maxDataValue > 10 ? 1 : Y_AXIS_MULTIPLIER));
-          const calculatedMaxValue = Math.ceil(maxDataValue * currentMultiplier);
-          setDynamicYAxisMaxValue(calculatedMaxValue > 0 ? calculatedMaxValue : 1); // Убедимся, что это не 0
-        } else if (metricId === 'daily_reward_claimed') {
-          const { trend } = data;
-          trendData = trend;
+          const { min, max } = computeYAxis(trendData.map(i => i.value), 'auto');
+          setDynamicYAxisMinValue(min);
+          setDynamicYAxisMaxValue(max);
         } else if (metricId === 'trades_per_user') {
           trendData = data.map((item: any) => ({ date: item.date, value: item.count }));
           // Для метрики 'trades_per_user' также обновляем dynamicYAxisMaxValue на основе максимального значения в тренде
-          const maxDataValue = trendData.reduce((max: number, item: any) => Math.max(max, item.value || 0), 0);
-          const currentMultiplier = maxDataValue < 3 ? 3 : (maxDataValue <= 5 ? 2 : (maxDataValue > 10 ? 1 : Y_AXIS_MULTIPLIER));
-          const calculatedMaxValue = Math.ceil(maxDataValue * currentMultiplier);
-          setDynamicYAxisMaxValue(calculatedMaxValue > 0 ? calculatedMaxValue : 1); // Убедимся, что это не 0
+          const { min, max } = computeYAxis(trendData.map(i => i.value), 'auto');
+          setDynamicYAxisMinValue(min);
+          setDynamicYAxisMaxValue(max);
         } else if (metricId === 'avg_virtual_balance') {
           const { trend, avgBalance } = data;
           trendData = trend;
           totalValue = Math.floor(avgBalance);
           // Для метрики 'avg_virtual_balance' также обновляем dynamicYAxisMaxValue на основе avgBalance
-          const maxDataValue = Math.floor(avgBalance); // Для плоского тренда maxDataValue - это сам avgBalance
-          const currentMultiplier = maxDataValue < 3 ? 3 : (maxDataValue <= 5 ? 2 : (maxDataValue > 10 ? 1 : Y_AXIS_MULTIPLIER));
-          const calculatedMaxValue = Math.ceil(maxDataValue * currentMultiplier);
-          setDynamicYAxisMaxValue(calculatedMaxValue > 0 ? calculatedMaxValue : 1); // Убедимся, что это не 0
+          const { min, max } = computeYAxis(trendData.map(i => i.value), 'auto');
+          setDynamicYAxisMinValue(min);
+          setDynamicYAxisMaxValue(max);
         } else if (metricId === 'order_open' || metricId === 'order_close') {
           // generic trend array [{date, value}]
           trendData = data;
-          const maxDataValue = trendData.reduce((max: number, item: any) => Math.max(max, item.value || 0), 0);
-          const currentMultiplier = maxDataValue < 3 ? 3 : (maxDataValue <= 5 ? 2 : (maxDataValue > 10 ? 1 : Y_AXIS_MULTIPLIER));
-          const calculatedMaxValue = Math.ceil(maxDataValue * currentMultiplier);
-          setDynamicYAxisMaxValue(calculatedMaxValue > 0 ? calculatedMaxValue : 1);
+          if (dynamicPercentageMetricIds.has(metricId)) {
+            const { min, max } = computeYAxis(trendData.map(i => i.value), 'percent');
+            setDynamicYAxisMinValue(min);
+            setDynamicYAxisMaxValue(max);
+          } else {
+            const { min, max } = computeYAxis(trendData.map(i => i.value), 'auto');
+            setDynamicYAxisMinValue(min);
+            setDynamicYAxisMaxValue(max);
+          }
         } else {
           trendData = data; // Для tutorial и retention, где data - это уже массив тренда
-          // Если метрика не попадает в перечисленные выше, используем максимальное значение из данных
-          const maxDataValue = trendData.reduce((max: number, item: any) => Math.max(max, item.value || 0), 0);
-          const currentMultiplier = maxDataValue < 3 ? 3 : (maxDataValue <= 5 ? 2 : (maxDataValue > 10 ? 1 : Y_AXIS_MULTIPLIER));
-          const calculatedMaxValue = Math.ceil(maxDataValue * currentMultiplier);
-          setDynamicYAxisMaxValue(calculatedMaxValue > 0 ? calculatedMaxValue : 1);
+          const { min, max } = computeYAxis(trendData.map(i => i.value), dynamicPercentageMetricIds.has(metricId) ? 'percent' : 'auto');
+          setDynamicYAxisMinValue(min);
+          setDynamicYAxisMaxValue(max);
         }
 
         if (dynamicPercentageMetricIds.has(metricId)) {
@@ -329,15 +396,17 @@ const UserAnalytics: React.FC = () => {
           setDynamicOverallPercent(null); // Сбрасываем для метрик без процента
         }
 
+        const chartConfigForMetric = getMetricChartConfig(selectedMetric.id);
+        const categoryKey = chartConfigForMetric.categories?.[0] ?? 'Value';
         const formattedData: Array<{ date: string; [key: string]: number | string }> = trendData.map((item: any) => {
           const dateObj = new Date(item.date);
           if (isNaN(dateObj.getTime())) {
             console.error('[UserAnalytics] Invalid date received in trendData:', item.date);
-            return { date: 'Invalid Date', [getMetricChartConfig(selectedMetric.id).categories[0]]: item.value || 0 };
+            return { date: 'Invalid Date', [categoryKey]: Number(item.value ?? 0) };
           }
           return {
             date: dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-            [getMetricChartConfig(selectedMetric.id).categories[0]]: item.value || 0
+            [categoryKey]: Number(item.value ?? 0)
           };
         });
 
@@ -361,8 +430,7 @@ const UserAnalytics: React.FC = () => {
           }
           const dateString = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
           const existingData = formattedData.find(item => item.date === dateString);
-          const categoryName = getMetricChartConfig(selectedMetric.id).categories[0];
-          fullData.push({ date: dateString, [categoryName]: existingData ? existingData[categoryName] : 0 });
+          fullData.push({ date: dateString, [categoryKey]: existingData ? existingData[categoryKey] : 0 });
         }
 
         // Улучшаем отображение для коротких периодов (Today/Yesterday/2 days)
@@ -373,9 +441,9 @@ const UserAnalytics: React.FC = () => {
           const next = new Date(endDate.getTime() + msPerDay);
           const dateFormat = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
           const padded = [
-            { date: dateFormat(prev), [getMetricChartConfig(selectedMetric.id).categories[0]]: 0 },
-            fullData[0] ? { ...fullData[0], date: dateFormat(startDate) } : { date: dateFormat(startDate), [getMetricChartConfig(selectedMetric.id).categories[0]]: 0 },
-            { date: dateFormat(next), [getMetricChartConfig(selectedMetric.id).categories[0]]: 0 }
+            { date: dateFormat(prev), [categoryKey]: 0 },
+            fullData[0] ? { ...fullData[0], date: dateFormat(startDate) } : { date: dateFormat(startDate), [categoryKey]: 0 },
+            { date: dateFormat(next), [categoryKey]: 0 }
           ];
           setChartData(padded);
         } else if (inclusiveDays === 2) {
@@ -383,9 +451,9 @@ const UserAnalytics: React.FC = () => {
           const next = new Date(endDate.getTime() + msPerDay);
           const dateFormat = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
           const padded = [
-            { date: dateFormat(prev), [getMetricChartConfig(selectedMetric.id).categories[0]]: 0 },
+            { date: dateFormat(prev), [categoryKey]: 0 },
             ...fullData,
-            { date: dateFormat(next), [getMetricChartConfig(selectedMetric.id).categories[0]]: 0 }
+            { date: dateFormat(next), [categoryKey]: 0 }
           ];
           setChartData(padded);
         } else {
@@ -445,13 +513,56 @@ const UserAnalytics: React.FC = () => {
             trades_per_user: '—',
             avg_virtual_balance: '—',
             sessions_total: data.totalEvents || '—', // Переименовано для ясности
-            ads_watched: '—',
-            daily_reward_claimed: '—',
+            // Trading Performance
+            order_open: '—',
+            order_close: '—',
+            win_rate: '0%',
+            average_profit_loss: '—',
+            max_profit_trade: '—',
+            max_loss_trade: '—',
+            take_profit_hit_rate: '0%',
+            stop_loss_hit_rate: '0%',
+            manual_close_rate: '0%',
+            average_holding_time: '—',
+            // Technical Metrics
+            page_load_time: '—',
+            api_response_time: '—',
+            websocket_stability: '—',
+            browser_compatibility: '—',
+            // Web-Specific Metrics
+            browser_distribution: '—',
+            device_type_distribution: '—',
+            screen_resolution_usage: '—',
+            scroll_depth: '—',
+            form_abandonment_rate: '0%',
+            navigation_patterns: '—',
+            // Extended Engagement
+            session_duration: '—',
+            pages_per_session: '—',
+            daily_active_traders: '—',
+            trading_frequency: '—',
+            average_position_size: '—',
+            leverage_usage_distribution: '—',
+            // Extended User Acquisition
+            page_visits: '—',
+            traffic_source: '—',
+            referrer_domain: '—',
+            campaign_attribution: '—',
           };
 
           // Отдельные запросы для Engagement метрик, так как они возвращают { trend, totalValue }
           const engagementMetricRequests: Promise<any>[] = [];
-          const engagementMetricIds = ['sessions', 'screens_opened', 'trades_per_user', 'avg_virtual_balance', 'churn_rate', 'order_open', 'order_close', 'daily_reward_claimed'];
+          const engagementMetricIds = [
+            'sessions', 'screens_opened', 'trades_per_user', 'avg_virtual_balance', 'churn_rate', 
+            'order_open', 'order_close', 'win_rate', 'average_profit_loss', 'max_profit_trade', 
+            'max_loss_trade', 'take_profit_hit_rate', 'stop_loss_hit_rate', 'manual_close_rate', 
+            'average_holding_time', 'page_load_time', 'api_response_time', 'websocket_stability', 
+            'browser_compatibility', 'browser_distribution', 'device_type_distribution', 
+            'screen_resolution_usage', 'scroll_depth', 'form_abandonment_rate', 'navigation_patterns',
+            'session_duration', 'pages_per_session', 'daily_active_traders', 'trading_frequency',
+            'average_position_size', 'leverage_usage_distribution', 'page_visits', 'traffic_source',
+            'referrer_domain', 'campaign_attribution'
+          ];
 
           engagementMetricIds.forEach(id => {
             let url = `${config.api.baseUrl}/admin/dashboard/metric/${id}/trend?${params}`;
@@ -487,8 +598,62 @@ const UserAnalytics: React.FC = () => {
                 processedMetrics.order_open = result.reduce((sum: number, item: any) => sum + (item.value || 0), 0).toString();
               } else if (metricId === 'order_close') {
                 processedMetrics.order_close = result.reduce((sum: number, item: any) => sum + (item.value || 0), 0).toString();
-              } else if (metricId === 'daily_reward_claimed') {
-                processedMetrics.daily_reward_claimed = result.totalRewardsClaimed ? result.totalRewardsClaimed.toString() : '0';
+              } else if (metricId === 'win_rate') {
+                processedMetrics.win_rate = result.winRate ? `${result.winRate}%` : '0%';
+              } else if (metricId === 'average_profit_loss') {
+                processedMetrics.average_profit_loss = result.averageProfitLoss || '—';
+              } else if (metricId === 'max_profit_trade') {
+                processedMetrics.max_profit_trade = result.maxProfitTrade || '—';
+              } else if (metricId === 'max_loss_trade') {
+                processedMetrics.max_loss_trade = result.maxLossTrade || '—';
+              } else if (metricId === 'take_profit_hit_rate') {
+                processedMetrics.take_profit_hit_rate = result.takeProfitHitRate ? `${result.takeProfitHitRate}%` : '0%';
+              } else if (metricId === 'stop_loss_hit_rate') {
+                processedMetrics.stop_loss_hit_rate = result.stopLossHitRate ? `${result.stopLossHitRate}%` : '0%';
+              } else if (metricId === 'manual_close_rate') {
+                processedMetrics.manual_close_rate = result.manualCloseRate ? `${result.manualCloseRate}%` : '0%';
+              } else if (metricId === 'average_holding_time') {
+                processedMetrics.average_holding_time = result.averageHoldingTime || '—';
+              } else if (metricId === 'page_load_time') {
+                processedMetrics.page_load_time = result.pageLoadTime || '—';
+              } else if (metricId === 'api_response_time') {
+                processedMetrics.api_response_time = result.apiResponseTime || '—';
+              } else if (metricId === 'websocket_stability') {
+                processedMetrics.websocket_stability = result.websocketStability || '—';
+              } else if (metricId === 'browser_compatibility') {
+                processedMetrics.browser_compatibility = result.browserCompatibility || '—';
+              } else if (metricId === 'browser_distribution') {
+                processedMetrics.browser_distribution = result.browserDistribution || '—';
+              } else if (metricId === 'device_type_distribution') {
+                processedMetrics.device_type_distribution = result.deviceTypeDistribution || '—';
+              } else if (metricId === 'screen_resolution_usage') {
+                processedMetrics.screen_resolution_usage = result.screenResolutionUsage || '—';
+              } else if (metricId === 'scroll_depth') {
+                processedMetrics.scroll_depth = result.scrollDepth || '—';
+              } else if (metricId === 'form_abandonment_rate') {
+                processedMetrics.form_abandonment_rate = result.formAbandonmentRate ? `${result.formAbandonmentRate}%` : '0%';
+              } else if (metricId === 'navigation_patterns') {
+                processedMetrics.navigation_patterns = result.navigationPatterns || '—';
+              } else if (metricId === 'session_duration') {
+                processedMetrics.session_duration = result.sessionDuration || '—';
+              } else if (metricId === 'pages_per_session') {
+                processedMetrics.pages_per_session = result.pagesPerSession || '—';
+              } else if (metricId === 'daily_active_traders') {
+                processedMetrics.daily_active_traders = result.dailyActiveTraders || '—';
+              } else if (metricId === 'trading_frequency') {
+                processedMetrics.trading_frequency = result.tradingFrequency || '—';
+              } else if (metricId === 'average_position_size') {
+                processedMetrics.average_position_size = result.averagePositionSize || '—';
+              } else if (metricId === 'leverage_usage_distribution') {
+                processedMetrics.leverage_usage_distribution = result.leverageUsageDistribution || '—';
+              } else if (metricId === 'page_visits') {
+                processedMetrics.page_visits = result.pageVisits || '—';
+              } else if (metricId === 'traffic_source') {
+                processedMetrics.traffic_source = result.trafficSource || '—';
+              } else if (metricId === 'referrer_domain') {
+                processedMetrics.referrer_domain = result.referrerDomain || '—';
+              } else if (metricId === 'campaign_attribution') {
+                processedMetrics.campaign_attribution = result.campaignAttribution || '—';
               }
             }
           });
@@ -513,7 +678,6 @@ const UserAnalytics: React.FC = () => {
                     D30: data.d30Retention !== undefined ? `${data.d30Retention}%` : '0%',
                     churn_rate: '—',
                     sessions: data.totalEvents || '—',
-                    ads_watched: '—',
                   };
                   setMetricsData(processedMetrics);
                 }
@@ -653,7 +817,7 @@ const UserAnalytics: React.FC = () => {
                   valueFormatter={getMetricValueFormatter(selectedMetric.id)}
                   showYAxis={true}
                   yAxisWidth={60}
-                  minValue={0}
+                  minValue={dynamicYAxisMinValue}
                   maxValue={dynamicYAxisMaxValue}
                   customTooltip={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
@@ -687,8 +851,8 @@ const UserAnalytics: React.FC = () => {
                   startEndOnly={true}
                 showYAxis={true}
                   yAxisWidth={60}
-                  minValue={0}
-                  maxValue={dynamicYAxisMaxValue || 100}
+                  minValue={dynamicYAxisMinValue}
+                  maxValue={dynamicYAxisMaxValue}
                   customTooltip={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
                       return (

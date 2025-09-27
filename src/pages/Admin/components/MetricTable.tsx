@@ -42,6 +42,7 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
     
     try {
       let endpoint = '';
+      console.log(`[MetricTable] Loading data for metric: ${metricId}, filters:`, selectedFilters);
       let params = new URLSearchParams({
         page: page.toString(),
         size: size.toString(),
@@ -63,6 +64,8 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
         params.append('window', metricId);
       } else if (metricId === 'churn_rate') {
         endpoint = '/admin/dashboard/table/churn';
+      } else if (metricId === 'sign_up_rate') {
+        endpoint = '/admin/dashboard/table/signup_rate';
       } else if (
         metricId === 'tutorial_start' ||
         metricId === 'tutorial_complete' ||
@@ -461,8 +464,8 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
             <tr className="border-b border-gray-200 bg-gray-50">
               <th className="text-left py-4 px-4 font-bold text-gray-900">User ID</th>
               <th className="text-left py-4 px-4 font-bold text-gray-900">Email</th>
-              <th className="text-left py-4 px-4 font-bold text-gray-900">Region</th>
               <th className="text-left py-4 px-4 font-bold text-gray-900">Type</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Region</th>
               <th className="text-left py-4 px-4 font-bold text-gray-900">Registered</th>
               <th className="text-left py-4 px-4 font-bold text-gray-900">Churn Reason</th>
             </tr>
@@ -472,16 +475,6 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
               <tr key={row.userId} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                 <td className="py-4 px-4 text-sm text-gray-900 font-mono">{row.userId}</td>
                 <td className="py-4 px-4 text-sm text-gray-700">{row.email || '—'}</td>
-                <td className="py-4 px-4 text-sm text-gray-700">
-                  <div className="flex items-center gap-2">
-                    {row.country && row.country !== 'Unknown' && (
-                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded font-medium">
-                        {row.country}
-                      </span>
-                    )}
-                    <span>{row.country || 'Unknown'}</span>
-                  </div>
-                </td>
                 <td className="py-4 px-4 text-sm">
                   {row.isPremium ? (
                     <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-black bg-[#F5A600] rounded-full">
@@ -492,6 +485,16 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
                       FREE
                     </span>
                   )}
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-700">
+                  <div className="flex items-center gap-2">
+                    {row.country && row.country !== 'Unknown' && (
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded font-medium">
+                        {row.country}
+                      </span>
+                    )}
+                    <span>{row.country || 'Unknown'}</span>
+                  </div>
                 </td>
                 <td className="py-4 px-4 text-sm text-gray-700">
                   {(() => {
@@ -506,6 +509,36 @@ const MetricTable: React.FC<MetricTableProps> = ({ metricId, title, isOpen, onCl
                   <span className="inline-flex items-center gap-1 text-red-600 font-medium">
                     <span className="w-2 h-2 bg-red-500 rounded-full"></span>
                     No retention
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+
+    // Таблица для sign_up_rate
+    if (metricId === 'sign_up_rate') {
+      return (
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Date</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Visits</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Signups</th>
+              <th className="text-left py-4 px-4 font-bold text-gray-900">Signup Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row) => (
+              <tr key={row.date} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                <td className="py-4 px-4 text-sm text-gray-900 font-mono">{row.date}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.firstOpens?.toLocaleString() || '0'}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">{row.signups?.toLocaleString() || '0'}</td>
+                <td className="py-4 px-4 text-sm text-gray-700">
+                  <span className="inline-flex items-center gap-1 text-green-600 font-medium">
+                    {row.signupRate || 0}%
                   </span>
                 </td>
               </tr>

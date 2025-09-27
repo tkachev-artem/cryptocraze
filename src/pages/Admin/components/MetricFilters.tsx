@@ -338,16 +338,102 @@ const FILTER_CONFIGS: Record<string, FilterDefinition[]> = {
       icon: <Globe className="w-4 h-4" />
     }
   ],
-  // По умолчанию - только дата
-  default: [
+  // Engagement метрики
+  avg_virtual_balance: [
     {
       id: 'dateRange',
       type: 'dateRange',
       label: 'Date Range',
       icon: <Calendar className="w-4 h-4" />,
       defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    },
+    {
+      id: 'geography',
+      type: 'country',
+      label: 'Country',
+      icon: <Globe className="w-4 h-4" />
     }
   ],
+  session_duration: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    },
+    {
+      id: 'geography',
+      type: 'country',
+      label: 'Country',
+      icon: <Globe className="w-4 h-4" />
+    }
+  ],
+  daily_active_traders: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    },
+    {
+      id: 'geography',
+      type: 'country',
+      label: 'Country',
+      icon: <Globe className="w-4 h-4" />
+    }
+  ],
+  trading_frequency: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    }
+  ],
+  // Trading метрики
   trades_per_user: [
     {
       id: 'dateRange',
@@ -382,6 +468,237 @@ const FILTER_CONFIGS: Record<string, FilterDefinition[]> = {
         { id: 'profit', label: 'Profit', value: 'profit' },
         { id: 'loss', label: 'Loss', value: 'loss' }
       ]
+    }
+  ],
+  order_open: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    },
+    {
+      id: 'geography',
+      type: 'country',
+      label: 'Country',
+      icon: <Globe className="w-4 h-4" />
+    }
+  ],
+  order_close: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    },
+    {
+      id: 'geography',
+      type: 'country',
+      label: 'Country',
+      icon: <Globe className="w-4 h-4" />
+    },
+    {
+      id: 'tradeActivity',
+      type: 'select',
+      label: 'Trade Activity',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'all', label: 'All', value: 'all' },
+        { id: 'profit', label: 'Profit', value: 'profit' },
+        { id: 'loss', label: 'Loss', value: 'loss' }
+      ]
+    }
+  ],
+  win_rate: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    },
+    {
+      id: 'geography',
+      type: 'country',
+      label: 'Country',
+      icon: <Globe className="w-4 h-4" />
+    }
+  ],
+  average_profit_loss: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    },
+    {
+      id: 'geography',
+      type: 'country',
+      label: 'Country',
+      icon: <Globe className="w-4 h-4" />
+    }
+  ],
+  max_profit_trade: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    },
+    {
+      id: 'geography',
+      type: 'country',
+      label: 'Country',
+      icon: <Globe className="w-4 h-4" />
+    }
+  ],
+  max_loss_trade: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    },
+    {
+      id: 'geography',
+      type: 'country',
+      label: 'Country',
+      icon: <Globe className="w-4 h-4" />
+    }
+  ],
+  average_holding_time: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    },
+    {
+      id: 'geography',
+      type: 'country',
+      label: 'Country',
+      icon: <Globe className="w-4 h-4" />
+    }
+  ],
+  // Acquisition метрики
+  page_visits: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
+    }
+  ],
+  // Churn и Sign-up метрики
+  churn_rate: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
+    },
+    {
+      id: 'userType',
+      type: 'select',
+      label: 'User Type',
+      icon: <Users className="w-4 h-4" />,
+      options: [
+        { id: 'free', label: 'FREE', value: 'free' },
+        { id: 'premium', label: 'PRO', value: 'premium' }
+      ]
+    },
+    {
+      id: 'geography',
+      type: 'country',
+      label: 'Country',
+      icon: <Globe className="w-4 h-4" />
+    }
+  ],
+  sign_up_rate: [
+    {
+      id: 'dateRange',
+      type: 'dateRange',
+      label: 'Date Range',
+      icon: <Calendar className="w-4 h-4" />,
+      defaultValue: 'Last 7 days'
     }
   ]
 };

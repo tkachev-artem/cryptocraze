@@ -132,7 +132,7 @@ const UserAnalytics: React.FC = () => {
     }
     
     // Позитивные метрики - emerald
-    if (metricId === 'signup_rate') {
+    if (metricId === 'sign_up_rate') {
       return {
         categories: ['Signup Rate'],
         colors: ['emerald'],
@@ -320,7 +320,7 @@ const UserAnalytics: React.FC = () => {
   const tableOnlyMetrics = [
     'page_visits', 'avg_virtual_balance', 'trading_frequency',
     'order_open', 'order_close', 'average_profit_loss',
-    'max_profit_trade', 'max_loss_trade', 'average_holding_time', 'churn_rate'
+    'max_profit_trade', 'max_loss_trade', 'average_holding_time', 'churn_rate', 'sign_up_rate'
   ];
 
   // Функция для форматирования значений в tooltips
@@ -683,6 +683,7 @@ const UserAnalytics: React.FC = () => {
             D7: data.d7Retention !== undefined ? `${data.d7Retention}%` : '0%',
             D30: data.d30Retention !== undefined ? `${data.d30Retention}%` : '0%',
             churn_rate: '—', // Will calculate from churn endpoint
+            sign_up_rate: '—', // Will calculate from signup endpoint
             // Новые метрики Engagement
             sessions: '—',
             screens_opened: '—',
@@ -757,6 +758,9 @@ const UserAnalytics: React.FC = () => {
               } else if (metricId === 'churn_rate') {
                 // Для churn_rate мы ожидаем тренд с процентами, берем последнее значение
                 processedMetrics.churn_rate = result.length > 0 ? `${result[result.length - 1].value}%` : '0%';
+              } else if (metricId === 'sign_up_rate') {
+                // Для sign_up_rate мы ожидаем тренд с процентами, берем последнее значение
+                processedMetrics.sign_up_rate = result.length > 0 ? `${result[result.length - 1].value}%` : '0%';
               } else if (metricId === 'order_open') {
                 processedMetrics.order_open = result.reduce((sum: number, item: any) => sum + (item.value || 0), 0).toString();
               } else if (metricId === 'order_close') {

@@ -705,7 +705,7 @@ router.get('/metric/:metricId/trend', isAdminWithAuth, async (req, res) => {
     // Allow a set of "live" metrics to bypass cache readiness
     if (!dataCache.isReady()) {
       const liveMetrics = new Set([
-        'first_open', 'page_visits', 'signup_rate', 'traffic_source',
+        'first_open', 'page_visits', 'sign_up_rate', 'traffic_source',
         'session_duration', 'daily_active_traders', 'trading_frequency',
       ]);
       if (!liveMetrics.has(metricId)) {
@@ -1192,7 +1192,7 @@ router.get('/metric/:metricId/trend', isAdminWithAuth, async (req, res) => {
       const rows = await resp.json();
       return res.json(rows);
     }
-    else if (metricId === 'signup_rate') {
+    else if (metricId === 'sign_up_rate') {
       // signups из Postgres, делим на first_open (ClickHouse)
       const client = clickhouseAnalyticsService.getClient();
       // Подготовим календарь дней

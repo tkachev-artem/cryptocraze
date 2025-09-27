@@ -58,7 +58,7 @@ export type MetricRowProps = {
 // Все метрики приложения - перекомбинированы для чередования цветов
 export const allMetrics: Metric[] = [
   // Acquisition
-  { id: 'signup_rate', title: 'Signup Rate', value: '—', icon: <UserCheck className="w-4 h-4 text-white" />, color: 'bg-emerald-500', category: 'Acquisition', description: 'Conversion from visitor to user' },
+  { id: 'sign_up_rate', title: 'Signup Rate', value: '—', icon: <UserCheck className="w-4 h-4 text-white" />, color: 'bg-emerald-500', category: 'Acquisition', description: 'Conversion from visitor to user' },
   { id: 'page_visits', title: 'Page Visits', value: '—', icon: <Eye className="w-4 h-4 text-white" />, color: 'bg-blue-500', category: 'Acquisition', description: 'Avg page visits per user' },
   
   // Tutorial

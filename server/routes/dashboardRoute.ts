@@ -3672,4 +3672,175 @@ router.get('/chart/orders_closed_by_date', isAdminWithAuth, async (req, res) => 
   }
 });
 
+// Эндпоинт для получения total значений метрик (средние ЗА ПЕРИОД)
+router.get('/metric/:metricId/total', isAdminWithAuth, async (req, res) => {
+  try {
+    const { metricId } = req.params;
+    
+    // Извлекаем фильтры из query параметров
+    const filters = {
+      startDate: req.query.startDate as string,
+      endDate: req.query.endDate as string,
+      userType: req.query.userType as string,
+      country: req.query.country ? (req.query.country as string).split(',') : [],
+      search: req.query.search as string,
+      tradeActivity: req.query.tradeActivity as string,
+    };
+
+    const startParam = (req.query.startDate as string) || new Date(Date.now() - 6 * 86400000).toISOString();
+    const endParam = (req.query.endDate as string) || new Date().toISOString();
+    const startDateObj = new Date(startParam);
+    const endDateObj = new Date(endParam);
+    const formatUTCDate = (d: Date) => new Date(d).toISOString().slice(0, 10);
+    const startUTC = formatUTCDate(startDateObj);
+    const endUTC = formatUTCDate(endDateObj);
+    const nextDayAfterEndUTC = new Date(`${endUTC}T00:00:00.000Z`);
+    nextDayAfterEndUTC.setUTCDate(nextDayAfterEndUTC.getUTCDate() + 1);
+    const endNextUTC = nextDayAfterEndUTC.toISOString().slice(0, 10);
+
+    const tsFrom = `${startUTC} 00:00:00`;
+    const tsTo = `${endNextUTC} 00:00:00`;
+
+    console.log(`[DashboardRoute] Getting total for metric: ${metricId}`, filters);
+
+    // Метрики, которые возвращают total значения
+        const metricsWithTotal = [
+          'sessions', 'screens_opened', 'session_duration',
+          'trades_per_user', 'daily_active_traders'
+        ];
+
+    if (!metricsWithTotal.includes(metricId)) {
+      return res.json({ value: 0 });
+    }
+
+    const client = clickhouseAnalyticsService.getClient();
+    if (!client) {
+      return res.json({ value: 0 });
+    }
+
+    const userAttributesMap = await dataCache.getFilteredUserAttributes(client, tsFrom, tsTo, filters);
+    const filteredUserIds = Array.from(userAttributesMap.keys());
+
+    if (filteredUserIds.length === 0) {
+      return res.json({ value: 0 });
+    }
+
+    const userIdsCondition = `AND user_id IN (${filteredUserIds.map(id => `'${id}'`).join(',')})`;
+
+    let result = { value: 0 };
+
+    switch (metricId) {
+      case 'sessions':
+        result = await getSessionsTotal(client, tsFrom, tsTo, userIdsCondition);
+        break;
+      case 'screens_opened':
+        result = await getScreensOpenedTotal(client, tsFrom, tsTo, userIdsCondition);
+        break;
+      case 'session_duration':
+        result = await getSessionDurationTotal(client, tsFrom, tsTo, userIdsCondition);
+        break;
+      case 'trades_per_user':
+        result = await getTradesPerUserTotal(client, tsFrom, tsTo, userIdsCondition);
+        break;
+      case 'daily_active_traders':
+        result = await getDailyActiveTradersTotal(client, tsFrom, tsTo, userIdsCondition);
+        break;
+    }
+
+    return res.json(result);
+
+  } catch (error) {
+    console.error(`[DashboardRoute] Error getting total for metric ${req.params.metricId}:`, error);
+    return res.status(500).json({ error: 'Failed to get metric total' });
+  }
+});
+
+// Функции для расчета total значений ЗА ПЕРИОД
+async function getSessionsTotal(client: any, tsFrom: string, tsTo: string, userIdsCondition: string) {
+  const query = `
+    SELECT AVG(sessions_per_user) as avg_sessions_per_user FROM (
+      SELECT user_id, COUNT(DISTINCT session_id) as sessions_per_user
+      FROM cryptocraze_analytics.user_events
+      WHERE timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
+        AND user_id != '999999999' AND length(user_id) > 5
+        ${userIdsCondition}
+      GROUP BY user_id
+    ) t
+  `;
+  const response = await client.query({ query, format: 'JSONEachRow' });
+  const result = await response.json() as any[];
+  return { value: result[0]?.avg_sessions_per_user || 0 };
+}
+
+async function getScreensOpenedTotal(client: any, tsFrom: string, tsTo: string, userIdsCondition: string) {
+  const query = `
+    SELECT AVG(screens_per_user) as avg_screens_per_user FROM (
+      SELECT user_id, COUNT(*) as screens_per_user
+      FROM cryptocraze_analytics.user_events
+      WHERE timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
+        AND event_type = 'screen_view'
+        AND user_id != '999999999' AND length(user_id) > 5
+        ${userIdsCondition}
+      GROUP BY user_id
+    ) t
+  `;
+  const response = await client.query({ query, format: 'JSONEachRow' });
+  const result = await response.json() as any[];
+  return { value: result[0]?.avg_screens_per_user || 0 };
+}
+
+async function getSessionDurationTotal(client: any, tsFrom: string, tsTo: string, userIdsCondition: string) {
+  const query = `
+    SELECT AVG(session_duration) as avg_session_duration FROM (
+      SELECT session_id, 
+        toUInt32(max(timestamp) - min(timestamp)) as session_duration
+      FROM cryptocraze_analytics.user_events
+      WHERE timestamp >= '${tsFrom}' AND timestamp < '${tsTo}'
+        AND user_id != '999999999' AND length(user_id) > 5
+        ${userIdsCondition}
+      GROUP BY session_id
+    ) t
+  `;
+  const response = await client.query({ query, format: 'JSONEachRow' });
+  const result = await response.json() as any[];
+  return { value: result[0]?.avg_session_duration || 0 };
+}
+
+
+
+async function getTradesPerUserTotal(client: any, tsFrom: string, tsTo: string, userIdsCondition: string) {
+  const userIds = userIdsCondition.replace(/AND user_id IN \(([^)]+)\)/, '$1').replace(/'/g, '').split(',');
+  const inList = userIds.map(id => `'${id}'`).join(',');
+  const result = await db!.execute(sql`
+    SELECT AVG(trades_per_user) as avg_trades_per_user FROM (
+      SELECT user_id, COUNT(*) as trades_per_user
+      FROM deals
+      WHERE opened_at >= ${sql.raw(`'${tsFrom}'`)} AND opened_at < ${sql.raw(`'${tsTo}'`)}
+        AND user_id IN (${sql.raw(inList)})
+      GROUP BY user_id
+    ) t
+  `);
+  const rows = result.rows as any[];
+  return { value: rows[0]?.avg_trades_per_user || 0 };
+}
+
+
+
+async function getDailyActiveTradersTotal(client: any, tsFrom: string, tsTo: string, userIdsCondition: string) {
+  const userIds = userIdsCondition.replace(/AND user_id IN \(([^)]+)\)/, '$1').replace(/'/g, '').split(',');
+  const inList = userIds.map(id => `'${id}'`).join(',');
+  const result = await db!.execute(sql`
+    SELECT AVG(daily_traders) as avg_daily_active_traders FROM (
+      SELECT DATE(opened_at) as date, COUNT(DISTINCT user_id) as daily_traders
+      FROM deals
+      WHERE opened_at >= ${sql.raw(`'${tsFrom}'`)} AND opened_at < ${sql.raw(`'${tsTo}'`)}
+        AND user_id IN (${sql.raw(inList)})
+      GROUP BY date
+    ) t
+  `);
+  const rows = result.rows as any[];
+  return { value: rows[0]?.avg_daily_active_traders || 0 };
+}
+
+
 export default router;

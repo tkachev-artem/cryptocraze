@@ -1,4 +1,4 @@
-TUNNEL_URL=https://comic-certified-champagne-wales.trycloudflare.com
-TUNNEL_PID=71748
-STARTED_AT=Fri Sep 26 19:40:26 MSK 2025
+TUNNEL_URL=https://alexandria-weddings-bluetooth-emperor.trycloudflare.com
+TUNNEL_PID=51185
+STARTED_AT=Sat Sep 27 11:45:49 MSK 2025
 LOG_FILE=/Users/artemtkacev/Desktop/cc-games/cryptocraze/tunnel.log

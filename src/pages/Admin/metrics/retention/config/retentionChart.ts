@@ -3,7 +3,7 @@ import { RetentionMetric } from '../types/retention';
 export const getRetentionChartConfig = (metricId: RetentionMetric) => {
   const baseConfig = {
     categories: ['Users'],
-    colors: ['blue'],
+    colors: ['amber'],
     showLegend: false,
     showGradient: false,
     showYAxis: true,
@@ -15,7 +15,7 @@ export const getRetentionChartConfig = (metricId: RetentionMetric) => {
   if (metricId === 'churn_rate') {
     return {
       ...baseConfig,
-      colors: ['red'],
+      colors: ['pink'],
       tooltipLabel: 'Churned Users',
       tooltipValue: (value: number) => `${Math.floor(value)}`,
     };

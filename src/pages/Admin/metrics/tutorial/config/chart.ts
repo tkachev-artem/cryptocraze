@@ -3,7 +3,7 @@ import type { TutorialMetricId } from '../types';
 export const getTutorialChartConfig = (metricId: TutorialMetricId) => {
   const baseConfig = {
     categories: ['Users'],
-    colors: ['blue'],
+    colors: ['purple'],
     showLegend: false,
     showGradient: false,
     showYAxis: true,

@@ -42,32 +42,16 @@ import { config } from '../../lib/config';
 import MetricTable from './components/MetricTable';
 import MetricFilters from './components/MetricFilters';
 // Конфиги графиков встроены, чтобы избежать проблем с импортом
-import { engagementMetrics } from '@/pages/Admin/metrics/engagement/config/metrics.tsx';
 import { engagementChartConfig } from '@/pages/Admin/metrics/engagement/config/chart.ts';
 import { getTutorialChartConfig } from '@/pages/Admin/metrics/tutorial/config/chart.ts';
 import { getRetentionChartConfig } from '@/pages/Admin/metrics/retention/config/retentionChart.ts';
 import { RetentionMetric } from '@/pages/Admin/metrics/retention/types/retention.ts';
+import { Metric, MetricRowProps, allMetrics } from './MetricsProps.tsx';
 
 type DateRange = {
   startDate: Date;
   endDate: Date;
   label: string;
-};
-
-type Metric = {
-  id: string;
-  title: string;
-  value: string | number;
-  icon: React.ReactNode;
-  color: string;
-  category: string;
-  description: string;
-};
-
-type MetricRowProps = {
-  metric: Metric;
-  isSelected: boolean;
-  onClick: () => void;
 };
 
 const MetricRow: React.FC<MetricRowProps> = ({ metric, isSelected, onClick }) => (
@@ -121,90 +105,56 @@ const UserAnalytics: React.FC = () => {
       return String(parseFloat(fixed));
     };
     const tutorialMetricIds = new Set([
-      'tutorial_start', 'tutorial_complete', 'tutorial_skip', 'tutorial_skip_rate',
-      'pro_tutorial_start', 'pro_tutorial_complete', 'pro_tutorial_skip', 'pro_tutorial_skip_rate'
+      'tutorial_start', 'tutorial_complete',
+      'pro_tutorial_start', 'pro_tutorial_complete'
     ]);
     const retentionMetricIds = new Set<RetentionMetric>(['D1', 'D3', 'D7', 'D30', 'churn_rate']);
 
     if (tutorialMetricIds.has(metricId)) {
-      const base = getTutorialChartConfig(metricId as any);
+      // Tutorial метрики с логичными цветами
+      const tutorialColors: Record<string, string> = {
+        'tutorial_start': 'blue',        // начало обучения - синий
+        'tutorial_complete': 'emerald',  // завершение - зеленый (успех)
+        'pro_tutorial_start': 'blue',    // про-начало - синий
+        'pro_tutorial_complete': 'emerald' // про-завершение - зеленый (успех)
+      };
+
       return {
-        ...base,
-        // показываем дробные тики (0.2/0.4/0.6) без лишних нулей
+        categories: ['Users'],
+        colors: [tutorialColors[metricId] || 'blue'],
+        showLegend: false,
+        showGradient: false,
+        showYAxis: true,
         valueFormatter: (value: number) => formatAxisTick(value, 2),
-        tooltipLabel: base.tooltipLabel,
+        tooltipLabel: 'Users',
         tooltipValue: (value: number) => formatAxisTick(value, 2)
       };
     }
     
-    // Специальная конфигурация для signup_rate - показываем проценты
+    // Позитивные метрики - emerald
     if (metricId === 'signup_rate') {
       return {
         categories: ['Signup Rate'],
-        colors: ['blue'],
+        colors: ['emerald'],
         valueFormatter: (value: number) => `${Math.round(value)}%`,
         tooltipLabel: 'Signup Rate',
         tooltipValue: (value: number) => `${Math.round(value)}%`
       };
-    } else if (retentionMetricIds.has(metricId as RetentionMetric)) {
-      if (metricId === 'churn_rate') {
-        // churn_rate: график в абсолютных пользователях, шапка — процент
-        return {
-          categories: ['Users'],
-          colors: ['blue'],
-          showLegend: false,
-          showGradient: false,
-          showYAxis: true,
-          valueFormatter: (value: number) => formatAxisTick(value, 2),
-          tooltipLabel: 'Users',
-          tooltipValue: (value: number) => formatAxisTick(value, 2)
-        };
-      }
-      return getRetentionChartConfig(metricId as RetentionMetric);
-    } else if (metricId === 'trades_per_user') {
+    } else if (['tutorial_complete', 'pro_tutorial_complete'].includes(metricId)) {
       return {
-        categories: ['Trades'],
-        colors: ['blue'],
+        categories: ['Users'],
+        colors: ['emerald'],
         showLegend: false,
         showGradient: false,
         showYAxis: true,
         valueFormatter: (value: number) => formatAxisTick(value, 2),
-        tooltipLabel: 'Trades',
+        tooltipLabel: 'Users',
         tooltipValue: (value: number) => formatAxisTick(value, 2)
       };
-    } else if (['sessions', 'screens_opened', 'avg_virtual_balance'].includes(metricId)) {
-      return {
-        ...engagementChartConfig,
-        tooltipLabel: (engagementChartConfig.tooltipLabel as Function)(metricId),
-        valueFormatter: (value: number) => formatAxisTick(value, 2),
-        tooltipValue: (value: number) => formatAxisTick(value, 2)
-      };
-    } else if (metricId === 'average_profit_loss') {
-      return {
-        categories: ['Avg P/L'],
-        colors: ['blue'],
-        showLegend: false,
-        showGradient: false,
-        showYAxis: true,
-        valueFormatter: (value: number) => formatAxisTick(value, 2),
-        tooltipLabel: 'Avg P/L',
-        tooltipValue: (value: number) => formatAxisTick(value, 2)
-      };
-    } else if (['win_rate', 'take_profit_hit_rate', 'stop_loss_hit_rate', 'manual_close_rate'].includes(metricId)) {
+    } else if (['win_rate', 'max_profit_trade'].includes(metricId)) {
       return {
         categories: ['Value'],
-        colors: ['blue'],
-        showLegend: false,
-        showGradient: false,
-        showYAxis: true,
-        valueFormatter: (value: number) => `${formatAxisTick(value, 0)}%`,
-        tooltipLabel: 'Value',
-        tooltipValue: (value: number) => `${formatAxisTick(value, 0)}%`
-      };
-    } else if (['max_profit_trade', 'max_loss_trade', 'average_holding_time'].includes(metricId)) {
-      return {
-        categories: ['Value'],
-        colors: ['blue'],
+        colors: ['emerald'],
         showLegend: false,
         showGradient: false,
         showYAxis: true,
@@ -212,15 +162,121 @@ const UserAnalytics: React.FC = () => {
         tooltipLabel: 'Value',
         tooltipValue: (value: number) => formatAxisTick(value, 2)
       };
-    } else if (['order_open', 'order_close'].includes(metricId)) {
+    } else if (metricId === 'order_open') {
       return {
         categories: ['Orders'],
-        colors: ['blue'],
+        colors: ['emerald'],
         showLegend: false,
         showGradient: false,
         showYAxis: true,
         valueFormatter: (value: number) => formatAxisTick(value, 2),
         tooltipLabel: 'Orders',
+        tooltipValue: (value: number) => formatAxisTick(value, 2)
+      };
+    }
+    // Негативные метрики - pink
+    else if (metricId === 'churn_rate') {
+      return {
+        categories: ['Churn Rate'],
+        colors: ['pink'],
+        showLegend: false,
+        showGradient: false,
+        showYAxis: true,
+        startEndOnly: true,
+        valueFormatter: (value: number) => `${Math.round(value)}%`,
+        tooltipLabel: 'Churn Rate',
+        tooltipValue: (value: number) => `${Math.round(value)}%`
+      };
+    } else if (metricId === 'max_loss_trade') {
+      return {
+        categories: ['Max Loss'],
+        colors: ['pink'],
+        showLegend: false,
+        showGradient: false,
+        showYAxis: true,
+        showGridLines: true,
+        startEndOnly: true,
+        valueFormatter: (value: number) => {
+          const num = Number(value);
+          const formatted = num.toFixed(2);
+          return num < 0 ? `-$${Math.abs(num).toFixed(2)}` : `$${formatted}`;
+        },
+        tooltipLabel: 'Max Loss',
+        tooltipValue: (value: number) => {
+          const num = Number(value);
+          const formatted = num.toFixed(2);
+          return num < 0 ? `-$${Math.abs(num).toFixed(2)}` : `$${formatted}`;
+        }
+      };
+    }
+    // Количественные метрики - blue
+    else if (metricId === 'page_visits') {
+      return {
+        categories: ['Page Visits'],
+        colors: ['blue'],
+        showLegend: false,
+        showGradient: false,
+        showYAxis: true,
+        valueFormatter: (value: number) => formatAxisTick(value, 0),
+        tooltipLabel: 'Page Visits',
+        tooltipValue: (value: number) => formatAxisTick(value, 0)
+      };
+    } else if (['sessions', 'screens_opened'].includes(metricId)) {
+      return {
+        ...engagementChartConfig,
+        tooltipLabel: (engagementChartConfig.tooltipLabel as Function)(metricId),
+        valueFormatter: (value: number) => formatAxisTick(value, 2),
+        tooltipValue: (value: number) => formatAxisTick(value, 2),
+        colors: ['blue']
+      };
+    } else if (['order_close', 'average_profit_loss', 'average_holding_time'].includes(metricId)) {
+      return {
+        categories: ['Value'],
+        colors: ['blue'],
+        showLegend: false,
+        showGradient: false,
+        showYAxis: true,
+        valueFormatter: (value: number) => formatAxisTick(value, 2),
+        tooltipLabel: 'Value',
+        tooltipValue: (value: number) => formatAxisTick(value, 2)
+      };
+    }
+    // Вовлеченность - violet и amber
+    else if (['avg_virtual_balance', 'session_duration', 'trading_frequency'].includes(metricId)) {
+      return {
+        ...engagementChartConfig,
+        tooltipLabel: (engagementChartConfig.tooltipLabel as Function)(metricId),
+        valueFormatter: (value: number) => formatAxisTick(value, 2),
+        tooltipValue: (value: number) => formatAxisTick(value, 2),
+        colors: ['violet']
+      };
+    } else if (metricId === 'daily_active_traders') {
+      return {
+        ...engagementChartConfig,
+        tooltipLabel: (engagementChartConfig.tooltipLabel as Function)(metricId),
+        valueFormatter: (value: number) => formatAxisTick(value, 2),
+        tooltipValue: (value: number) => formatAxisTick(value, 2),
+        colors: ['amber']
+      };
+    }
+    // Ретеншн - amber
+    else if (retentionMetricIds.has(metricId as RetentionMetric)) {
+      if (metricId === 'churn_rate') {
+        // churn_rate уже обработан выше
+        return getRetentionChartConfig(metricId as RetentionMetric);
+      }
+      return getRetentionChartConfig(metricId as RetentionMetric);
+    }
+    // Торговля нейтральная - amber
+    else if (metricId === 'trades_per_user') {
+      return {
+        categories: ['Trades'],
+        colors: ['amber'],
+        showLegend: false,
+        showGradient: false,
+        showYAxis: true,
+        valueFormatter: (value: number) => formatAxisTick(value, 2),
+        tooltipLabel: 'Trades',
         tooltipValue: (value: number) => formatAxisTick(value, 2)
       };
     } else {
@@ -260,59 +316,50 @@ const UserAnalytics: React.FC = () => {
   });
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
 
-  // Define all metrics with their properties
-  const allMetrics: Metric[] = [
-    // User Acquisition
-    { id: 'signup_rate', title: 'Signup Rate', value: '—', icon: <UserCheck className="w-4 h-4 text-white" />, color: 'bg-green-500', category: 'Acquisition', description: 'Conversion from visitor to user' },
-
-    // Engagement (теперь импортируются)
-    ...engagementMetrics,
-    
-    // Retention
-    { id: 'D1', title: 'D1 Retention', value: '0%', icon: <RotateCcw className="w-4 h-4 text-white" />, color: 'bg-orange-500', category: 'Retention', description: 'Active for 1+ days' },
-    { id: 'D3', title: 'D3 Retention', value: '0%', icon: <RotateCcw className="w-4 h-4 text-white" />, color: 'bg-amber-500', category: 'Retention', description: 'Active for 3+ days' },
-    { id: 'D7', title: 'D7 Retention', value: '0%', icon: <RotateCcw className="w-4 h-4 text-white" />, color: 'bg-yellow-500', category: 'Retention', description: 'Active for 7+ days' },
-    { id: 'D30', title: 'D30 Retention', value: '0%', icon: <RotateCcw className="w-4 h-4 text-white" />, color: 'bg-lime-500', category: 'Retention', description: 'Active for 30+ days' },
-    { id: 'churn_rate', title: 'Churn Rate', value: '—', icon: <UserMinus className="w-4 h-4 text-white" />, color: 'bg-red-500', category: 'Retention', description: 'Who stopped using app' },
-    
-    // Tutorial
-    { id: 'tutorial_start', title: 'Tutorial Start', value: '—', icon: <GraduationCap className="w-4 h-4 text-white" />, color: 'bg-blue-600', category: 'Tutorial', description: 'Users who started tutorial' },
-    { id: 'tutorial_complete', title: 'Tutorial Complete', value: '—', icon: <CheckCircle className="w-4 h-4 text-white" />, color: 'bg-green-600', category: 'Tutorial', description: 'Users who completed tutorial' },
-
-    // Pro Tutorial
-    { id: 'pro_tutorial_start', title: 'Pro Tutorial Start', value: '—', icon: <GraduationCap className="w-4 h-4 text-white" />, color: 'bg-purple-600', category: 'Tutorial', description: 'Premium users who started pro tutorial' },
-    { id: 'pro_tutorial_complete', title: 'Pro Tutorial Complete', value: '—', icon: <CheckCircle className="w-4 h-4 text-white" />, color: 'bg-indigo-600', category: 'Tutorial', description: 'Premium users who completed pro tutorial' },
-    
-    // Trading
-    { id: 'trades_per_user', title: 'Trades/User', value: '0', icon: <DollarSign className="w-4 h-4 text-white" />, color: 'bg-fuchsia-600', category: 'Trading', description: 'Number of trades per user' },
-    { id: 'order_open', title: 'Order Open', value: '—', icon: <ArrowUpRight className="w-4 h-4 text-white" />, color: 'bg-green-600', category: 'Trading', description: 'Total orders placed' },
-    { id: 'order_close', title: 'Order Close', value: '—', icon: <Hand className="w-4 h-4 text-white" />, color: 'bg-blue-600', category: 'Trading', description: 'Orders closed manually by users' },
-    
-    // Trading Performance
-    { id: 'win_rate', title: 'Win Rate', value: '0%', icon: <TrendingUp className="w-4 h-4 text-white" />, color: 'bg-green-600', category: 'Trading', description: 'Percentage of profitable trades' },
-    { id: 'average_profit_loss', title: 'Avg P/L', value: '—', icon: <BarChart3 className="w-4 h-4 text-white" />, color: 'bg-blue-600', category: 'Trading', description: 'Average profit/loss per trade' },
-    { id: 'max_profit_trade', title: 'Max Profit', value: '—', icon: <ArrowUpRight className="w-4 h-4 text-white" />, color: 'bg-green-500', category: 'Trading', description: 'Maximum profitable trade' },
-    { id: 'max_loss_trade', title: 'Max Loss', value: '—', icon: <ArrowDownRight className="w-4 h-4 text-white" />, color: 'bg-red-500', category: 'Trading', description: 'Maximum losing trade' },
-    
-    { id: 'average_holding_time', title: 'Avg Hold Time', value: '—', icon: <Clock className="w-4 h-4 text-white" />, color: 'bg-purple-600', category: 'Trading', description: 'Average position holding time' },
-    
-    
-    // Extended Engagement
-    { id: 'session_duration', title: 'Session Duration', value: '—', icon: <Clock className="w-4 h-4 text-white" />, color: 'bg-blue-600', category: 'Engagement', description: 'Average session duration' },
-    { id: 'daily_active_traders', title: 'Daily Active Traders', value: '—', icon: <Users className="w-4 h-4 text-white" />, color: 'bg-purple-600', category: 'Engagement', description: 'Number of active traders per day' },
-    { id: 'trading_frequency', title: 'Trading Frequency', value: '—', icon: <Repeat className="w-4 h-4 text-white" />, color: 'bg-orange-600', category: 'Engagement', description: 'Average trading frequency' },
-    
-    
-    // Extended User Acquisition
-    { id: 'page_visits', title: 'Page Visits', value: '—', icon: <Eye className="w-4 h-4 text-white" />, color: 'bg-blue-600', category: 'Acquisition', description: 'Total page visits to the site' },
-    
+  // Метрики, которые показывают только таблицу (без заголовка и графика)
+  const tableOnlyMetrics = [
+    'page_visits', 'avg_virtual_balance', 'trading_frequency',
+    'order_open', 'order_close', 'average_profit_loss',
+    'max_profit_trade', 'max_loss_trade', 'average_holding_time', 'churn_rate'
   ];
+
+  // Функция для форматирования значений в tooltips
+  const formatTooltipValue = (metricId: string, value: number): string => {
+    // Для Max Loss - показываем с минусом
+    if (metricId === 'max_loss_trade') {
+      return `-${Math.round(Math.abs(value))}`;
+    }
+    // Для Max Profit - показываем с плюсом
+    if (metricId === 'max_profit_trade') {
+      return `+${Math.round(value)}`;
+    }
+    // Для Average Profit/Loss - показываем с знаком
+    if (metricId === 'average_profit_loss') {
+      const formatted = value.toFixed(2);
+      return value >= 0 ? `+${formatted}` : formatted;
+    }
+      // Для пользователей/сделок - без дробей
+      if (['sessions', 'trades_per_user', 'daily_active_traders'].includes(metricId)) {
+        return Math.round(value).toString();
+      }
+    // Для остальных метрик убираем .00
+    return value % 1 === 0 ? value.toString() : value.toFixed(2);
+  };
 
   const loadChartData = async (metricId: string) => {
     setChartLoading(true);
     setChartError(null);
     // Сбрасываем проценты при переключении метрики, чтобы не тянуть старое значение (например, 5000%)
-    setDynamicOverallPercent(null);
+    // НЕ сбрасываем для метрик с total значениями, так как они будут установлены заново
+    const metricsWithTotal = [
+      'sessions', 'screens_opened', 'session_duration', 'trading_frequency',
+      'avg_virtual_balance', 'trades_per_user', 'order_open', 'order_close',
+      'average_profit_loss', 'average_holding_time', 'page_visits',
+      'daily_active_traders', 'max_profit_trade', 'max_loss_trade'
+    ];
+    if (!metricsWithTotal.includes(metricId)) {
+      setDynamicOverallPercent(null);
+    }
 
     try {
       // Build query parameters with date range and filters
@@ -345,7 +392,36 @@ const UserAnalytics: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
 
-        // Единый формат для всех метрик (как retention): { date, value } => { date, Users }
+        // Загружаем total значение для метрик, которые должны показывать среднее за период
+        const metricsWithTotal = [
+          'sessions', 'screens_opened', 'session_duration',
+          'trades_per_user', 'daily_active_traders'
+        ];
+
+        if (metricsWithTotal.includes(metricId)) {
+          try {
+            const totalUrl = `${config.api.baseUrl}/admin/dashboard/metric/${metricId}/total?${params}`;
+            console.log(`[UserAnalytics] FETCHING TOTAL URL:`, totalUrl);
+            const totalResponse = await fetch(totalUrl, {
+              credentials: 'include'
+            });
+            console.log(`[UserAnalytics] Total response status:`, totalResponse.status);
+            if (totalResponse.ok) {
+              const totalData = await totalResponse.json();
+              console.log(`[UserAnalytics] Total data received:`, totalData);
+              if (totalData && totalData.value !== undefined && totalData.value !== null) {
+                const numericValue = Number(totalData.value);
+                console.log(`[UserAnalytics] Setting dynamicOverallPercent to:`, numericValue);
+                setDynamicOverallPercent(numericValue);
+              }
+            } else {
+              const errorText = await totalResponse.text();
+              console.error(`[UserAnalytics] Total response not ok for ${metricId}:`, totalResponse.status, errorText);
+            }
+          } catch (error) {
+            console.error(`Error loading total for metric ${metricId}:`, error);
+          }
+         }        // Единый формат для всех метрик (как retention): { date, value } => { date, Users }
         // Обработка разных типов ответов с бэкенда
         let trendData: Array<{ date: string; value: number }> = [];
         let totalValue: number | null = null;
@@ -447,8 +523,7 @@ const UserAnalytics: React.FC = () => {
           // при этом график остаётся в абсолютных значениях
           const tutorialHeaderIds = new Set([
             'tutorial_start', 'tutorial_complete',
-            'pro_tutorial_start', 'pro_tutorial_complete',
-            'churn_rate'
+            'pro_tutorial_start', 'pro_tutorial_complete'
           ]);
           
           // Специальная логика для signup_rate
@@ -484,7 +559,16 @@ const UserAnalytics: React.FC = () => {
               setDynamicOverallPercent(0);
           }
         } else {
-          setDynamicOverallPercent(null); // Сбрасываем для метрик без процента
+          // НЕ сбрасываем для метрик с total значениями
+          const metricsWithTotal = [
+            'sessions', 'screens_opened', 'session_duration', 'trading_frequency',
+            'avg_virtual_balance', 'trades_per_user', 'order_open', 'order_close',
+            'average_profit_loss', 'average_holding_time', 'page_visits',
+            'daily_active_traders', 'max_profit_trade', 'max_loss_trade'
+          ];
+          if (!metricsWithTotal.includes(metricId)) {
+            setDynamicOverallPercent(null); // Сбрасываем только для метрик без процента
+          }
           }
         }
 
@@ -757,8 +841,14 @@ const UserAnalytics: React.FC = () => {
   // Загружаем данные графика при выборе метрики
   useEffect(() => {
     if (selectedMetric) {
-      // Жёсткий сброс процента при смене метрики
-      setDynamicOverallPercent(null);
+      // Жёсткий сброс процента при смене метрики, НЕ для метрик с total значениями
+      const metricsWithTotal = [
+        'sessions', 'screens_opened', 'session_duration',
+        'trades_per_user', 'daily_active_traders'
+      ];
+      if (!metricsWithTotal.includes(selectedMetric.id)) {
+        setDynamicOverallPercent(null);
+      }
       loadChartData(selectedMetric.id);
     }
   }, [selectedMetric]);
@@ -818,41 +908,43 @@ const UserAnalytics: React.FC = () => {
         {selectedMetric ? (
           <div className="h-full overflow-y-auto custom-scrollbar">
             <div className="p-6">
-              {/* Header with Filters */}
-              <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 shadow-sm w-full">
-                {/* Title and Filters in One Row */}
-                <div className="flex flex-row flex-wrap items-center justify-between">
-                  <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${selectedMetric.color}`}>
-                {selectedMetric.icon}
-              </div>
-                <h1 className="text-xl font-bold text-gray-900">{selectedMetric.title}</h1>
-                  </div>
-                  
-                  {/* Filters */}
-                  <MetricFilters
-                    metricId={selectedMetric.id}
-                    dateRange={dateRange}
-                    onDateRangeChange={setDateRange}
-                    selectedFilters={selectedFilters}
-                    onFiltersChange={setSelectedFilters}
-                  />
+              {/* Header with Filters - показываем только для метрик с заголовками */}
+              {!tableOnlyMetrics.includes(selectedMetric.id) && (
+                <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 shadow-sm w-full">
+                  {/* Title and Filters in One Row */}
+                  <div className="flex flex-row flex-wrap items-center justify-between">
+                    <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${selectedMetric.color}`}>
+                  {selectedMetric.icon}
                 </div>
+                  <h1 className="text-xl font-bold text-gray-900">{selectedMetric.title}</h1>
+                    </div>
+                    
+                    {/* Filters */}
+                    <MetricFilters
+                      metricId={selectedMetric.id}
+                      dateRange={dateRange}
+                      onDateRangeChange={setDateRange}
+                      selectedFilters={selectedFilters}
+                      onFiltersChange={setSelectedFilters}
+                    />
+                  </div>
 
-            </div>
+              </div>
+              )}
 
-            {/* Chart */}
-              <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 shadow-sm">
-              <h3 className="text-sm text-gray-600 mb-1">
-                {dateRange.label} trend for {selectedMetric.title}
-              </h3>
-              <p className="text-2xl font-bold text-gray-900 mb-4">
+            {/* Chart - показываем только для метрик с графиками */}
+              {!tableOnlyMetrics.includes(selectedMetric.id) && (
+                <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 shadow-sm">
+                <h3 className="text-sm text-gray-600 mb-1">
+                  {dateRange.label} trend for {selectedMetric.title}
+                </h3>
+                <p className="text-2xl font-bold text-gray-900 mb-4">
                 {(() => {
                   const isPercent = dynamicPercentageMetricIds.has(selectedMetric.id);
                   const tutorialHeaderIds = new Set([
                     'tutorial_start', 'tutorial_complete',
-                    'pro_tutorial_start', 'pro_tutorial_complete',
-                    'churn_rate'
+                    'pro_tutorial_start', 'pro_tutorial_complete'
                   ]);
                   // Если есть тренд, отображаем итог без прочерка
                   const dataExists = Array.isArray(chartData) && chartData.length > 0;
@@ -864,13 +956,44 @@ const UserAnalytics: React.FC = () => {
                   if (selectedMetric.id === 'signup_rate') {
                     return `${Math.round(Number(dynamicOverallPercent ?? 0))}%`;
                   }
+                  // Для churn_rate показываем % в шапке
+                  if (selectedMetric.id === 'churn_rate') {
+                    return `${Math.round(Number(dynamicOverallPercent ?? 0))}%`;
+                  }
                   if (isPercent) {
                     if (dynamicOverallPercent !== null) return `${dynamicOverallPercent}%`;
                     // если не успели посчитать — показываем 0%
                     return '0%';
                   }
-                  // user-based метрики без дробей
-                  const userBased = ['trades_per_user', 'daily_active_traders', 'wheel_spin_frequency', 'box_open_frequency', 'ads_watched_per_user', 'order_open', 'order_close'];
+                  // Метрики с total значениями (средние/максимумы за период)
+                  const metricsWithTotal = [
+                    'sessions', 'screens_opened', 'session_duration', 'trading_frequency',
+                    'avg_virtual_balance', 'trades_per_user', 'order_open', 'order_close',
+                    'average_profit_loss', 'average_holding_time', 'page_visits',
+                    'daily_active_traders', 'max_profit_trade', 'max_loss_trade'
+                  ];
+                  
+                  if (metricsWithTotal.includes(selectedMetric.id)) {
+                    if (dynamicOverallPercent !== null) {
+                      // Для Session Duration - конвертируем секунды в минуты
+                      if (selectedMetric.id === 'session_duration') {
+                        const minutes = dynamicOverallPercent / 60;
+                        return minutes % 1 === 0 ? minutes.toString() : minutes.toFixed(2);
+                      }
+                      // Для пользователей/сделок - без дробей
+                      if (['sessions', 'trades_per_user', 'daily_active_traders'].includes(selectedMetric.id)) {
+                        const value = Math.round(dynamicOverallPercent);
+                        return value.toString();
+                      }
+                      // Для остальных метрик с 2 знаками после запятой, убираем .00
+                      const value = Number(dynamicOverallPercent);
+                      return value % 1 === 0 ? value.toString() : value.toFixed(2);
+                    }
+                    return '0';
+                  }
+
+                  // user-based метрики без дробей (legacy)
+                  const userBased = ['wheel_spin_frequency', 'box_open_frequency', 'ads_watched_per_user'];
                   if (userBased.includes(selectedMetric.id)) {
                     if (dataExists) {
                       const last = chartData[chartData.length - 1] as any;
@@ -890,26 +1013,42 @@ const UserAnalytics: React.FC = () => {
                 })()}
               </p>
               <div className="mt-6 hidden sm:block">
-              <AreaChart
-                data={chartData.length > 0 
-                  ? chartData 
-                  : [{ date: 'No Data', [getMetricChartConfig(selectedMetric.id).categories[0]]: 0 }]}
-                index="date"
-                categories={getMetricChartConfig(selectedMetric.id).categories}
-                colors={getMetricChartConfig(selectedMetric.id).colors}
-                showLegend={false}
-                showGradient={false}
+                <AreaChart
+                  data={chartData.length > 0
+                    ? chartData
+                    : [{ date: 'No Data', [getMetricChartConfig(selectedMetric.id).categories[0]]: 0 }]}
+                  index="date"
+                  categories={getMetricChartConfig(selectedMetric.id).categories}
+                  colors={getMetricChartConfig(selectedMetric.id).colors}
+                  showLegend={false}
+                  showGradient={false}
                   valueFormatter={getMetricValueFormatter(selectedMetric.id)}
-                  showYAxis={true}
-                  yAxisWidth={60}
+                  showYAxis={false}
+                  yAxisWidth={0}
                   customTooltip={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
+                      const config = getMetricChartConfig(selectedMetric.id);
+                      const color = config.colors?.[0] || 'blue';
+                      const colorClasses = {
+                        blue: 'bg-blue-500',
+                        emerald: 'bg-emerald-500',
+                        pink: 'bg-pink-500',
+                        violet: 'bg-violet-500',
+                        amber: 'bg-amber-500',
+                        purple: 'bg-purple-500',
+                        fuchsia: 'bg-fuchsia-500'
+                      };
+                      
                       return (
                         <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
                           <p className="text-gray-700 font-medium text-sm mb-1">{label}</p>
-                          <p className="text-blue-600 text-sm">
-                            {getMetricChartConfig(selectedMetric.id).tooltipLabel}: {getMetricTooltipValueFormatter(selectedMetric.id)(payload[0].value as any)}
-                          </p>
+                          <div className="flex items-center space-x-2">
+                            <div className={`w-3 h-0.5 ${colorClasses[color as keyof typeof colorClasses] || 'bg-blue-500'}`}></div>
+                            <span className="text-gray-600 text-sm">{config.tooltipLabel}:</span>
+                            <span className="text-gray-900 font-semibold text-sm">
+                              {formatTooltipValue(selectedMetric.id, payload[0].value as number)}
+                            </span>
+                          </div>
                         </div>
                       );
                     }
@@ -922,8 +1061,8 @@ const UserAnalytics: React.FC = () => {
               </div>
               <div className="mt-6 block sm:hidden">
                 <AreaChart
-                  data={chartData.length > 0 
-                    ? chartData 
+                  data={chartData.length > 0
+                    ? chartData
                     : [{ date: 'No Data', [getMetricChartConfig(selectedMetric.id).categories[0]]: 0 }]}
                   index="date"
                   categories={getMetricChartConfig(selectedMetric.id).categories}
@@ -932,16 +1071,32 @@ const UserAnalytics: React.FC = () => {
                   showGradient={false}
                   valueFormatter={getMetricValueFormatter(selectedMetric.id)}
                   startEndOnly={true}
-                showYAxis={true}
-                  yAxisWidth={60}
+                  showYAxis={false}
+                  yAxisWidth={0}
                   customTooltip={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
+                      const config = getMetricChartConfig(selectedMetric.id);
+                      const color = config.colors?.[0] || 'blue';
+                      const colorClasses = {
+                        blue: 'bg-blue-500',
+                        emerald: 'bg-emerald-500',
+                        pink: 'bg-pink-500',
+                        violet: 'bg-violet-500',
+                        amber: 'bg-amber-500',
+                        purple: 'bg-purple-500',
+                        fuchsia: 'bg-fuchsia-500'
+                      };
+                      
                       return (
                         <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
                           <p className="text-gray-700 font-medium text-sm mb-1">{label}</p>
-                          <p className="text-blue-600 text-sm">
-                            {getMetricChartConfig(selectedMetric.id).tooltipLabel}: {getMetricTooltipValueFormatter(selectedMetric.id)(payload[0].value as any)}
-                          </p>
+                          <div className="flex items-center space-x-2">
+                            <div className={`w-3 h-0.5 ${colorClasses[color as keyof typeof colorClasses] || 'bg-blue-500'}`}></div>
+                            <span className="text-gray-600 text-sm">{config.tooltipLabel}:</span>
+                            <span className="text-gray-900 font-semibold text-sm">
+                              {formatTooltipValue(selectedMetric.id, payload[0].value as number)}
+                            </span>
+                          </div>
                         </div>
                       );
                     }
@@ -953,6 +1108,30 @@ const UserAnalytics: React.FC = () => {
                 </AreaChart>
               </div>
             </div>
+              )}
+
+            {/* Заголовок для метрик "только таблица" */}
+            {tableOnlyMetrics.includes(selectedMetric.id) && (
+              <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 shadow-sm w-full">
+                <div className="flex flex-row flex-wrap items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${selectedMetric.color}`}>
+                      {selectedMetric.icon}
+                    </div>
+                    <h1 className="text-xl font-bold text-gray-900">{selectedMetric.title}</h1>
+                  </div>
+                  
+                  {/* Filters */}
+                  <MetricFilters
+                    metricId={selectedMetric.id}
+                    dateRange={dateRange}
+                    onDateRangeChange={setDateRange}
+                    selectedFilters={selectedFilters}
+                    onFiltersChange={setSelectedFilters}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Table */}
             <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
